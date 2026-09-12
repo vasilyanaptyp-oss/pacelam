@@ -449,7 +449,7 @@ async function screenDetail(id) {
         list.append(h('div.card.bidrow', null,
           h('div.bidrow__who', null, h('b', null, b.bidder?.display_name || '—'), h('small', null, [b.bidder?.city_name, relTime(b.created_at), b.note].filter(Boolean).join(' · '))),
           h('div.bidrow__amt', null, fmtMoney(b.amount)),
-          b.status === 'active' && p.status === 'open' ? h('button.btn.btn--primary.btn--sm', { type: 'button', onclick: async () => { try { await api.acceptBid(b.id); toast(t('accepted')); render(); } catch (e) { fail(e); } } }, t('accept')) : h('span.tag.tag--planned', null, t(b.status))));
+          b.status === 'active' && p.status === 'open' ? h('button.btn.btn--primary.btn--sm', { type: 'button', onclick: async () => { try { await api.acceptBid(b.id); toast(t('deal_pending_other')); render(); } catch (e) { fail(e); } } }, t('accept')) : h('span.tag.tag--planned', null, t(b.status))));
       }
       section.append(list);
       el.append(section);
