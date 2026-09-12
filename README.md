@@ -1,0 +1,57 @@
+# Paceļam — kravu birža atpakaļceļam
+
+Backload exchange for Latvia and the Baltics. Static front-end (no framework) + Supabase
+(Postgres, Auth, row-level security, Storage). Client: SIA TK Trans, Daugavpils.
+
+Decisions and their reasons: `docs/decisions.md`. Vehicle types: `docs/vehicle-types.json`
+(codes as on the exchange carriers already use). Scheme agreed with the client:
+`docs/pacelam-scheme.png`.
+
+## Run locally
+
+Any static server, e.g.
+
+```bash
+python -m http.server 5173
+```
+
+Without Supabase credentials in `config.js` the app runs in **demo mode**: sample data in the
+browser's localStorage, two demo accounts (carrier / customer), every flow clickable.
+
+## Connect Supabase
+
+1. Create a project (free tier). In the SQL editor run, in order:
+   `supabase/migrations/0001_init.sql`, `0002_seed.sql`, `0003_storage.sql`.
+2. Authentication → Providers → Email: for a test project turn **off** "Confirm email";
+   set Site URL to the page URL (for password-reset links).
+3. Put the project URL and the anon key into `config.js`:
+   ```js
+   window.PACELAM_CONFIG = { SUPABASE_URL: 'https://xxxx.supabase.co', SUPABASE_ANON_KEY: 'eyJ…', PHOTO_BUCKET: 'photos' };
+   ```
+   The anon key is public by design; what a browser may read is decided by the database policies.
+4. Make the dispatcher an operator and, later, flip the subscription wall — from the SQL editor:
+   ```sql
+   update profiles set is_operator = true where id = '<uuid of the dispatcher>';
+   update settings set value = '15' where key = 'free_delay_minutes';   -- minutes of delay for free accounts
+   update profiles set subscription_until = now() + interval '30 days' where id = '<uuid>';
+   ```
+
+## What lives where
+
+- `js/app.js` screens and routing, `js/api-supabase.js` REST/Auth/Storage client,
+  `js/api-demo.js` demo backend with the same surface, `js/geo.js` cities + haversine + detour,
+  `js/data.js` vehicle types and provisional cargo categories (also the source of `0002_seed.sql`
+  via `node scripts/gen-seed.mjs`), `js/i18n.js` lv/ru/en.
+- `supabase/migrations/0001_init.sql` — the whole model: tables, RLS, bids/deals functions,
+  contact unlocks, saved-search notifications, subscription switch.
+- `_audit/` — checks: `db-test.mjs` (60 policy tests in PGlite), `leak-rest.mjs` (contact leak
+  through the real REST API), `timing.mjs` (20-second posting), `lang-fonts.mjs` (?lang and
+  Latvian diacritics by pixel comparison), `a11y-all.mjs` (every screen), `shots.mjs` (tour).
+
+## Security model in one paragraph
+
+Phones and e-mails are in `profile_contacts`, readable only by the owner or by users holding a row
+in `contact_unlocks` for that owner. Unlock rows are written only by the database functions that
+close a deal (`take_posting`, `confirm_deal`); clients have no insert right on bids, deals or
+unlocks. Cargo photos are public objects without personal data. Everything a browser can read is
+decided by RLS, never by JavaScript.

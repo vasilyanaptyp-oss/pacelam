@@ -1,0 +1,7 @@
+node_modules/
+_audit/shots/
+_audit/server.log
+_audit/*.png
+npm-install.log
+npm-install.exit
+.DS_Store
