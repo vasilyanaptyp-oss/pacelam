@@ -13,7 +13,7 @@
       demo_p: 'Посмотреть без регистрации — демо с примерными данными:', demo_carrier: 'Попробовать как перевозчик', demo_customer: 'Попробовать как заказчик',
       m_cargo: 'Груз', m_cargo2: 'Груз', m_urgent: 'Срочно', m_urgent2: 'Срочно', m_planned: 'Планово', m_planned2: 'Планово', m_age1: '3 мин назад', m_age2: '1 ч назад',
       m_metric1: 'по пути<small>41 км пути</small>', m_meta1: 'Автомобиль · VT08 Эвакуатор до 5 т · сегодня', m_take: 'Беру',
-      m_metric2: '+38 км крюка<small>202 км пути</small>', m_meta2: '180 € — забрать сразу · ставок: 2 · лучшая 170 €',
+      m_metric2: '+38 км крюка<small>202 км пути</small>', m_meta2: '180 € · ставок: 2 · лучшая 170 €',
       how_k: 'Как это работает', how_h: 'Пять шагов от звонка до груза в машине.',
       s1_h: 'Заявка', s1_p: 'Заказчик подаёт груз и выбирает режим: срочно или планово.',
       s2_h: 'Совпадения', s2_p: 'Биржа находит тех, кому это по пути, и шлёт уведомление.',
@@ -54,7 +54,7 @@
       demo_p: 'Look around without signing up — a demo with sample data:', demo_carrier: 'Try as a carrier', demo_customer: 'Try as a customer',
       m_cargo: 'Cargo', m_cargo2: 'Cargo', m_urgent: 'Urgent', m_urgent2: 'Urgent', m_planned: 'Planned', m_planned2: 'Planned', m_age1: '3 min ago', m_age2: '1 h ago',
       m_metric1: 'on the way<small>41 km trip</small>', m_meta1: 'Vehicle · VT08 Tow truck up to 5 t · today', m_take: 'Take it',
-      m_metric2: '+38 km detour<small>202 km trip</small>', m_meta2: '180 € — take now · offers: 2 · best 170 €',
+      m_metric2: '+38 km detour<small>202 km trip</small>', m_meta2: '180 € · offers: 2 · best 170 €',
       how_k: 'How it works', how_h: 'Five steps from a phone call to cargo in the truck.',
       s1_h: 'Posting', s1_p: 'The customer posts the cargo and picks a mode: urgent or planned.',
       s2_h: 'Matches', s2_p: 'The exchange finds carriers who have it on their way and notifies them.',
@@ -110,7 +110,9 @@
     rv.forEach((el) => io.observe(el));
     setTimeout(() => rv.forEach((el) => el.classList.add('in')), 1200);
   }
-  if (reduce) { const svg = document.querySelector('.map'); if (svg && svg.pauseAnimations) svg.pauseAnimations(); }
+  // Phones and weak devices get a still scene: the running truck is a desktop treat.
+  const weak = reduce || matchMedia('(max-width: 979px)').matches || (navigator.connection && navigator.connection.saveData) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4 && matchMedia('(pointer: coarse)').matches);
+  if (weak) { const svg = document.querySelector('.map'); if (svg && svg.pauseAnimations) { svg.pauseAnimations(); svg.setCurrentTime(2.2); } }
   document.querySelectorAll('[data-lang]').forEach((a) => { const on = a.dataset.lang === lang; a.classList.toggle('is-on', on); if (on) a.setAttribute('aria-current', 'true'); });
   // carry the language into the app links
   document.querySelectorAll('a[data-app]').forEach((a) => {

@@ -14,7 +14,7 @@ const check = (name, ok, detail = '') => { if (!ok) failures++; console.log((ok 
 for (const lang of ['lv', 'ru', 'en']) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'de-DE' }); // browser locale deliberately unrelated
   const page = await ctx.newPage();
-  await page.goto(`${BASE}?lang=${lang}`, { waitUntil: 'load' });
+  await page.goto(`${BASE}?visit=1&lang=${lang}`, { waitUntil: 'load' });
   await page.waitForSelector('.pcard');
   const got = await page.evaluate(() => ({ lang: document.documentElement.lang, nav: [...document.querySelectorAll('.nav a')].map((a) => a.textContent.trim()), saved: localStorage.getItem('pacelam.lang'), title: document.title }));
   const expectNav = { lv: 'Plūsma', ru: 'Лента', en: 'Board' }[lang];
@@ -25,9 +25,9 @@ for (const lang of ['lv', 'ru', 'en']) {
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'ru-RU' });
   const page = await ctx.newPage();
-  await page.goto(`${BASE}?lang=ru`, { waitUntil: 'load' });
+  await page.goto(`${BASE}?visit=1&lang=ru`, { waitUntil: 'load' });
   await page.waitForSelector('.pcard');
-  await page.goto(`${BASE}?lang=lv`, { waitUntil: 'load' });
+  await page.goto(`${BASE}?visit=1&lang=lv`, { waitUntil: 'load' });
   await page.waitForSelector('.pcard');
   const got = await page.evaluate(() => ({ lang: document.documentElement.lang, nav: document.querySelector('.nav a').textContent.trim() }));
   check(`stored ru, URL lv -> page is lv (${got.lang}, "${got.nav}")`, got.lang === 'lv' && got.nav === 'Plūsma');
@@ -56,7 +56,7 @@ for (const lang of ['lv', 'ru', 'en']) {
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: 'lv-LV' });
   const page = await ctx.newPage();
-  await page.goto(`${BASE}?lang=lv`, { waitUntil: 'load' });
+  await page.goto(`${BASE}?visit=1&lang=lv`, { waitUntil: 'load' });
   await page.waitForSelector('.pcard');
   await page.evaluate(() => document.fonts.ready);
   const loaded = await page.evaluate(() => [...document.fonts].filter((f) => f.status === 'loaded').map((f) => `${f.family} ${f.unicodeRange}`.slice(0, 60)));

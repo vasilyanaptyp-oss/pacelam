@@ -18,7 +18,7 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + 
 const shot = async (name, full = false) => { await page.waitForTimeout(350); await page.screenshot({ path: path.join(OUT, name + '.png'), fullPage: full }); console.log('shot', name); };
 const click = async (text, opts = {}) => { await page.getByRole(opts.role || 'button', { name: text, exact: opts.exact ?? false }).first().click(); await page.waitForTimeout(250); };
 
-await page.goto(BASE + '?lang=ru', { waitUntil: 'load' });
+await page.goto(BASE + '?visit=1&lang=ru', { waitUntil: 'load' });
 await page.waitForSelector('.pcard');
 await shot('01-feed-visitor', true);
 await page.click('.nav a[href="#/me"]');

@@ -83,11 +83,20 @@ a { color: var(--acc-text); }
 .map .city { opacity: 0; animation: fadein .6s ease forwards; }
 .map .city:nth-child(1) { animation-delay: .2s; } .map .city:nth-child(2) { animation-delay: .25s; } .map .city:nth-child(3) { animation-delay: .3s; } .map .city:nth-child(4) { animation-delay: .35s; } .map .city:nth-child(5) { animation-delay: .4s; } .map .city:nth-child(6) { animation-delay: .1s; } .map .city:nth-child(7) { animation-delay: .5s; } .map .city:nth-child(8) { animation-delay: .55s; } .map .city:nth-child(9) { animation-delay: .6s; } .map .city:nth-child(10) { animation-delay: .1s; } .map .city:nth-child(11) { animation-delay: .7s; } .map .city:nth-child(12) { animation-delay: .75s; } .map .city:nth-child(13) { animation-delay: .8s; } .map .city:nth-child(14) { animation-delay: .85s; } .map .city:nth-child(15) { animation-delay: .9s; }
 .map__cargo { opacity: 0; animation: fadein .6s ease 1.5s forwards; }
+.map__cargo .pulse { transform-box: fill-box; transform-origin: center; animation: pulse2 2.6s ease-in-out infinite; }
+@keyframes pulse2 { 50% { transform: scale(1.6); opacity: .4; } }
 .truck { opacity: 0; animation: fadein .4s ease 1.8s forwards; }
-.mock { position: absolute; width: min(300px, 78%); padding: 14px 16px; background: rgba(21, 25, 33, .92); border: 1px solid var(--line2); border-radius: 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06); opacity: 0; animation: rise .9s var(--ease) forwards; }
-.mock--a { left: -14px; bottom: 36px; animation-delay: 1.4s; }
-.mock--b { right: -14px; top: 44px; animation-delay: 1.7s; }
-@media (max-width: 979px) { .mock { width: min(260px, 70%); } .mock--a { left: 0; bottom: 8px; } .mock--b { right: 0; top: 8px; } }
+.mock__meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* phones and weak devices: the scene is a still picture — no running truck, no pulses, no filters */
+@media (max-width: 979px), (prefers-reduced-motion: reduce) {
+  .map .draw, .map .city, .map__cargo, .truck, .mock { animation: none; opacity: 1; stroke-dashoffset: 0; transform: none; }
+  .map__cargo .pulse, .eyebrow i { animation: none; }
+  .grain { display: none; }
+}
+.mock { position: absolute; width: min(262px, 66%); padding: 14px 16px; background: rgba(21, 25, 33, .92); border: 1px solid var(--line2); border-radius: 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06); opacity: 0; animation: rise .9s var(--ease) forwards; }
+.mock--a { left: 12px; bottom: 34px; animation-delay: 1.4s; }
+.mock--b { right: 12px; top: 92px; animation-delay: 1.7s; }
+@media (max-width: 979px) { .mock { width: min(240px, 64%); } .mock--a { left: 10px; bottom: 10px; } .mock--b { right: 10px; top: 10px; } }
 @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 .mock__top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
 .tag { display: inline-flex; align-items: center; min-height: 22px; padding: 2px 8px; border-radius: 7px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }

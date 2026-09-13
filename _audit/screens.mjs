@@ -52,7 +52,7 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await page.waitForSelector('.hero'); await page.waitForTimeout(3200);
   await audit(page, `${V} public page (ru)`);
   // app, visitor
-  await page.goto(APP + '?lang=lv', { waitUntil: 'load' });
+  await page.goto(APP + '?visit=1&lang=lv', { waitUntil: 'load' });
   await page.waitForSelector(rowSel);
   await audit(page, `${V} board (visitor)`);
   await page.click('.lang-btn:not(.top__about)'); await page.waitForSelector('.sheet.is-open');

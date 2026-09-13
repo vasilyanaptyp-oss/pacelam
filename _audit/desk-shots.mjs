@@ -19,7 +19,7 @@ async function ctxPage(w, h, mobile = false) {
 {
   const { ctx, page } = await ctxPage(1440, 900);
   await page.goto(ROOT + '?lang=ru', { waitUntil: 'load' }); await page.waitForTimeout(2600);
-  await page.screenshot({ path: path.join(OUT, 'd01-landing-1440.png'), fullPage: true });
+  await page.screenshot({ path: path.join(OUT, 'd01-landing-1440.png') });
   await page.goto(APP + '?lang=ru&demo=carrier#/', { waitUntil: 'load' }); await page.waitForSelector('.tbl__row'); await page.waitForTimeout(300);
   await page.screenshot({ path: path.join(OUT, 'd02-board-1440.png') });
   await page.locator('.tbl__row').nth(1).click(); await page.waitForSelector('.board__detail.is-open .detail'); await page.waitForTimeout(400);

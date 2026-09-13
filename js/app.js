@@ -1191,14 +1191,20 @@ async function boot() {
   state.ref = { vehicleTypes: vehicleTypes || [], groups: groups || [], cargoTypes: cargoTypes || [] };
   // Links from the public page: ?demo=carrier|customer|operator signs into the demo directly.
   const demo = params.get('demo');
+  // Not signed in, no invitation from the public page, straight to the board? Explain the service first.
+  if (!api.getSession() && !demo && !params.get('role') && !params.get('visit') && (route().name === 'feed')) {
+    location.replace(`../?lang=${getLang()}`);
+    return;
+  }
   if (demo && api.mode === 'demo') {
     const u = api.demoUsers.find((x) => x.key === `demo_${demo}`);
     if (u && api.userId() !== u.id) await api.signInDemo(u.id);
   }
-  if (demo || params.get('role')) {
+  if (demo || params.get('role') || params.get('visit')) {
     const url = new URL(location.href);
     url.searchParams.delete('demo');
     url.searchParams.delete('role');
+    url.searchParams.delete('visit');
     history.replaceState(null, '', url.pathname + url.search + (location.hash || '#/'));
   }
   await loadMe();
