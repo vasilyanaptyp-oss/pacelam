@@ -32,11 +32,23 @@ for (const lang of ['lv', 'ru', 'en']) {
   const got = await page.evaluate(() => ({ lang: document.documentElement.lang, nav: document.querySelector('.nav a').textContent.trim() }));
   check(`stored ru, URL lv -> page is lv (${got.lang}, "${got.nav}")`, got.lang === 'lv' && got.nav === 'Plūsma');
   // switching via the language sheet updates document lang and URL
-  await page.click('.lang-btn');
+  await page.click('.lang-btn:not(.top__about)');
   await page.getByRole('button', { name: 'English' }).click();
   await page.waitForTimeout(300);
   const after = await page.evaluate(() => ({ lang: document.documentElement.lang, url: location.search, nav: document.querySelector('.nav a').textContent.trim() }));
   check(`language switch updates html lang and URL (${after.lang}, ${after.url})`, after.lang === 'en' && after.url.includes('lang=en') && after.nav === 'Board');
+  await ctx.close();
+}
+
+// --- public page: ?lang= in a clean context ---
+for (const lang of ['lv', 'ru', 'en']) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'de-DE' });
+  const page = await ctx.newPage();
+  await page.goto(BASE.replace(/app\/$/, '') + '?lang=' + lang, { waitUntil: 'load' });
+  await page.waitForSelector('.hero');
+  const got = await page.evaluate(() => ({ lang: document.documentElement.lang, h1: document.querySelector('h1').textContent.trim().slice(0, 12), app: document.querySelector('a[data-app]').getAttribute('href') }));
+  const expect = { lv: 'Brauc', ru: 'Возвра', en: 'Drive' }[lang];
+  check(`public page ?lang=${lang}: html lang="${got.lang}", h1 "${got.h1}", app link ${got.app}`, got.lang === lang && got.h1.startsWith(expect) && got.app.includes('lang=' + lang));
   await ctx.close();
 }
 
