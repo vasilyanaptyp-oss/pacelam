@@ -41,6 +41,7 @@
       n1: '— по пути. Груз там, куда ты и так едешь.', n2: '— подбираем, поднимаем. Груз в машине, а не на дороге.', n3b: 'Одно слово, два смысла', n3: '— поэтому биржа так и называется.',
       cta_h: 'Начни с демо — без регистрации, с примерными данными.', demo_carrier2: 'Как перевозчик', demo_customer2: 'Как заказчик',
       foot_app: 'Открыть биржу',
+      f1: 'на объявление — три касания: откуда, куда, когда', f2: 'крюк, а не радиус — сколько километров груз добавляет к твоему пути', f3: 'телефонов до сделки — контакты открываются только после подтверждения',
       title: 'Paceļam — биржа обратной загрузки для Латвии и Балтии',
       description: 'Paceļam: перевозчик едет обратно пустым, заказчику надо отправить груз — биржа сводит обоих. Объявление за 20 секунд, крюк в километрах, контакты только после сделки.',
     },
@@ -81,6 +82,7 @@
       n1: '— on the way. Cargo where you are driving anyway.', n2: '— we pick it up. Cargo in the truck, not on the road.', n3b: 'One word, two meanings', n3: '— that is why the exchange is called this.',
       cta_h: 'Start with the demo — no sign-up, sample data.', demo_carrier2: 'As a carrier', demo_customer2: 'As a customer',
       foot_app: 'Open the exchange',
+      f1: 'to post — three taps: from, to, when', f2: 'detour, not radius — how many kilometres the cargo adds to your route', f3: 'phone numbers before a deal — contacts open only after confirmation',
       title: 'Paceļam — backload exchange for Latvia and the Baltics',
       description: 'Paceļam: a carrier drives back empty, a customer needs cargo sent that way — the exchange brings them together. A posting in 20 seconds, detour in kilometres, contacts only after a deal.',
     },
@@ -99,6 +101,16 @@
     document.title = dict.title;
     document.querySelector('meta[name="description"]')?.setAttribute('content', dict.description);
   }
+  // Scroll reveals: short, and everything is forced visible after a moment regardless of scrolling.
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const rv = [...document.querySelectorAll('.rv')];
+  if (reduce || !('IntersectionObserver' in window)) rv.forEach((el) => el.classList.add('in'));
+  else {
+    const io = new IntersectionObserver((entries) => { for (const e of entries) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }, { rootMargin: '0px 0px -8% 0px', threshold: 0.05 });
+    rv.forEach((el) => io.observe(el));
+    setTimeout(() => rv.forEach((el) => el.classList.add('in')), 1200);
+  }
+  if (reduce) { const svg = document.querySelector('.map'); if (svg && svg.pauseAnimations) svg.pauseAnimations(); }
   document.querySelectorAll('[data-lang]').forEach((a) => { const on = a.dataset.lang === lang; a.classList.toggle('is-on', on); if (on) a.setAttribute('aria-current', 'true'); });
   // carry the language into the app links
   document.querySelectorAll('a[data-app]').forEach((a) => {

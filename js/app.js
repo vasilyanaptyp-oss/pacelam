@@ -190,6 +190,17 @@ function metricFor(p) {
   }
   return { detour: null, dist: null, trip, big: t('direct', { km: fmtInt(trip) }), good: false, sub: '', sortKey: trip };
 }
+// A tiny route glyph: dotted straight line = my way, amber bump = the detour the cargo adds.
+function detourGlyph(m) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 46 18');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('class', 'dg' + (m.good ? ' is-good' : ''));
+  const km = m.detour != null ? m.detour : (m.dist != null ? m.dist : 0);
+  const bump = Math.min(11, 1 + km / 12);
+  svg.innerHTML = `<line class="dg__base" x1="3" y1="14" x2="43" y2="14"/><path class="dg__bump" d="M3 14 C 14 14 16 ${14 - bump} 23 ${14 - bump} C 30 ${14 - bump} 32 14 43 14"/><circle cx="3" cy="14" r="2"/><circle cx="43" cy="14" r="2"/>`;
+  return svg;
+}
 function factsLine(p) {
   const parts = [];
   if (p.weight_kg != null) parts.push(`${fmtInt(p.weight_kg)} ${t('kg')}`);
@@ -243,7 +254,7 @@ function postingCard(p, opts = {}) {
   const link = h('a.pcard__link', { href: `#/p/${p.id}`, 'aria-label': `${p.from_name} → ${p.to_name}` },
     tagRow(p),
     h('div.pcard__route', null, h('span', null, p.from_name), icon('arrow'), h('span', null, p.to_name)),
-    h('div.pcard__metric', null, h('b', { class: m.good ? 'is-good' : '' }, m.big), m.sub ? h('span', null, m.sub) : null),
+    h('div.pcard__metric', null, detourGlyph(m), h('b', { class: m.good ? 'is-good' : '' }, m.big), m.sub ? h('span', null, m.sub) : null),
     factsLine(p) ? h('div.pcard__facts', null, factsLine(p)) : null,
     h('div.pcard__meta', null, p.photos?.length ? h('img.pcard__thumb', { src: photoThumb(p.photos[0]), alt: '', loading: 'lazy', width: 44, height: 44 }) : null, h('span', null, typeLine(p))),
     priceLine(p));
@@ -501,7 +512,7 @@ async function screenFeed() {
       },
       h('td', null, h('span.tag', { class: p.kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, p.kind === 'cargo' ? t('kind_cargo') : t('kind_truck')), p.kind === 'cargo' ? h('span.tag', { class: p.mode === 'urgent' ? 'tag--urgent' : 'tag--planned' }, p.mode === 'urgent' ? t('mode_urgent') : t('mode_planned')) : null, p.is_operator_posting ? h('span.tag.tag--op', null, t('operator')) : null),
       h('td.tbl__route', null, h('b', null, p.from_name), h('span.muted', null, ' → '), h('b', null, p.to_name)),
-      h('td.tbl__num', null, h('b', { class: x.m.good ? 'is-good' : 'is-acc' }, x.m.detour != null ? (x.m.detour <= 5 ? t('on_the_way') : `+${fmtInt(x.m.detour)} km`) : `${fmtInt(x.m.dist ?? x.m.trip)} km`), h('small.muted', null, ` · ${fmtInt(x.m.trip)} km`)),
+      h('td.tbl__num', null, detourGlyph(x.m), h('b', { class: x.m.good ? 'is-good' : 'is-acc' }, x.m.detour != null ? (x.m.detour <= 5 ? t('on_the_way') : `+${fmtInt(x.m.detour)} km`) : `${fmtInt(x.m.dist ?? x.m.trip)} km`), h('small.muted', null, ` · ${fmtInt(x.m.trip)} km`)),
       h('td', null, fmtDateRange(p.date_from, p.date_to)),
       h('td.tbl__vehicle', { title: p.vehicle_type_code ? nameOf(vtype(p.vehicle_type_code)) || '' : '' }, p.vehicle_type_code ? `${p.vehicle_type_code} ${nameOf(vtype(p.vehicle_type_code)) || ''}` : (p.kind === 'cargo' ? t('any_vehicle') : '')),
       h('td.tbl__cargo', null, p.kind === 'cargo' && p.cargo_type_id ? nameOf(ctype(p.cargo_type_id)) : ''),
@@ -557,7 +568,7 @@ async function buildDetail(id, { inline = false } = {}) {
   el.append(h('div.card.detail__hero', null,
     tagRow(p),
     h(inline ? 'h2.detail__route' : 'h1.detail__route', null, h('span', null, p.from_name + (p.from_radius_km ? ` ${t('km_plus', { km: p.from_radius_km })}` : '')), icon('arrow'), h('span', null, p.to_name + (p.to_radius_km ? ` ${t('km_plus', { km: p.to_radius_km })}` : ''))),
-    h('div.detail__metric', { class: m.good ? 'is-good' : '' }, m.big, m.sub ? h('span.muted.small', null, ' · ' + m.sub) : null),
+    h('div.detail__metric', { class: m.good ? 'is-good' : '' }, detourGlyph(m), h('span', null, m.big), m.sub ? h('span.muted.small', null, ' · ' + m.sub) : null),
     h('p.muted', { style: { marginTop: '8px' } }, `${t('when')}: ${fmtDateRange(p.date_from, p.date_to)}`),
     h('p.muted.small', { style: { marginTop: '4px' } }, `${t('posted_by')}: ${p.owner?.display_name || ''}${p.owner?.city_name ? ', ' + p.owner.city_name : ''}`)));
   const facts = h('div.facts');

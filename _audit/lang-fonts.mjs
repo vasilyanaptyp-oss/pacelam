@@ -60,7 +60,7 @@ for (const lang of ['lv', 'ru', 'en']) {
   await page.waitForSelector('.pcard');
   await page.evaluate(() => document.fonts.ready);
   const loaded = await page.evaluate(() => [...document.fonts].filter((f) => f.status === 'loaded').map((f) => `${f.family} ${f.unicodeRange}`.slice(0, 60)));
-  check(`web font faces loaded: ${loaded.length}`, loaded.length >= 2, JSON.stringify(loaded));
+  check(`web font faces loaded: ${loaded.length} (${loaded.map((l) => l.split(' ')[0]).join(', ')})`, loaded.length >= 3 && loaded.some((l) => l.startsWith('Unbounded')), JSON.stringify(loaded));
   const glyphs = 'āēīūčģķļņšž ĀĒĪŪČĢĶĻŅŠŽ';
   const probe = async (family, weight) => {
     await page.evaluate(({ family, weight, glyphs }) => {
@@ -74,20 +74,20 @@ for (const lang of ['lv', 'ru', 'en']) {
     await page.waitForTimeout(120);
     return page.locator('#probe').screenshot();
   };
-  for (const weight of [400, 800]) {
-    const page1 = PNG.decode(await probe("Manrope, 'Segoe UI', system-ui, sans-serif", weight));      // what the page uses
+  for (const [fam, weight] of [['Manrope', 400], ['Manrope', 800], ['Unbounded', 700]]) {
+    const page1 = PNG.decode(await probe(`${fam}, 'Segoe UI', system-ui, sans-serif`, weight));      // what the page uses
     const nonexistent = PNG.decode(await probe("'NoSuchFamily-QQQ-123'", weight));                 // deliberately nonexistent family
     const fallback = PNG.decode(await probe("'Segoe UI', system-ui, sans-serif", weight));          // the page's own fallback stack
     const d1 = PNG.diff(page1, nonexistent);
     const d2 = PNG.diff(page1, fallback);
-    const same = PNG.diff(page1, PNG.decode(await probe("Manrope, 'Segoe UI', system-ui, sans-serif", weight)));
-    check(`weight ${weight}: page font vs nonexistent family differ in ${d1.differing}/${d1.total} px`, !d1.sizeMismatch && d1.differing / d1.total > 0.03, JSON.stringify(d1));
-    check(`weight ${weight}: page font vs the page's own fallback stack differ in ${d2.differing}/${d2.total} px (so the web font, not Segoe UI, is drawing the diacritics)`, !d2.sizeMismatch && d2.differing / d2.total > 0.03, JSON.stringify(d2));
-    check(`weight ${weight}: probe is deterministic (same font twice: ${same.differing} px differ)`, same.differing === 0, JSON.stringify(same));
+    const same = PNG.diff(page1, PNG.decode(await probe(`${fam}, 'Segoe UI', system-ui, sans-serif`, weight)));
+    check(`${fam} ${weight}: page font vs nonexistent family differ in ${d1.differing}/${d1.total} px`, !d1.sizeMismatch && d1.differing / d1.total > 0.03, JSON.stringify(d1));
+    check(`${fam} ${weight}: page font vs the page's own fallback stack differ in ${d2.differing}/${d2.total} px (so the web font, not Segoe UI, is drawing the diacritics)`, !d2.sizeMismatch && d2.differing / d2.total > 0.03, JSON.stringify(d2));
+    check(`${fam} ${weight}: probe is deterministic (same font twice: ${same.differing} px differ)`, same.differing === 0, JSON.stringify(same));
   }
   // the real headline of the page uses the web font too (not just the probe)
   const cityFont = await page.evaluate(() => getComputedStyle(document.querySelector('.pcard__route span')).fontFamily);
-  check(`card headline font-family starts with Manrope (${cityFont.slice(0, 30)})`, /^Manrope/.test(cityFont));
+  check(`card headline font-family starts with Unbounded (${cityFont.slice(0, 30)})`, /^Unbounded/.test(cityFont));
   // detect tofu / notdef: render 'ļ' and 'l' — must differ (a missing glyph would fall back to l-like box)
   await page.evaluate(() => { document.getElementById('probe')?.remove(); });
   await ctx.close();

@@ -7,13 +7,15 @@
 <meta name="theme-color" content="#0B0D11">
 <title>Paceļam — kravu birža atpakaļceļam Latvijā un Baltijā</title>
 <meta name="description" content="Paceļam: pārvadātājs brauc atpakaļ tukšs, pasūtītājam jāaizsūta krava — birža saved abus. Sludinājums 20 sekundēs, līkums kilometros, kontakti tikai pēc darījuma.">
+<link rel="preload" href="fonts/unbounded-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/unbounded-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="fonts/manrope-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B0D11'/%3E%3Cpath d='M14 46V18h12a9 9 0 0 1 0 18h-6v10z' fill='%23EDF1F6'/%3E%3Ccircle cx='46' cy='42' r='6' fill='%23F5A623'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/landing.css">
 </head>
 <body>
 <a class="skip" href="#main" data-i18n="skip">Uz saturu</a>
+<div class="grain" aria-hidden="true"></div>
 <header class="hdr">
   <div class="wrap hdr__in">
     <a class="brand" href="./" aria-label="Paceļam">Pace<span>ļ</span>am</a>
@@ -28,16 +30,17 @@
 
 <main id="main">
   <section class="hero">
+    <div class="hero__glow" aria-hidden="true"></div>
     <div class="wrap hero__grid">
-      <div>
-        <p class="eyebrow" data-i18n="eyebrow">Kravu birža atpakaļceļam · Latvija un Baltija</p>
-        <h1 data-i18n-html="h1">Brauc atpakaļ <em>ar kravu</em>, nevis tukšs.</h1>
-        <p class="hero__lead" data-i18n-html="lead">Pārvadātājs atgriežas tukšs — tas ir tīrs zaudējums. Pasūtītājam tieši turp jāaizsūta krava. <b>Paceļam</b> saved abus: sludinājums 20 sekundēs, līkums kilometros uz katras kartītes, kontakti tikai pēc darījuma.</p>
-        <div class="hero__actions">
-          <a class="btn btn--primary btn--big" href="app/?role=customer#/auth" data-app data-i18n="cta_customer">Meklēju transportu</a>
-          <a class="btn btn--ghost btn--big" href="app/?role=carrier#/auth" data-app data-i18n="cta_carrier">Piedāvāju auto</a>
+      <div class="hero__copy">
+        <p class="eyebrow a1"><i></i><span data-i18n="eyebrow">Kravu birža atpakaļceļam · Latvija un Baltija</span></p>
+        <h1 class="a2" data-i18n-html="h1">Brauc atpakaļ <em>ar kravu</em>, nevis tukšs.</h1>
+        <p class="hero__lead a3" data-i18n-html="lead">Pārvadātājs atgriežas tukšs — tas ir tīrs zaudējums. Pasūtītājam tieši turp jāaizsūta krava. <b>Paceļam</b> saved abus: sludinājums 20 sekundēs, līkums kilometros uz katras kartītes, kontakti tikai pēc darījuma.</p>
+        <div class="hero__actions a4">
+          <a class="btn btn--primary btn--big" href="app/?role=customer#/auth" data-app><span data-i18n="cta_customer">Meklēju transportu</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
+          <a class="btn btn--ghost btn--big" href="app/?role=carrier#/auth" data-app><span data-i18n="cta_carrier">Piedāvāju auto</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
         </div>
-        <div class="hero__demo">
+        <div class="hero__demo a5">
           <p data-i18n="demo_p">Apskatīt bez reģistrācijas — demo ar piemēra datiem:</p>
           <div class="row">
             <a class="btn btn--sm" href="app/?demo=carrier#/" data-app data-i18n="demo_carrier">Izmēģināt kā pārvadātājs</a>
@@ -45,65 +48,121 @@
           </div>
         </div>
       </div>
-      <div class="mock" aria-hidden="true">
-        <div class="mock__card is-urgent">
+
+      <div class="scene a3" aria-hidden="true">
+        <svg class="map" viewBox="0 0 520 580" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse"><circle cx="1.2" cy="1.2" r="1.2" fill="rgba(237,241,246,.10)"/></pattern>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <path id="route-main" d="M354 413 C 330 380 300 372 292 352 C 270 330 250 318 224 305"/>
+          </defs>
+          <rect width="520" height="580" fill="url(#dots)"/>
+          <g class="map__faint" fill="none" stroke="rgba(237,241,246,.16)" stroke-width="1.5" stroke-dasharray="4 7">
+            <path class="draw d1" d="M398 349 Q 320 300 224 305"/>
+            <path class="draw d2" d="M287 531 Q 240 420 224 305"/>
+            <path class="draw d3" d="M57 349 Q 50 300 86 261"/>
+            <path class="draw d4" d="M203 335 Q 280 400 354 413"/>
+            <path class="draw d5" d="M258 56 Q 260 180 224 305"/>
+            <path class="draw d6" d="M63 429 Q 140 480 213 510"/>
+          </g>
+          <path class="map__direct" d="M354 413 L 224 305" fill="none" stroke="rgba(245,166,35,.28)" stroke-width="1.5" stroke-dasharray="2 6"/>
+          <use href="#route-main" class="map__main draw d0" fill="none" stroke="#F5A623" stroke-width="3" stroke-linecap="round" filter="url(#glow)"/>
+          <g class="map__cities" font-family="Manrope, 'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#98A2B1">
+            <g class="city"><circle cx="258" cy="56" r="4" fill="#5B93CC"/><text x="268" y="52">Tallinn</text></g>
+            <g class="city"><circle cx="365" cy="162" r="3" fill="#5B93CC"/><text x="374" y="166">Tartu</text></g>
+            <g class="city"><circle cx="245" cy="161" r="3" fill="#5B93CC"/><text x="200" y="165">Pärnu</text></g>
+            <g class="city"><circle cx="86" cy="261" r="3.5" fill="#5B93CC"/><text x="30" y="255">Ventspils</text></g>
+            <g class="city"><circle cx="295" cy="246" r="3" fill="#5B93CC"/><text x="304" y="250">Valmiera</text></g>
+            <g class="city city--hub"><circle cx="224" cy="305" r="7" fill="#F5A623" filter="url(#glow)"/><text x="176" y="297" fill="#EDF1F6" font-size="14" font-weight="800">Rīga</text></g>
+            <g class="city"><circle cx="203" cy="335" r="3" fill="#5B93CC"/><text x="150" y="345">Jelgava</text></g>
+            <g class="city"><circle cx="57" cy="349" r="3.5" fill="#5B93CC"/><text x="32" y="368">Liepāja</text></g>
+            <g class="city"><circle cx="398" cy="349" r="3.5" fill="#5B93CC"/><text x="408" y="353">Rēzekne</text></g>
+            <g class="city city--hub"><circle cx="354" cy="413" r="7" fill="#F5A623" filter="url(#glow)"/><text x="366" y="418" fill="#EDF1F6" font-size="14" font-weight="800">Daugavpils</text></g>
+            <g class="city"><circle cx="181" cy="407" r="3" fill="#5B93CC"/><text x="122" y="411">Šiauliai</text></g>
+            <g class="city"><circle cx="63" cy="429" r="3.5" fill="#5B93CC"/><text x="30" y="448">Klaipėda</text></g>
+            <g class="city"><circle cx="238" cy="427" r="3" fill="#5B93CC"/><text x="248" y="431">Panevėžys</text></g>
+            <g class="city"><circle cx="213" cy="510" r="4" fill="#5B93CC"/><text x="158" y="514">Kaunas</text></g>
+            <g class="city"><circle cx="287" cy="531" r="4.5" fill="#5B93CC"/><text x="298" y="536">Vilnius</text></g>
+          </g>
+          <g class="map__cargo">
+            <circle cx="292" cy="352" r="10" fill="rgba(245,166,35,.18)"><animate attributeName="r" values="8;14;8" dur="2.6s" repeatCount="indefinite"/></circle>
+            <rect x="286" y="346" width="12" height="12" rx="2" fill="#F5A623"/>
+            <text x="304" y="343" font-family="Unbounded, Manrope, sans-serif" font-size="13" font-weight="700" fill="#F5A623">+38 km</text>
+          </g>
+          <g class="truck">
+            <rect x="-13" y="-6" width="18" height="12" rx="2" fill="#EDF1F6"/>
+            <rect x="5" y="-3" width="8" height="9" rx="1.5" fill="#F5A623"/>
+            <circle cx="-7" cy="7" r="2.6" fill="#0B0D11" stroke="#EDF1F6" stroke-width="1.5"/>
+            <circle cx="8" cy="7" r="2.6" fill="#0B0D11" stroke="#EDF1F6" stroke-width="1.5"/>
+            <animateMotion dur="11s" repeatCount="indefinite" rotate="auto" keyPoints="0;1;1;0;0" keyTimes="0;0.42;0.5;0.92;1" calcMode="linear"><mpath href="#route-main"/></animateMotion>
+          </g>
+        </svg>
+        <div class="mock mock--a">
           <div class="mock__top"><span class="tag tag--cargo" data-i18n="m_cargo">Krava</span><span class="tag tag--urgent" data-i18n="m_urgent">Steidzami</span><span class="mock__age" data-i18n="m_age1">pirms 3 min</span></div>
           <div class="mock__route">Krāslava<span>→</span>Daugavpils</div>
           <div class="mock__metric is-good" data-i18n-html="m_metric1">pa ceļam<small>41 km ceļš</small></div>
           <div class="mock__facts">1 200 kg · 4,3×1,7×1,5 m</div>
-          <div class="mock__meta" data-i18n="m_meta1">Automašīna · VT08 Evakuators līdz 5 t · šodien</div>
           <div class="mock__btn" data-i18n="m_take">Ņemu</div>
         </div>
-        <div class="mock__card">
+        <div class="mock mock--b">
           <div class="mock__top"><span class="tag tag--cargo" data-i18n="m_cargo2">Krava</span><span class="tag tag--planned" data-i18n="m_planned">Plānoti</span><span class="mock__age" data-i18n="m_age2">pirms 1 h</span></div>
           <div class="mock__route">Rēzekne<span>→</span>Rīga</div>
           <div class="mock__metric" data-i18n-html="m_metric2">+38 km līkums<small>202 km ceļš</small></div>
-          <div class="mock__facts">2 400 kg · 4 paletes · 4,6 m³</div>
           <div class="mock__meta" data-i18n="m_meta2">180 € — ņem uzreiz · piedāvājumi: 2 · labākais 170 €</div>
         </div>
       </div>
     </div>
   </section>
 
+  <div class="road" aria-hidden="false">
+    <div class="wrap road__in">
+      <div class="fact rv"><b>20 s</b><span data-i18n="f1">sludinājumam — trīs pieskārieni: no kurienes, uz kurieni, kad</span></div>
+      <div class="fact rv"><b>+km</b><span data-i18n="f2">līkums, nevis rādiuss — cik kilometru krava pieliek tavam ceļam</span></div>
+      <div class="fact rv"><b>0</b><span data-i18n="f3">tālruņu pirms darījuma — kontakti atveras tikai pēc apstiprinājuma</span></div>
+    </div>
+  </div>
+
   <section class="sec" id="how">
     <div class="wrap">
-      <span class="sec__k" data-i18n="how_k">Kā tas notiek</span>
-      <h2 data-i18n="how_h">Pieci soļi no zvana līdz kravai mašīnā.</h2>
-      <div class="steps">
-        <div class="step"><div class="step__n">01</div><h3 data-i18n="s1_h">Sludinājums</h3><p data-i18n="s1_p">Pasūtītājs izliek kravu un izvēlas režīmu: steidzami vai plānoti.</p></div>
-        <div class="step"><div class="step__n">02</div><h3 data-i18n="s2_h">Sakritības</h3><p data-i18n="s2_p">Birža atrod tos, kam tā ir pa ceļam, un nosūta paziņojumu.</p></div>
-        <div class="step"><div class="step__n">03</div><h3 data-i18n="s3_h">Cena</h3><p data-i18n="s3_p">Pārvadātājs ņem uzreiz vai piedāvā savu cenu.</p></div>
-        <div class="step"><div class="step__n">04</div><h3 data-i18n="s4_h">Vienošanās</h3><p data-i18n="s4_p">Abas puses apstiprina darījumu.</p></div>
-        <div class="step"><div class="step__n">05</div><h3 data-i18n="s5_h">Kontakti</h3><p data-i18n="s5_p">Tikai tagad atveras tālruņi. Līdz tam tie ir slēgti.</p></div>
-      </div>
+      <span class="sec__k rv" data-i18n="how_k">Kā tas notiek</span>
+      <h2 class="rv" data-i18n="how_h">Pieci soļi no zvana līdz kravai mašīnā.</h2>
+      <ol class="steps">
+        <li class="step rv"><span class="step__n">01</span><h3 data-i18n="s1_h">Sludinājums</h3><p data-i18n="s1_p">Pasūtītājs izliek kravu un izvēlas režīmu: steidzami vai plānoti.</p></li>
+        <li class="step rv"><span class="step__n">02</span><h3 data-i18n="s2_h">Sakritības</h3><p data-i18n="s2_p">Birža atrod tos, kam tā ir pa ceļam, un nosūta paziņojumu.</p></li>
+        <li class="step rv"><span class="step__n">03</span><h3 data-i18n="s3_h">Cena</h3><p data-i18n="s3_p">Pārvadātājs ņem uzreiz vai piedāvā savu cenu.</p></li>
+        <li class="step rv"><span class="step__n">04</span><h3 data-i18n="s4_h">Vienošanās</h3><p data-i18n="s4_p">Abas puses apstiprina darījumu.</p></li>
+        <li class="step rv"><span class="step__n">05</span><h3 data-i18n="s5_h">Kontakti</h3><p data-i18n="s5_p">Tikai tagad atveras tālruņi. Līdz tam tie ir slēgti.</p></li>
+      </ol>
     </div>
   </section>
 
-  <section class="sec" id="modes">
+  <section class="sec sec--modes" id="modes">
     <div class="wrap">
-      <span class="sec__k" data-i18n="modes_k">Divi režīmi — izvēlas pasūtītājs</span>
-      <h2 data-i18n="modes_h">Kad cilvēks stāv uz ceļa, nav laika torgiem. Kad krava ir nākamnedēļ — izšķir cena.</h2>
+      <span class="sec__k rv" data-i18n="modes_k">Divi režīmi — izvēlas pasūtītājs</span>
+      <h2 class="rv" data-i18n="modes_h">Kad cilvēks stāv uz ceļa, nav laika torgiem. Kad krava ir nākamnedēļ — izšķir cena.</h2>
       <div class="modes">
-        <div class="mode mode--urgent">
+        <article class="mode mode--urgent rv">
+          <div class="mode__n">01</div>
           <h3><span class="tag tag--urgent" data-i18n="m_urgent2">Steidzami</span><span data-i18n="mode_u_h">Pirmais paņem</span></h3>
           <p data-i18n="mode_u_p">Sludinājums nonāk pie visiem, kam tas ir pa ceļam. Kartītē — attālums un poga «Ņemu». Kas nospiež pirmais, tas brauc, un kontakti atveras uzreiz.</p>
           <div class="ex" data-i18n-html="mode_u_ex"><b>Piemērs:</b> evakuācija pēc avārijas.</div>
-        </div>
-        <div class="mode">
+        </article>
+        <article class="mode rv">
+          <div class="mode__n">02</div>
           <h3><span class="tag tag--planned" data-i18n="m_planned2">Plānoti</span><span data-i18n="mode_p_h">Uzvar zemākā cena</span></h3>
           <p data-i18n="mode_p_p">Pārvadātāji piedāvā cenu, uzvar zemākā. Pasūtītājs var norādīt cenu, par kuru atdod uzreiz. Ja cena ir par zemu un neviens neņem — pārvadātāji piedāvā augstāku, un pasūtītājs saņem paziņojumu.</p>
           <div class="ex" data-i18n-html="mode_p_ex"><b>Piemērs:</b> krava nākamajā nedēļā.</div>
-        </div>
+        </article>
       </div>
     </div>
   </section>
 
   <section class="sec" id="who">
     <div class="wrap">
-      <span class="sec__k" data-i18n="who_k">Kas ko iegūst</span>
-      <h2 data-i18n="who_h">Pārvadātājam — līkums. Pasūtītājam — cena.</h2>
+      <span class="sec__k rv" data-i18n="who_k">Kas ko iegūst</span>
+      <h2 class="rv" data-i18n="who_h">Pārvadātājam — līkums. Pasūtītājam — cena.</h2>
       <div class="who">
-        <div class="who__card">
+        <div class="who__card rv">
           <h3><i></i><span data-i18n="carrier_h">Pārvadātājam</span></h3>
           <ul>
             <li data-i18n-html="c1"><b>Auto pievieno vienreiz</b> — tips, kravnesība, izmēri, numurs. Tālāk sludinājums ir trīs pieskārieni: no kurienes, uz kurieni, kad.</li>
@@ -112,9 +171,9 @@
             <li data-i18n-html="c4"><b>Vairākas mašīnas</b> vienā profilā — dispečers izliek un sadala no viena ekrāna.</li>
             <li data-i18n-html="c5"><b>Bez maksas</b> starta posmā.</li>
           </ul>
-          <a class="btn btn--primary" href="app/?role=carrier#/auth" data-app data-i18n="cta_carrier2">Piedāvāt auto</a>
+          <a class="btn btn--primary" href="app/?role=carrier#/auth" data-app><span data-i18n="cta_carrier2">Piedāvāt auto</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
         </div>
-        <div class="who__card is-customer">
+        <div class="who__card is-customer rv">
           <h3><i></i><span data-i18n="customer_h">Pasūtītājam</span></h3>
           <ul>
             <li data-i18n-html="k1"><b>Vienmēr bez maksas.</b> Krava no biroja vai no telefona.</li>
@@ -123,29 +182,29 @@
             <li data-i18n-html="k4"><b>Kontakti slēgti līdz darījumam:</b> tālrunis nenonāk pie tiem, kas nebrauc.</li>
             <li data-i18n-html="k5"><b>Steidzami vai plānoti</b> — tu izvēlies, kas svarīgāks: ātrums vai cena.</li>
           </ul>
-          <a class="btn btn--primary" href="app/?role=customer#/auth" data-app data-i18n="cta_customer2">Izlikt kravu</a>
+          <a class="btn btn--primary" href="app/?role=customer#/auth" data-app><span data-i18n="cta_customer2">Izlikt kravu</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="sec" id="name">
+  <section class="sec sec--name" id="name">
     <div class="wrap name">
-      <div class="name__word">Pace<span>ļ</span>am</div>
+      <div class="name__word rv" aria-label="Paceļam">Pace<span>ļ</span>am</div>
       <div class="name__glo">
-        <div><b>pa ceļam</b><small data-i18n="n1">— pa ceļam. Krava tur, kur tu tāpat brauc.</small></div>
-        <div><b>paceļam</b><small data-i18n="n2">— paņemam, paceļam. Krava mašīnā, nevis uz ceļa.</small></div>
-        <div><b data-i18n="n3b">Viens vārds, divas nozīmes</b><small data-i18n="n3">— tāpēc birža tā arī saucas.</small></div>
+        <div class="rv"><b>pa ceļam</b><small data-i18n="n1">— pa ceļam. Krava tur, kur tu tāpat brauc.</small></div>
+        <div class="rv"><b>paceļam</b><small data-i18n="n2">— paņemam, paceļam. Krava mašīnā, nevis uz ceļa.</small></div>
+        <div class="rv"><b data-i18n="n3b">Viens vārds, divas nozīmes</b><small data-i18n="n3">— tāpēc birža tā arī saucas.</small></div>
       </div>
     </div>
   </section>
 
   <section class="cta">
     <div class="wrap">
-      <h2 data-i18n="cta_h">Sāc ar demo — bez reģistrācijas, ar piemēra datiem.</h2>
-      <div class="row">
-        <a class="btn btn--primary btn--big" href="app/?demo=carrier#/" data-app data-i18n="demo_carrier2">Kā pārvadātājs</a>
-        <a class="btn btn--ghost btn--big" href="app/?demo=customer#/" data-app data-i18n="demo_customer2">Kā pasūtītājs</a>
+      <h2 class="rv" data-i18n="cta_h">Sāc ar demo — bez reģistrācijas, ar piemēra datiem.</h2>
+      <div class="row rv">
+        <a class="btn btn--primary btn--big" href="app/?demo=carrier#/" data-app><span data-i18n="demo_carrier2">Kā pārvadātājs</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
+        <a class="btn btn--ghost btn--big" href="app/?demo=customer#/" data-app><span data-i18n="demo_customer2">Kā pasūtītājs</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
       </div>
     </div>
   </section>
