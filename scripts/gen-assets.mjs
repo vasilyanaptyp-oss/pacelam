@@ -46,7 +46,7 @@ p { margin-top: 24px; font-size: 20px; line-height: 1.45; color: #98A2B1; }
 .scene { position: absolute; right: 56px; top: 44px; width: 490px; height: 546px; border-radius: 26px; border: 1px solid rgba(255,255,255,.1); background: linear-gradient(180deg, #151921, #0F1218); overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.5); }
 .scene svg { width: 100%; height: 100%; }
 .map__cities text { font-family: Manrope; }
-.truck__light, .truck__load, .truck__shadow, .tour, .tour-halo, .tour-done, .tour-road, .pickup:not(.map__cargo), .pickup__label { display: none; }
+.truck__load, .truck__shadow, .tour, .tour-halo, .tour-done, .tour-road, .pickup:not(.map__cargo), .pickup__label { display: none; }
 .map__cargo .pickup__label { display: block; }
 </style></head><body>
 <div class="glow"></div>

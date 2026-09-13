@@ -111,8 +111,8 @@ a { color: var(--acc-text); }
 .scene--gsap .pickup__pulse, .scene--gsap .pulse { animation: none; }
 .tour, .tour-halo, .tour-done, .tour-road { display: none; }
 .scene--gsap .tour, .scene--gsap .tour-halo, .scene--gsap .tour-done, .scene--gsap .tour-road { display: block; }
-.truck__light, .truck__load, .truck__shadow { display: none; }
-.scene--gsap .truck__light, .scene--gsap .truck__load, .scene--gsap .truck__shadow { display: block; }
+.truck__load, .truck__shadow { display: none; }
+.scene--gsap .truck__load, .scene--gsap .truck__shadow { display: block; }
 .scene--gsap { transform-style: preserve-3d; }
 /* trip counter: only in the animated scene */
 .hud { display: none; position: absolute; left: 12px; bottom: 10px; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--line2); border-radius: 999px; background: rgba(21, 25, 33, .92); box-shadow: 0 16px 40px rgba(0, 0, 0, .45); font-size: 11px; color: var(--mut); white-space: nowrap; }
