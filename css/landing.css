@@ -197,6 +197,7 @@ a { color: var(--acc-text); }
 @keyframes drop { from { transform: translateY(-.3em); opacity: 0; } to { transform: none; opacity: 1; } }
 .name__glo { display: grid; gap: 12px; }
 .name__glo div { padding: 14px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.name__slogan { font-family: var(--display); font-size: clamp(20px, 2.4vw, 26px); font-weight: 700; letter-spacing: -.02em; line-height: 1.25; }
 .name__glo b { display: block; font-family: var(--display); font-size: 17px; font-weight: 700; }
 .name__glo small { color: var(--mut); font-size: 15px; }
 .cta { position: relative; padding: 72px 0; border-top: 1px solid var(--line); text-align: center; overflow: hidden; }

@@ -222,7 +222,7 @@ function priceLine(p) {
     else if (p.kind === 'truck') el.append(h('span', null, t('kv_asking').toLowerCase()), h('b', null, fmtMoney(p.price)));
     else el.append(h('b', null, fmtMoney(p.price)));
   }
-  if (p.mode === 'planned' || p.kind === 'truck') {
+  {
     el.append(h('span', null, p.bid_count ? t('bids_n', { n: p.bid_count }) : t('no_bids')));
     if (p.best_bid != null) el.append(h('span', null, t('best_bid', { p: fmtInt(p.best_bid) })));
   }
@@ -240,7 +240,9 @@ function actionButtons(p, opts = {}) {
   const row = h('div.pcard__actions');
   const cls = opts.big ? 'btn--big' : '';
   if (p.kind === 'cargo' && p.mode === 'urgent') {
-    row.append(h('button.btn.btn--primary', { type: 'button', class: cls, onclick: () => doTake(p) }, icon('bolt'), p.price != null ? t('take_for', { p: fmtInt(p.price) }) : t('take')));
+    // urgent: price decides here too — agreeing to the customer's price is a bid at that price, the customer picks
+    if (p.price != null && !opts.myBid) row.append(h('button.btn.btn--primary', { type: 'button', class: cls, onclick: () => doAgree(p) }, icon('bolt'), t('take_for', { p: fmtInt(p.price) })));
+    row.append(h('button.btn', { type: 'button', class: [cls, p.price == null || opts.myBid ? 'btn--primary' : 'btn--ghost'].join(' '), onclick: () => bidSheet(p, opts.myBid) }, opts.myBid ? t('bid_update') : t('bid')));
     return row;
   }
   if (p.price != null) row.append(h('button.btn.btn--primary', { type: 'button', class: cls, onclick: () => doTake(p) }, t('take_for', { p: fmtInt(p.price) })));
@@ -264,6 +266,16 @@ function postingCard(p, opts = {}) {
     if (actions) card.append(actions);
   }
   return card;
+}
+async function doAgree(p) {
+  if (!requireAuth()) return;
+  const ok = await confirmSheet(t('take_for', { p: fmtInt(p.price) }), `${p.from_name} → ${p.to_name} · ${fmtMoney(p.price)}\n${t('agree_hint')}`, t('take_for', { p: fmtInt(p.price) }));
+  if (!ok) return;
+  try {
+    await api.placeBid(p.id, p.price, '');
+    toast(t('agree_sent'));
+    if (route().name === 'p' || (route().name === 'feed' && layout() === 'table')) { state.selected = p.id; rerender(); } else go(`#/p/${p.id}`);
+  } catch (e) { fail(e); }
 }
 async function doTake(p) {
   if (!requireAuth()) return;
@@ -290,7 +302,7 @@ function bidSheet(p, existing) {
         try { await api.placeBid(p.id, a, note.value.trim()); s.close(); toast(t('bid_placed')); rerender(); } catch (err) { fail(err); }
       },
     },
-    h('p.lead', null, p.kind === 'truck' ? t('bid_hint_truck') : t('bid_hint_cargo')),
+    h('p.lead', null, p.kind === 'truck' ? t('bid_hint_truck') : (p.mode === 'urgent' ? t('bid_hint_urgent') : t('bid_hint_cargo'))),
     field(t('bid_amount'), amount),
     field(t('bid_note'), note),
     h('button.btn.btn--primary.btn--wide.btn--big', { type: 'submit' }, t('bid_send'))),
@@ -620,7 +632,7 @@ async function buildDetail(id, { inline = false } = {}) {
   }
 
   if (isOwner) {
-    if (p.mode === 'planned' && ['open', 'pending'].includes(p.status)) {
+    if (['open', 'pending'].includes(p.status)) {
       const active = bids.filter((b) => b.status === 'active' || b.status === 'accepted');
       const sorted = [...active].sort((a, b) => (state.bidSort === 'time' ? (a.created_at < b.created_at ? 1 : -1) : (p.kind === 'truck' ? b.amount - a.amount : a.amount - b.amount)));
       const sortCtl = h('div.seg.seg--sm', { role: 'group', 'aria-label': t('sort_by') },
@@ -633,7 +645,7 @@ async function buildDetail(id, { inline = false } = {}) {
         list.append(h('div.card.bidrow', { class: i === 0 && state.bidSort === 'price' && b.status === 'active' && sorted.length > 1 ? 'is-best' : '' },
           h('div.bidrow__who', null, h('b', null, b.bidder?.display_name || '—'), h('small', null, [b.bidder?.city_name, relTime(b.created_at), b.note].filter(Boolean).join(' · '))),
           h('div.bidrow__amt', null, fmtMoney(b.amount)),
-          b.status === 'active' && p.status === 'open' ? h('button.btn.btn--primary.btn--sm', { type: 'button', onclick: async () => { try { await api.acceptBid(b.id); toast(t('deal_pending_other')); rerender(); } catch (e) { fail(e); } } }, t('accept')) : h('span.tag.tag--planned', null, t(b.status))));
+          b.status === 'active' && p.status === 'open' ? h('button.btn.btn--primary.btn--sm', { type: 'button', onclick: async () => { try { await api.acceptBid(b.id); toast(p.mode === 'urgent' ? t('deal_done') : t('deal_pending_other')); rerender(); } catch (e) { fail(e); } } }, t('accept')) : h('span.tag.tag--planned', null, t(b.status))));
       });
       section.append(list);
       el.append(section);

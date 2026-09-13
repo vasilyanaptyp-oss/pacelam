@@ -43,6 +43,7 @@ async function fails(sql, params) {
 await db.exec(read('_audit/auth-shim.sql'));
 await db.exec(read('supabase/migrations/0001_init.sql'));
 await db.exec(read('supabase/migrations/0002_seed.sql'));
+await db.exec(read('supabase/migrations/0004_urgent_price.sql'));
 console.log('schema applied');
 
 await db.exec(`insert into auth.users (id, email) values
@@ -97,7 +98,7 @@ await asAnon(async () => {
   check('anonymous visitor can read display names (board is open)', profiles.length === 4);
 });
 
-// --- urgent cargo: first to take gets it, contacts open at once ---------------------------
+// --- urgent cargo: price decides here too — carriers bid, the customer picks, the deal closes at once ---
 let urgentId;
 await as(U.anna, async () => {
   const r = await rows(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, vehicle_type_code, cargo_type_id, weight_kg, price, is_operator_posting, status, bid_count)
@@ -112,30 +113,48 @@ await as(U.boris, async () => {
   const err = await fails(`update postings set price = 1 where id = $1`, [urgentId]);
   const price = await rows(`select price from postings where id = $1`, [urgentId]);
   check('carrier cannot edit someone else\'s posting', Number(price[0].price) === 120, err || JSON.stringify(price));
-  const bidErr = await fails(`select place_bid($1, 100)`, [urgentId]);
-  check('urgent postings cannot be bid on', /urgent/.test(bidErr || ''), bidErr);
+  const takeErr = await fails(`select take_posting($1)`, [urgentId]);
+  check('urgent cargo cannot be taken without the customer choosing', /bid on/.test(takeErr || ''), takeErr);
   const directBid = await fails(`insert into bids (posting_id, bidder_id, amount) values ($1, $2, 100)`, [urgentId, U.boris]);
   check('client cannot insert bids directly', !!directBid, directBid);
-  const deal = await rows(`select take_posting($1) as id`, [urgentId]);
-  check('carrier takes the urgent cargo', !!deal[0].id);
-  const contacts = await rows(`select phone, email, company from profile_contacts where profile_id = $1`, [U.anna]);
-  check('after taking, the carrier sees the customer\'s phone', contacts.length === 1 && contacts[0].phone === '+371 20000001', JSON.stringify(contacts));
-  const again = await fails(`select take_posting($1)`, [urgentId]);
-  check('second take is refused', /already taken/.test(again || ''), again);
-});
-await as(U.cilvis, async () => {
+  const agree = await rows(`select place_bid($1, 120) as id`, [urgentId]);
+  check('carrier agrees to the customer\'s price (a bid at that price)', !!agree[0].id);
   const contacts = await rows(`select * from profile_contacts where profile_id = $1`, [U.anna]);
-  check('another carrier still cannot see the customer\'s contacts', contacts.length === 0);
-  const taken = await rows(`select status from postings where id = $1`, [urgentId]);
-  check('taken posting is no longer visible to third parties', taken.length === 0, JSON.stringify(taken));
+  check('agreeing alone opens no contacts', contacts.length === 0, JSON.stringify(contacts));
+});
+let cheaperBid;
+await as(U.cilvis, async () => {
+  const b = await rows(`select place_bid($1, 100) as id`, [urgentId]);
+  cheaperBid = b[0].id;
+  check('a second carrier offers a lower price on the urgent cargo', !!cheaperBid);
+  const err = await fails(`select accept_bid($1)`, [cheaperBid]);
+  check('a carrier cannot accept a bid', /owner/.test(err || ''), err);
 });
 await as(U.anna, async () => {
-  const contacts = await rows(`select phone from profile_contacts where profile_id = $1`, [U.boris]);
-  check('customer sees the carrier\'s phone after the take', contacts.length === 1 && contacts[0].phone === '+371 20000002');
-  const notes = await rows(`select type from notifications where user_id = $1 order by created_at`, [U.anna]);
-  check('customer was notified that the urgent cargo was taken', notes.some((n) => n.type === 'taken'), JSON.stringify(notes));
-  const deals = await rows(`select status, customer_id, carrier_id from deals where posting_id = $1`, [urgentId]);
-  check('deal is confirmed with the right parties', deals.length === 1 && deals[0].status === 'confirmed' && deals[0].customer_id === U.anna && deals[0].carrier_id === U.boris);
+  const notes = await rows(`select type, payload->>'urgent' as urgent from notifications where user_id = $1 and type = 'bid'`, [U.anna]);
+  check('customer was notified of both urgent offers', notes.length === 2 && notes.every((n) => n.urgent === 'true'), JSON.stringify(notes));
+  const deal = await rows(`select accept_bid($1) as id`, [cheaperBid]);
+  check('customer picks the cheaper offer', !!deal[0].id);
+  const deals = await rows(`select status, customer_id, carrier_id, amount from deals where posting_id = $1`, [urgentId]);
+  check('urgent deal is confirmed at once with the cheaper carrier', deals.length === 1 && deals[0].status === 'confirmed' && deals[0].customer_id === U.anna && deals[0].carrier_id === U.cilvis && Number(deals[0].amount) === 100, JSON.stringify(deals));
+  const contacts = await rows(`select phone from profile_contacts where profile_id = $1`, [U.cilvis]);
+  check('customer sees the chosen carrier\'s phone right away', contacts.length === 1 && contacts[0].phone === '+371 20000003', JSON.stringify(contacts));
+  const other = await rows(`select phone from profile_contacts where profile_id = $1`, [U.boris]);
+  check('customer does not see the losing carrier\'s phone', other.length === 0);
+  const bids = await rows(`select bidder_id, status from bids where posting_id = $1 order by amount`, [urgentId]);
+  check('losing offer is rejected, winning one accepted', bids.length === 2 && bids.find((b) => b.bidder_id === U.boris).status === 'rejected' && bids.find((b) => b.bidder_id === U.cilvis).status === 'accepted', JSON.stringify(bids));
+});
+await as(U.cilvis, async () => {
+  const contacts = await rows(`select phone from profile_contacts where profile_id = $1`, [U.anna]);
+  check('chosen carrier sees the customer\'s phone right away', contacts.length === 1 && contacts[0].phone === '+371 20000001', JSON.stringify(contacts));
+  const notes = await rows(`select type from notifications where user_id = $1`, [U.cilvis]);
+  check('chosen carrier got the deal notification', notes.some((n) => n.type === 'deal'), JSON.stringify(notes));
+});
+await as(U.boris, async () => {
+  const contacts = await rows(`select * from profile_contacts where profile_id = $1`, [U.anna]);
+  check('losing carrier still cannot see the customer\'s contacts', contacts.length === 0);
+  const gone = await rows(`select status from postings where id = $1`, [urgentId]);
+  check('closed urgent posting is no longer visible to third parties', gone.length === 0, JSON.stringify(gone));
 });
 
 // --- planned cargo: reverse auction --------------------------------------------------------
@@ -167,17 +186,18 @@ await as(U.anna, async () => {
   const all = await rows(`select bidder_id, amount from bids where posting_id = $1 order by amount`, [plannedId]);
   check('owner sees all bids', all.length === 2 && Number(all[0].amount) === 170);
   const notes = await rows(`select payload from notifications where user_id = $1 and type = 'bid' order by created_at`, [U.anna]);
-  check('owner got a notification per bid with the amount', notes.length === 4 && notes.some((n) => n.payload.above_price === true), JSON.stringify(notes.map((n) => n.payload)));
+  const planned = notes.filter((n) => n.payload.urgent !== true);
+  check('owner got a notification per bid with the amount', planned.length === 4 && planned.some((n) => n.payload.above_price === true), JSON.stringify(notes.map((n) => n.payload)));
   const deal = await rows(`select accept_bid($1) as id`, [bidC]);
   check('owner accepts the lowest bid -> pending deal', !!deal[0].id);
   const st = (await rows(`select status from postings where id = $1`, [plannedId]))[0];
   check('posting status is pending while the carrier confirms', st.status === 'pending');
-  const c = await rows(`select * from profile_contacts where profile_id = $1`, [U.cilvis]);
-  check('contacts stay closed until both sides confirm', c.length === 0);
+  const unl = await rows(`select deal_id from contact_unlocks where viewer_id = $1 and deal_id = $2`, [U.anna, deal[0].id]);
+  check('contacts stay closed until both sides confirm (no unlock for the pending deal)', unl.length === 0, JSON.stringify(unl));
 });
 await as(U.boris, async () => {
   const c = await rows(`select * from profile_contacts where profile_id = $1`, [U.anna]);
-  check('the losing bidder keeps access from the earlier deal only (nothing new leaked)', c.length === 1);
+  check('the losing bidder has no access to the customer (nothing leaked)', c.length === 0, JSON.stringify(c));
 });
 await as(U.cilvis, async () => {
   const notes = await rows(`select type, deal_id from notifications where user_id = $1 and type = 'accepted'`, [U.cilvis]);

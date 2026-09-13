@@ -198,7 +198,6 @@ export function createDemoApi() {
       if (!p) throw new Error('posting not found');
       if (p.owner_id === me) throw new Error('own posting');
       if (p.status !== 'open') throw new Error('posting is not open');
-      if (p.mode !== 'planned') throw new Error('urgent postings are taken, not bid on');
       if (!(amount > 0)) throw new Error('amount must be positive');
       let b = db.bids.find((x) => x.posting_id === postingId && x.bidder_id === me);
       if (b) Object.assign(b, { amount, note: note || null, status: 'active' });
@@ -216,6 +215,15 @@ export function createDemoApi() {
       if (p.status !== 'open') throw new Error('posting is not open');
       if (b.status !== 'active') throw new Error('bid is not active');
       b.status = 'accepted';
+      if (p.mode === 'urgent') {
+        // urgent: the bidder committed by bidding, the owner's acceptance closes the deal at once
+        const d = { id: uuid(), posting_id: p.id, customer_id: p.kind === 'cargo' ? p.owner_id : b.bidder_id, carrier_id: p.kind === 'cargo' ? b.bidder_id : p.owner_id, bid_id: b.id, amount: b.amount, status: 'confirmed', customer_confirmed_at: iso(Date.now()), carrier_confirmed_at: iso(Date.now()), created_at: iso(Date.now()) };
+        db.deals.push(d); p.status = 'deal';
+        db.bids.forEach((x) => { if (x.posting_id === p.id && x.status === 'active') x.status = 'rejected'; });
+        recount(p.id); unlock(d);
+        notify(b.bidder_id, 'deal', p, { amount: b.amount, deal_id: d.id }); notify(p.owner_id, 'deal', p, { amount: b.amount, deal_id: d.id });
+        save(); return d.id;
+      }
       const d = { id: uuid(), posting_id: p.id, customer_id: p.kind === 'cargo' ? p.owner_id : b.bidder_id, carrier_id: p.kind === 'cargo' ? b.bidder_id : p.owner_id, bid_id: b.id, amount: b.amount, status: 'pending',
         customer_confirmed_at: p.kind === 'cargo' ? iso(Date.now()) : null, carrier_confirmed_at: p.kind === 'truck' ? iso(Date.now()) : null, created_at: iso(Date.now()) };
       db.deals.push(d); p.status = 'pending'; recount(p.id);
@@ -227,7 +235,8 @@ export function createDemoApi() {
       const p = db.postings.find((x) => x.id === postingId); if (!p) throw new Error('posting not found');
       if (p.owner_id === me) throw new Error('own posting');
       if (p.status !== 'open') throw new Error('already taken');
-      if (p.mode !== 'urgent' && p.price == null) throw new Error('no instant price, place a bid');
+      if (p.mode === 'urgent') throw new Error('urgent postings are bid on, not taken');
+      if (p.price == null) throw new Error('no instant price, place a bid');
       const d = { id: uuid(), posting_id: p.id, customer_id: p.kind === 'cargo' ? p.owner_id : me, carrier_id: p.kind === 'cargo' ? me : p.owner_id, bid_id: null, amount: p.price, status: 'confirmed', customer_confirmed_at: iso(Date.now()), carrier_confirmed_at: iso(Date.now()), created_at: iso(Date.now()) };
       db.deals.push(d); p.status = 'deal';
       db.bids.forEach((b) => { if (b.posting_id === p.id && b.status === 'active') b.status = 'rejected'; });

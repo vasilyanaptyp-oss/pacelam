@@ -93,11 +93,19 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await page.fill('.sheet input[inputmode="decimal"]', '175');
   await page.getByRole('button', { name: 'Nosūtīt cenu' }).click(); await page.waitForTimeout(400);
   await audit(page, `${V} detail with my bid`);
-  // urgent take -> contacts (the deal screens that overflowed in the previous build)
+  // urgent: agree to the customer's price (a bid), the customer picks
   await page.goto(APP + '?lang=lv#/'); await page.waitForSelector(rowSel);
-  await page.locator(mobile ? '.pcard.is-urgent' : '.tbl__row.is-urgent').first().locator(mobile ? 'a.pcard__link' : 'td').first().click();
+  await page.locator(mobile ? '.pcard.is-urgent' : '.tbl__row.is-urgent').filter({ hasText: '€' }).first().locator(mobile ? 'a.pcard__link' : 'td').first().click();
   await page.waitForSelector('.detail');
-  await page.getByRole('button', { name: 'Ņemu' }).first().click(); await page.waitForSelector('.sheet.is-open');
+  await page.getByRole('button', { name: 'Ņemu par' }).first().click(); await page.waitForSelector('.sheet.is-open');
+  await audit(page, `${V} urgent agree confirm`);
+  await page.locator('.sheet .btn--primary').click(); await page.waitForTimeout(400);
+  await audit(page, `${V} urgent agreed (my bid)`);
+  // planned cargo with an instant price: take -> contacts (the deal screens that overflowed in the previous build)
+  await page.goto(APP + '?lang=lv#/'); await page.waitForSelector(rowSel);
+  await page.locator(mobile ? '.pcard' : '.tbl__row').filter({ hasText: 'Liepāja' }).filter({ hasText: 'Ventspils' }).first().locator(mobile ? 'a.pcard__link' : 'td').first().click();
+  await page.waitForSelector('.detail');
+  await page.getByRole('button', { name: 'Ņemu par' }).first().click(); await page.waitForSelector('.sheet.is-open');
   await audit(page, `${V} take confirm`);
   await page.locator('.sheet .btn--primary').click(); await page.waitForSelector('.contacts');
   await audit(page, `${V} deal contacts`);
@@ -112,7 +120,7 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await page.keyboard.press('Escape');
   await page.goto(APP + '?lang=lv#/me'); await page.waitForSelector('form');
   await audit(page, `${V} profile`);
-  await page.getByRole('button', { name: 'Pievienot auto' }).click(); await page.waitForSelector('.sheet.is-open');
+  await page.getByRole('button', { name: 'Pievienot transportu' }).click(); await page.waitForSelector('.sheet.is-open');
   await audit(page, `${V} vehicle sheet`);
   await page.keyboard.press('Escape');
   await page.goto(APP + '?lang=lv#/inbox'); await page.waitForSelector('h1');

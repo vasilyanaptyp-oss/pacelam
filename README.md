@@ -30,7 +30,9 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
 ## Connect Supabase
 
 1. Create a project (free tier). In the SQL editor run, in order:
-   `supabase/migrations/0001_init.sql`, `0002_seed.sql`, `0003_storage.sql`.
+   `supabase/migrations/0001_init.sql`, `0002_seed.sql`, `0003_storage.sql`, `0004_urgent_price.sql`
+   (price decides in the urgent mode too: carriers agree to the customer's price or offer their own,
+   the customer picks, and accepting an urgent offer confirms the deal and opens contacts at once).
 2. Authentication → Providers → Email: for a test project turn **off** "Confirm email";
    set Site URL to the page URL (for password-reset links).
 3. Put the project URL and the anon key into `config.js`:
