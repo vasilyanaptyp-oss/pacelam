@@ -66,7 +66,10 @@
           </g>
           <path class="map__direct" d="M354 413 L 224 305" fill="none" stroke="rgba(245,166,35,.32)" stroke-width="1.5" stroke-dasharray="2 6"/>
           <path class="map__halo draw d0" d="M354 413 C 346 386 330 352 300 332 C 276 317 246 311 224 305" fill="none" stroke="rgba(245,166,35,.22)" stroke-width="10" stroke-linecap="round"/>
-          <use href="#route-main" class="map__main draw d0" fill="none" stroke="#F5A623" stroke-width="3" stroke-linecap="round"/>
+          <path class="map__main draw d0" d="M354 413 C 346 386 330 352 300 332 C 276 317 246 311 224 305" fill="none" stroke="#F5A623" stroke-width="3" stroke-linecap="round"/>
+          <path class="tour-done" d="" fill="none" stroke="rgba(245,166,35,.42)" stroke-width="2" stroke-linecap="round"/>
+          <path class="tour-halo" d="" fill="none" stroke="rgba(245,166,35,.16)" stroke-width="13" stroke-linecap="round"/>
+          <path class="tour" d="" fill="none" stroke="#F5A623" stroke-width="3.5" stroke-linecap="round"/>
           <g class="map__cities" font-family="Manrope, 'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#98A2B1">
             <g class="city"><circle cx="258" cy="56" r="4" fill="#5B93CC"/><text x="268" y="52">Tallinn</text></g>
             <g class="city"><circle cx="365" cy="162" r="3" fill="#5B93CC"/></g>
@@ -78,37 +81,42 @@
             <g class="city"><circle cx="57" cy="349" r="3.5" fill="#5B93CC"/><text x="32" y="340">Liepāja</text></g>
             <g class="city"><circle cx="398" cy="349" r="3.5" fill="#5B93CC"/><text x="408" y="353">Rēzekne</text></g>
             <g class="city city--hub"><circle class="halo" cx="354" cy="413" r="14" fill="rgba(245,166,35,.16)"/><circle cx="354" cy="413" r="7" fill="#F5A623"/><text x="366" y="418" fill="#EDF1F6" font-size="14" font-weight="800">Daugavpils</text></g>
-            <g class="city"><circle cx="181" cy="407" r="3" fill="#5B93CC"/></g>
+            <g class="city"><circle cx="181" cy="407" r="3.5" fill="#5B93CC"/><text x="120" y="401">Šiauliai</text></g>
             <g class="city"><circle cx="63" cy="429" r="3.5" fill="#5B93CC"/></g>
             <g class="city"><circle cx="238" cy="427" r="3" fill="#5B93CC"/></g>
-            <g class="city"><circle cx="213" cy="510" r="4" fill="#5B93CC"/></g>
+            <g class="city"><circle cx="213" cy="510" r="4" fill="#5B93CC"/><text x="160" y="526">Kaunas</text></g>
             <g class="city"><circle cx="287" cy="531" r="4.5" fill="#5B93CC"/><text x="298" y="536">Vilnius</text></g>
           </g>
-          <g class="map__cargo">
-            <circle class="pulse" cx="300" cy="332" r="12" fill="rgba(245,166,35,.16)"/>
-            <rect x="294" y="326" width="12" height="12" rx="2.5" fill="#F5A623"/>
-            <text x="312" y="322" font-family="Unbounded, Manrope, sans-serif" font-size="13" font-weight="700" fill="#F5A623">+38 km</text>
+          <g class="pickups">
+            <g class="pickup map__cargo"><circle class="pickup__pulse" cx="300" cy="332" r="12" fill="rgba(245,166,35,.18)"/><rect class="pickup__box" x="294" y="326" width="12" height="12" rx="2.5" fill="#F5A623"/><text class="pickup__label" x="312" y="322" font-family="Unbounded, Manrope, sans-serif" font-size="13" font-weight="700" fill="#F5A623">+38 km</text></g>
+            <g class="pickup"><circle class="pickup__pulse" cx="192" cy="458" r="12" fill="rgba(245,166,35,.18)"/><rect class="pickup__box" x="186" y="452" width="12" height="12" rx="2.5" fill="#F5A623"/><text class="pickup__label" x="204" y="452" font-family="Unbounded, Manrope, sans-serif" font-size="13" font-weight="700" fill="#F5A623">+12 km</text></g>
+            <g class="pickup"><circle class="pickup__pulse" cx="334" cy="476" r="12" fill="rgba(245,166,35,.18)"/><rect class="pickup__box" x="328" y="470" width="12" height="12" rx="2.5" fill="#F5A623"/><text class="pickup__label" x="346" y="470" font-family="Unbounded, Manrope, sans-serif" font-size="13" font-weight="700" fill="#F5A623">+25 km</text></g>
           </g>
-          <g class="truck">
-            <rect x="-14" y="-12" width="20" height="13" rx="2.5" fill="#EDF1F6"/>
-            <path d="M6 -8 h7 l4 5 v4 h-11 z" fill="#F5A623"/>
-            <circle cx="-8" cy="3" r="3" fill="#0B0D11" stroke="#EDF1F6" stroke-width="1.6"/>
-            <circle cx="10" cy="3" r="3" fill="#0B0D11" stroke="#EDF1F6" stroke-width="1.6"/>
-            <animateMotion dur="12s" repeatCount="indefinite" keyPoints="0;1;1;0;0" keyTimes="0;0.42;0.5;0.92;1" calcMode="linear"><mpath href="#route-main"/></animateMotion>
+          <g class="truck" transform="translate(300 332) rotate(-124)">
+            <rect x="-15" y="-7" width="21" height="14" rx="3" fill="#EDF1F6"/>
+            <rect x="6" y="-6" width="9" height="12" rx="2.5" fill="#F5A623"/>
+            <rect x="12" y="-4" width="2.2" height="8" rx="1" fill="#0B0D11" opacity=".55"/>
+            <rect x="-13" y="-8.6" width="6" height="2.2" rx="1" fill="#0B0D11" opacity=".5"/><rect x="-13" y="6.4" width="6" height="2.2" rx="1" fill="#0B0D11" opacity=".5"/><rect x="7" y="-7.8" width="5" height="2" rx="1" fill="#0B0D11" opacity=".5"/><rect x="7" y="5.8" width="5" height="2" rx="1" fill="#0B0D11" opacity=".5"/>
           </g>
         </svg>
-        <div class="mock mock--a">
-          <div class="mock__top"><span class="tag tag--cargo" data-i18n="m_cargo">Krava</span><span class="tag tag--urgent" data-i18n="m_urgent">Steidzami</span><span class="mock__age" data-i18n="m_age1">pirms 3 min</span></div>
-          <div class="mock__route">Krāslava<span>→</span>Daugavpils</div>
-          <div class="mock__metric is-good" data-i18n-html="m_metric1">pa ceļam<small>41 km ceļš</small></div>
-          <div class="mock__facts">1 200 kg · 4,3×1,7×1,5 m</div>
-          <div class="mock__btn" data-i18n="m_take">Ņemu</div>
-        </div>
         <div class="mock mock--b">
           <div class="mock__top"><span class="tag tag--cargo" data-i18n="m_cargo2">Krava</span><span class="tag tag--planned" data-i18n="m_planned">Plānoti</span><span class="mock__age" data-i18n="m_age2">pirms 1 h</span></div>
           <div class="mock__route">Rēzekne<span>→</span>Rīga</div>
           <div class="mock__metric" data-i18n-html="m_metric2">+38 km līkums<small>202 km ceļš</small></div>
           <div class="mock__meta" data-i18n="m_meta2">180 € · piedāvājumi: 2 · labākais 170 €</div>
+        </div>
+        <div class="mock mock--a">
+          <div class="mock__top"><span class="tag tag--cargo" data-i18n="m_cargo">Krava</span><span class="tag tag--urgent" data-i18n="m_urgent">Steidzami</span><span class="mock__age" data-i18n="m_age1">pirms 3 min</span></div>
+          <div class="mock__route">Šiauliai<span>→</span>Kaunas</div>
+          <div class="mock__metric" data-i18n-html="m3_metric">+12 km līkums<small>96 km ceļš</small></div>
+          <div class="mock__facts">600 kg · 1,2×0,8×1,4 m · LTL</div>
+          <div class="mock__btn" data-i18n="m_take">Ņemu</div>
+        </div>
+        <div class="mock mock--c">
+          <div class="mock__top"><span class="tag tag--cargo" data-i18n="m_cargo3">Krava</span><span class="tag tag--planned" data-i18n="m_planned3">Plānoti</span><span class="mock__age" data-i18n="m_age3">pirms 20 min</span></div>
+          <div class="mock__route">Vilnius<span>→</span>Daugavpils</div>
+          <div class="mock__metric" data-i18n-html="m4_metric">+25 km līkums<small>153 km ceļš</small></div>
+          <div class="mock__meta" data-i18n="m4_meta">11 000 kg · 8 m³ · 220 € — ņem uzreiz</div>
         </div>
       </div>
     </div>

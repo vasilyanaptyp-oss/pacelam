@@ -57,7 +57,11 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
   through the real REST API), `timing.mjs` (20-second posting), `lang-fonts.mjs` (?lang and
   Latvian diacritics by pixel comparison), `screens.mjs` (every screen at 360/390/1280/1920),
   `keyboard-operator.mjs` (operator posts with the keyboard only), `table-rows.mjs`, `shots.mjs`,
-  `desk-shots.mjs`. Pass `BASE=https://.../pacelam/` to run them against the published site.
+  `desk-shots.mjs`, `scene-shots.mjs` (frames of the hero animation at several moments plus the
+  still phone frame). Pass `BASE=https://.../pacelam/` to run them against the published site.
+- `vendor/` — GSAP 3 core + MotionPath + DrawSVG, self-hosted (no CDN). `js/scene.js` is loaded
+  by `landing.js` only on capable desktops (≥980 px, no reduced-motion, no save-data); phones get
+  a still scene from CSS alone.
 
 ## Security model in one paragraph
 

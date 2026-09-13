@@ -86,17 +86,36 @@ a { color: var(--acc-text); }
 .map__cargo .pulse { transform-box: fill-box; transform-origin: center; animation: pulse2 2.6s ease-in-out infinite; }
 @keyframes pulse2 { 50% { transform: scale(1.6); opacity: .4; } }
 .truck { opacity: 0; animation: fadein .4s ease 1.8s forwards; }
+.pickups .pickup { opacity: 0; animation: fadein .6s ease 1.5s forwards; }
 .mock__meta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* phones and weak devices: the scene is a still picture — no running truck, no pulses, no filters */
 @media (max-width: 979px), (prefers-reduced-motion: reduce) {
-  .map .draw, .map .city, .map__cargo, .truck, .mock { animation: none; opacity: 1; stroke-dashoffset: 0; transform: none; }
+  .map .draw, .map .city, .map__cargo, .mock { animation: none; opacity: 1; stroke-dashoffset: 0; transform: none; }
+  .truck { animation: none; opacity: 1; }
+  .pickups .pickup { animation: none; opacity: 1; }
+  .pickups .pickup:not(.map__cargo), .pickup__label { display: none; }
+  .map__cargo .pickup__label { display: block; }
   .map__cargo .pulse, .eyebrow i { animation: none; }
   .grain { display: none; }
 }
 .mock { position: absolute; width: min(262px, 66%); padding: 14px 16px; background: rgba(21, 25, 33, .92); border: 1px solid var(--line2); border-radius: 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06); opacity: 0; animation: rise .9s var(--ease) forwards; }
 .mock--a { left: 12px; bottom: 34px; animation-delay: 1.4s; }
 .mock--b { right: 12px; top: 92px; animation-delay: 1.7s; }
-@media (max-width: 979px) { .mock { width: min(240px, 64%); } .mock--a { left: 10px; bottom: 10px; } .mock--b { right: 10px; top: 10px; } }
+.mock--c { right: 12px; bottom: 34px; display: none; }
+/* GSAP scene (desktop): the script owns roads, trail, truck and cards */
+.scene--gsap .map__main, .scene--gsap .map__halo, .scene--gsap .map__direct { display: none; }
+.scene--gsap .map .draw, .scene--gsap .map .city, .scene--gsap .map__cargo, .scene--gsap .truck { animation: none; opacity: 1; stroke-dashoffset: 0; }
+.scene--gsap .map__faint .draw { animation: none; opacity: 1; }
+.scene--gsap .mock { animation: none; opacity: 1; visibility: hidden; }
+.scene--gsap .mock--c { display: block; }
+.scene--gsap .pickup__pulse, .scene--gsap .pulse { animation: none; }
+.tour, .tour-halo, .tour-done { display: none; }
+.scene--gsap .tour, .scene--gsap .tour-halo, .scene--gsap .tour-done { display: block; }
+/* GSAP cards sit where the map is emptiest at the moment they pop: a — top-left (sea), c — bottom-left */
+.scene--gsap .mock--a { top: 84px; bottom: auto; }
+.scene--gsap .mock--c { left: 12px; right: auto; bottom: 34px; }
+/* phones: one card over the still map (the one that matches the marker on it), the other two stay in the desktop scene */
+@media (max-width: 979px) { .mock { width: min(250px, 66%); animation: none; opacity: 1; transform: none; } .mock--a, .mock--c { display: none; } .mock--b { left: 10px; bottom: 10px; right: auto; top: auto; } }
 @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 .mock__top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
 .tag { display: inline-flex; align-items: center; min-height: 22px; padding: 2px 8px; border-radius: 7px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
@@ -188,5 +207,6 @@ a { color: var(--acc-text); }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0ms !important; animation-delay: 0ms !important; transition-duration: 0ms !important; }
-  .rv, .mock, .map .draw, .map .city, .map__cargo, .truck { opacity: 1; transform: none; stroke-dashoffset: 0; }
+  .rv, .mock, .map .draw, .map .city, .map__cargo { opacity: 1; transform: none; stroke-dashoffset: 0; }
+  .truck { opacity: 1; }
 }
