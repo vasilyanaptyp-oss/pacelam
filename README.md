@@ -3,7 +3,7 @@
 Backload exchange for Latvia and the Baltics. Static front-end (no framework) + Supabase
 (Postgres, Auth, row-level security, Storage). Client: SIA TK Trans, Daugavpils.
 
-Decisions and their reasons: `docs/decisions.md`. Vehicle types: `docs/vehicle-types.json`
+Vehicle types: `docs/vehicle-types.json`. Product decisions are kept outside this public repository.
 (codes as on the exchange carriers already use). Scheme agreed with the client:
 `docs/pacelam-scheme.png`.
 

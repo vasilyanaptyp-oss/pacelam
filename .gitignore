@@ -5,3 +5,7 @@ _audit/*.png
 npm-install.log
 npm-install.exit
 .DS_Store
+
+# рабочие документы заказчика: цитаты, деньги, тактика — не в публичный репозиторий
+docs/decisions.md
+decisions.md
