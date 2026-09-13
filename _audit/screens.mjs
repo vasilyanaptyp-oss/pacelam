@@ -44,11 +44,12 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   const V = `${vp.w}x${vp.h}`;
   const rowSel = mobile ? '.pcard' : '.tbl__row';
   // public page
+  // entrance animations finish within ~2.6 s; contrast is judged on the settled page
   await page.goto(ROOT + '?lang=lv', { waitUntil: 'load' });
-  await page.waitForSelector('.hero');
+  await page.waitForSelector('.hero'); await page.waitForTimeout(3200);
   await audit(page, `${V} public page`);
   await page.goto(ROOT + '?lang=ru', { waitUntil: 'load' });
-  await page.waitForSelector('.hero');
+  await page.waitForSelector('.hero'); await page.waitForTimeout(3200);
   await audit(page, `${V} public page (ru)`);
   // app, visitor
   await page.goto(APP + '?lang=lv', { waitUntil: 'load' });
