@@ -3,7 +3,7 @@
 // not yet known) and the everyday case (last route remembered). Run: node _audit/timing.mjs
 import { chromium } from 'playwright-core';
 
-const BASE = process.env.BASE || 'http://127.0.0.1:5173/';
+const BASE = process.env.BASE || 'http://localhost:5173/app/';
 const TAP = 700, KEY = 120;
 const browser = await chromium.launch({ channel: 'chrome' });
 
@@ -24,7 +24,7 @@ async function run(label, { remembered }) {
   await page.goto(BASE + '?lang=ru#/', { waitUntil: 'load' });
   await page.waitForSelector('.pcard');
   const start = Date.now();
-  await tap('1. Нажать «Подать» в нижнем меню', () => page.click('a[href="#/post"]'));
+  await tap('1. Нажать «Подать» в нижнем меню', () => page.click('.nav a[href="#/post"]'));
   await page.waitForSelector('form');
   if (!remembered) {
     await tap('2. Нажать «Откуда»', () => page.locator('form .picker').nth(0).click());

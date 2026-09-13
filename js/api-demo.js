@@ -77,7 +77,20 @@ function seed() {
 export function createDemoApi() {
   let db;
   try { db = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { db = null; }
-  if (!db || db.version !== 3) { db = { version: 3, ...seed() }; }
+  if (!db || db.version !== 4) { db = { version: 4, seededOn: day(0), ...seed() }; }
+  // Demo dates are relative to "today": shift everything by the days elapsed since seeding so the
+  // board never goes stale for someone who opens the link a week later.
+  {
+    const elapsed = Math.round((new Date(day(0)) - new Date(db.seededOn || day(0))) / 86400000);
+    if (elapsed > 0) {
+      const shift = (d) => { const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + elapsed); return new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+      const shiftIso = (s) => new Date(new Date(s).getTime() + elapsed * 86400000).toISOString();
+      for (const p of db.postings) { p.date_from = shift(p.date_from); p.date_to = shift(p.date_to); p.created_at = shiftIso(p.created_at); if (p.updated_at) p.updated_at = shiftIso(p.updated_at); }
+      for (const b of db.bids) b.created_at = shiftIso(b.created_at);
+      for (const n of db.notifications) { n.created_at = shiftIso(n.created_at); n.deliver_after = shiftIso(n.deliver_after); }
+      db.seededOn = day(0);
+    }
+  }
   const save = () => localStorage.setItem(KEY, JSON.stringify(db));
   const listeners = new Set();
   const uid = () => db.session?.user?.id || null;
@@ -115,12 +128,12 @@ export function createDemoApi() {
 
   const api = {
     mode: 'demo',
-    demoUsers: [{ id: U.boris, key: 'demo_carrier' }, { id: U.anna, key: 'demo_customer' }],
+    demoUsers: [{ id: U.boris, key: 'demo_carrier' }, { id: U.anna, key: 'demo_customer' }, { id: U.op, key: 'demo_operator' }],
     onAuth: (fn) => { listeners.add(fn); return () => listeners.delete(fn); },
     getSession: () => db.session,
     userId: uid,
     photoUrl: (p) => p,
-    resetDemo() { db = { version: 3, ...seed() }; save(); emit(); },
+    resetDemo() { db = { version: 4, seededOn: day(0), ...seed() }; save(); emit(); },
 
     async signInDemo(id) { db.session = { user: { id, email: db.contacts[id]?.email || '' } }; save(); emit(); return db.session; },
     async signUp() { throw new Error('demo'); },

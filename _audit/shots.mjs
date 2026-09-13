@@ -5,7 +5,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const BASE = process.env.BASE || 'http://127.0.0.1:5173/';
+const BASE = process.env.BASE || 'http://localhost:5173/app/';
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), 'shots');
 mkdirSync(OUT, { recursive: true });
 const errors = [];
@@ -21,7 +21,7 @@ const click = async (text, opts = {}) => { await page.getByRole(opts.role || 'bu
 await page.goto(BASE + '?lang=ru', { waitUntil: 'load' });
 await page.waitForSelector('.pcard');
 await shot('01-feed-visitor', true);
-await page.click('a[href="#/me"]');
+await page.click('.nav a[href="#/me"]');
 await page.waitForSelector('text=Войти в демо как');
 await shot('02-auth');
 await click('Перевозчик — Борис');
@@ -44,7 +44,7 @@ await click('Сохранить');
 await page.waitForSelector('.pcard');
 await shot('06-feed-detour', true);
 // post truck
-await page.click('a[href="#/post"]');
+await page.click('.nav a[href="#/post"]');
 await page.waitForSelector('form');
 await shot('07-post-truck', true);
 await click('Ищу транспорт', { role: 'tab' });
@@ -81,12 +81,12 @@ await click('Отправить ставку');
 await page.waitForSelector('.status-line');
 await shot('14-detail-my-bid', true);
 // my
-await page.click('a[href="#/my"]');
+await page.click('.nav a[href="#/my"]');
 await page.waitForSelector('.tabs');
 await click('Ставки', { role: 'tab' });
 await shot('15-my-bids', true);
 // search
-await page.click('a[href="#/search"]');
+await page.click('.nav a[href="#/search"]');
 await page.waitForSelector('h1');
 await shot('16-search', true);
 await click('Новый поиск');
@@ -94,7 +94,7 @@ await page.waitForSelector('.sheet.is-open');
 await shot('17-search-sheet');
 await page.keyboard.press('Escape');
 // profile
-await page.click('a[href="#/me"]');
+await page.click('.nav a[href="#/me"]');
 await page.waitForSelector('form');
 await shot('18-profile', true);
 await click('Добавить машину');
@@ -106,13 +106,13 @@ await page.click('#top-actions .icon-btn');
 await page.waitForSelector('h1');
 await shot('20-inbox', true);
 // customer side: accept the bid
-await page.click('a[href="#/me"]');
+await page.click('.nav a[href="#/me"]');
 await click('Выйти');
 await page.waitForTimeout(300);
-await page.click('a[href="#/me"]');
+await page.click('.nav a[href="#/me"]');
 await click('Заказчик — Анна');
 await page.waitForSelector('form');
-await page.click('a[href="#/my"]');
+await page.click('.nav a[href="#/my"]');
 await page.waitForSelector('.tabs');
 await click('Объявления', { role: 'tab' });
 await page.locator('.pcard', { hasText: 'Rēzekne' }).first().locator('a.pcard__link').click();
@@ -122,10 +122,10 @@ await page.locator('.bidrow', { hasText: '175' }).locator('button').click();
 await page.waitForTimeout(400);
 await shot('22-detail-pending-owner', true);
 // carrier confirms
-await page.click('a[href="#/me"]');
+await page.click('.nav a[href="#/me"]');
 await click('Выйти');
 await page.waitForTimeout(300);
-await page.click('a[href="#/me"]');
+await page.click('.nav a[href="#/me"]');
 await click('Перевозчик — Борис');
 await page.waitForSelector('form');
 await page.click('#top-actions .icon-btn');

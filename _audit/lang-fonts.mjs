@@ -5,7 +5,7 @@
 import { chromium } from 'playwright-core';
 import { PNG } from './png.mjs';
 
-const BASE = process.env.BASE || 'http://127.0.0.1:5173/';
+const BASE = process.env.BASE || 'http://localhost:5173/app/';
 const browser = await chromium.launch({ channel: 'chrome' });
 let failures = 0;
 const check = (name, ok, detail = '') => { if (!ok) failures++; console.log((ok ? 'PASS ' : 'FAIL ') + name + (detail && !ok ? ' -- ' + detail : '')); };

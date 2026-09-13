@@ -53,6 +53,9 @@ const D = {
     min_ago: 'pirms {n} min', hours_ago: 'pirms {n} h', days_ago: 'pirms {n} d', just_now: 'tikko',
     field_yes: 'Jā', field_no: 'Nē', any: 'Jebkurš', all: 'Visi', more: 'Vēl', less: 'Mazāk', provisional: 'Saraksts pagaidu — nomainīs pēc pirmajiem pieteikumiem',
     err_not_open: 'Jau paņemts vai slēgts.', err_own: 'Tas ir tavs sludinājums.', err_auth: 'Nepareizs e-pasts vai parole.', err_no_instant: 'Nav tūlītējās cenas — piedāvā savu.', err_rate: 'Pārāk daudz mēģinājumu, pagaidi minūti.', err_network: 'Nav savienojuma. Pārbaudi internetu.',
+    col_kind: 'Veids', col_route: 'Maršruts', col_detour: 'Līkums', col_distance: 'Attālums', col_date: 'Datums', col_vehicle: 'Auto', col_cargo: 'Krava', col_weight: 'Svars · izmēri', col_price: 'Cena · piedāvājumi', col_age: 'Izlikts',
+    sort_by: 'Kārtot', sort_price: 'Pēc cenas', sort_time: 'Pēc laika', rows_shown: '{n} no {total}', select_row: 'Izvēlies rindu tabulā — detaļas parādīsies šeit.', open_full: 'Atvērt lapā', close: 'Aizvērt', filters: 'Filtri', reset: 'Notīrīt', showing_near: 'tikai pa ceļam, līdz {km} km', about: 'Par Paceļam',
+    nav_operator: 'Operators', operator_title: 'Operatora režīms', operator_lead: 'Pieteikums no zvana. Aizpildi ar tastatūru: Tab — nākamais lauks, Enter — nosūtīt. Pēc nosūtīšanas forma notīrās nākamajam zvanam.', operator_privacy: 'Zvanītāja tālruni šeit nerakstiet — kontakti atveras tikai pēc darījuma, un otra puse tos saņems caur tevi.', operator_posted: 'Izlikts. Nākamais zvans.', city_unknown: 'Pilsēta nav sarakstā — ņem tuvāko lielāko.', demo_operator: 'Operators — SOS Evakuators, Daugavpils',
     login_required: 'Ieej, lai turpinātu.', profile_required: 'Aizpildi profilu, lai turpinātu.',
   },
   ru: {
@@ -104,6 +107,9 @@ const D = {
     min_ago: '{n} мин назад', hours_ago: '{n} ч назад', days_ago: '{n} д назад', just_now: 'только что',
     field_yes: 'Да', field_no: 'Нет', any: 'Любой', all: 'Все', more: 'Ещё', less: 'Меньше', provisional: 'Список временный — заменим после первых заявок',
     err_not_open: 'Уже забрали или закрыто.', err_own: 'Это твоё объявление.', err_auth: 'Неверная почта или пароль.', err_no_instant: 'Нет цены мгновенной победы — предложи свою.', err_rate: 'Слишком много попыток, подожди минуту.', err_network: 'Нет связи. Проверь интернет.',
+    col_kind: 'Вид', col_route: 'Маршрут', col_detour: 'Крюк', col_distance: 'Расстояние', col_date: 'Дата', col_vehicle: 'Машина', col_cargo: 'Груз', col_weight: 'Вес · габариты', col_price: 'Цена · ставки', col_age: 'Выложено',
+    sort_by: 'Сортировка', sort_price: 'По цене', sort_time: 'По времени', rows_shown: '{n} из {total}', select_row: 'Выбери строку в таблице — подробности появятся здесь.', open_full: 'Открыть страницей', close: 'Закрыть', filters: 'Фильтры', reset: 'Сбросить', showing_near: 'только по пути, до {km} км', about: 'О Paceļam',
+    nav_operator: 'Оператор', operator_title: 'Режим оператора', operator_lead: 'Заявка со звонка. Заполняй с клавиатуры: Tab — следующее поле, Enter — отправить. После отправки форма очищается под следующий звонок.', operator_privacy: 'Телефон звонившего сюда не пиши — контакты открываются только после сделки, и вторая сторона получит их через тебя.', operator_posted: 'Выложено. Следующий звонок.', city_unknown: 'Города нет в списке — возьми ближайший крупный.', demo_operator: 'Оператор — SOS Evakuators, Даугавпилс',
     login_required: 'Войди, чтобы продолжить.', profile_required: 'Заполни профиль, чтобы продолжить.',
   },
   en: {
@@ -155,6 +161,9 @@ const D = {
     min_ago: '{n} min ago', hours_ago: '{n} h ago', days_ago: '{n} d ago', just_now: 'just now',
     field_yes: 'Yes', field_no: 'No', any: 'Any', all: 'All', more: 'More', less: 'Less', provisional: 'Provisional list — to be replaced after the first postings',
     err_not_open: 'Already taken or closed.', err_own: 'This is your own posting.', err_auth: 'Wrong e-mail or password.', err_no_instant: 'No instant price — make an offer.', err_rate: 'Too many attempts, wait a minute.', err_network: 'No connection. Check the internet.',
+    col_kind: 'Type', col_route: 'Route', col_detour: 'Detour', col_distance: 'Distance', col_date: 'Date', col_vehicle: 'Truck', col_cargo: 'Cargo', col_weight: 'Weight · size', col_price: 'Price · offers', col_age: 'Posted',
+    sort_by: 'Sort', sort_price: 'By price', sort_time: 'By time', rows_shown: '{n} of {total}', select_row: 'Select a row in the table — details appear here.', open_full: 'Open as page', close: 'Close', filters: 'Filters', reset: 'Reset', showing_near: 'on my way only, up to {km} km', about: 'About Paceļam',
+    nav_operator: 'Operator', operator_title: 'Operator mode', operator_lead: 'Phoned-in request. Keyboard only: Tab to the next field, Enter to post. After posting the form clears for the next call.', operator_privacy: 'Do not type the caller’s phone here — contacts open only after a deal, and the other side gets them through you.', operator_posted: 'Posted. Next call.', city_unknown: 'City not in the list — use the nearest bigger town.', demo_operator: 'Operator — SOS Evakuators, Daugavpils',
     login_required: 'Sign in to continue.', profile_required: 'Complete your profile to continue.',
   },
 };

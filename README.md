@@ -7,6 +7,15 @@ Vehicle types: `docs/vehicle-types.json`. Product decisions are kept outside thi
 (codes as on the exchange carriers already use). Scheme agreed with the client:
 `docs/pacelam-scheme.png`.
 
+## Pages
+
+- `index.html` — public page for people coming from search (lv baked in, ru/en swapped by `js/landing.js`).
+- `app/` — the exchange itself. One adaptive layout: cards below 1024 px, a sortable table with a
+  filter sidebar from 1024 px, plus an inline details panel from 1440 px. `#/operator` — keyboard-first
+  form for the dispatcher posting on behalf of callers (profiles with `is_operator`).
+- Links from the public page: `app/?demo=carrier|customer|operator` signs into the demo,
+  `app/?role=carrier|customer#/auth` preselects the role for sign-up.
+
 ## Run locally
 
 Any static server, e.g.
@@ -46,7 +55,9 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
   contact unlocks, saved-search notifications, subscription switch.
 - `_audit/` — checks: `db-test.mjs` (60 policy tests in PGlite), `leak-rest.mjs` (contact leak
   through the real REST API), `timing.mjs` (20-second posting), `lang-fonts.mjs` (?lang and
-  Latvian diacritics by pixel comparison), `a11y-all.mjs` (every screen), `shots.mjs` (tour).
+  Latvian diacritics by pixel comparison), `screens.mjs` (every screen at 360/390/1280/1920),
+  `keyboard-operator.mjs` (operator posts with the keyboard only), `table-rows.mjs`, `shots.mjs`,
+  `desk-shots.mjs`. Pass `BASE=https://.../pacelam/` to run them against the published site.
 
 ## Security model in one paragraph
 
