@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0B0D11">
+<meta name="robots" content="noindex">
+<title>404 — Paceļam</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B0D11'/%3E%3Cpath d='M14 46V18h12a9 9 0 0 1 0 18h-6v10z' fill='%23EDF1F6'/%3E%3Ccircle cx='46' cy='42' r='6' fill='%23F5A623'/%3E%3C/svg%3E">
+<style>
+  /* self-contained on purpose: this page is served for any missing path, so relative asset links can't be trusted */
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; }
+  body { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #0B0D11 radial-gradient(60% 50% at 50% 0%, rgba(245, 166, 35, .12), transparent 70%); color: #EDF1F6; font: 17px/1.5 Manrope, "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 560px; text-align: center; }
+  .code { font-size: clamp(64px, 16vw, 128px); font-weight: 800; letter-spacing: -.04em; line-height: 1; color: #F5A623; }
+  h1 { margin-top: 10px; font-size: clamp(22px, 4vw, 30px); font-weight: 800; letter-spacing: -.02em; }
+  p { margin-top: 10px; color: #98A2B1; }
+  .alt { margin-top: 6px; font-size: 14px; }
+  .btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 28px; }
+  a.btn { display: inline-flex; align-items: center; min-height: 48px; padding: 12px 20px; border-radius: 14px; font-weight: 700; text-decoration: none; }
+  a.btn--primary { background: linear-gradient(135deg, #FFC24D, #F5A623); color: #0B0D11; }
+  a.btn--ghost { border: 1px solid rgba(255, 255, 255, .16); color: #EDF1F6; }
+  a.btn:focus-visible { outline: 3px solid #F5A623; outline-offset: 3px; }
+  .road { width: min(360px, 80%); height: 0; margin: 36px auto 0; border-top: 2px dashed rgba(245, 166, 35, .5); }
+</style>
+</head>
+<body>
+<main>
+  <div class="code" aria-hidden="true">404</div>
+  <h1>Šāda ceļa nav</h1>
+  <p>Lapa pārvietota vai adrese ierakstīta ar kļūdu. Birža ir turpat, kur bija.</p>
+  <p class="alt" lang="ru">Такой дороги нет: страница переехала или адрес с опечаткой.</p>
+  <p class="alt" lang="en">No such road: the page moved or the address has a typo.</p>
+  <div class="btns">
+    <a class="btn btn--primary" id="home" href="/pacelam/">Uz sākumu · На главную · Home</a>
+    <a class="btn btn--ghost" id="app" href="/pacelam/app/?visit=1">Birža · Биржа · Board</a>
+  </div>
+  <div class="road" aria-hidden="true"></div>
+</main>
+<script>
+  // works both on github.io/pacelam/ and on a future own domain: the site root is the first path segment on github.io, "/" elsewhere
+  (function () {
+    var root = /github\.io$/.test(location.hostname) ? '/' + location.pathname.split('/')[1] + '/' : '/';
+    document.getElementById('home').href = root;
+    document.getElementById('app').href = root + 'app/?visit=1';
+  })();
+</script>
+</body>
+</html>

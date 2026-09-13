@@ -59,6 +59,10 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
   `keyboard-operator.mjs` (operator posts with the keyboard only), `table-rows.mjs`, `shots.mjs`,
   `desk-shots.mjs`, `scene-shots.mjs` (frames of the hero animation at several moments plus the
   still phone frame). Pass `BASE=https://.../pacelam/` to run them against the published site.
+- `assets/` — share image `og.png` (1200×630) and app icons, built by `node scripts/gen-assets.mjs`
+  from the site's own fonts and the hero map (re-run after changing the map or the headline).
+  `manifest.webmanifest` (root and `app/`) makes the board installable; `404.html` is served by
+  Pages for any missing path and finds the site root itself.
 - `vendor/` — GSAP 3 core + MotionPath + DrawSVG, self-hosted (no CDN). `js/scene.js` is loaded
   by `landing.js` only on capable desktops (≥980 px, no reduced-motion, no save-data); phones get
   a still scene from CSS alone.

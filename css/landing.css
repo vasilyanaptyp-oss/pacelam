@@ -109,11 +109,21 @@ a { color: var(--acc-text); }
 .scene--gsap .mock { animation: none; opacity: 1; visibility: hidden; }
 .scene--gsap .mock--c { display: block; }
 .scene--gsap .pickup__pulse, .scene--gsap .pulse { animation: none; }
-.tour, .tour-halo, .tour-done { display: none; }
-.scene--gsap .tour, .scene--gsap .tour-halo, .scene--gsap .tour-done { display: block; }
-/* GSAP cards sit where the map is emptiest at the moment they pop: a — top-left (sea), c — bottom-left */
+.tour, .tour-halo, .tour-done, .tour-road { display: none; }
+.scene--gsap .tour, .scene--gsap .tour-halo, .scene--gsap .tour-done, .scene--gsap .tour-road { display: block; }
+.truck__light, .truck__load, .truck__shadow { display: none; }
+.scene--gsap .truck__light, .scene--gsap .truck__load, .scene--gsap .truck__shadow { display: block; }
+.scene--gsap { transform-style: preserve-3d; }
+/* trip counter: only in the animated scene */
+.hud { display: none; position: absolute; left: 12px; bottom: 10px; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid var(--line2); border-radius: 999px; background: rgba(21, 25, 33, .92); box-shadow: 0 16px 40px rgba(0, 0, 0, .45); font-size: 11px; color: var(--mut); white-space: nowrap; }
+.hud b { font-family: var(--display); font-weight: 700; font-size: 12px; color: var(--ink); letter-spacing: -.01em; }
+.hud .hud__d { color: var(--acc); }
+.hud .hud__e { color: #62D28A; }
+.hud i { width: 1px; height: 14px; background: var(--line2); }
+.scene--gsap .hud { display: inline-flex; }
+/* GSAP cards sit where the map is emptiest at the moment they pop: a and c — top-left (sea), never on screen together */
 .scene--gsap .mock--a { top: 84px; bottom: auto; }
-.scene--gsap .mock--c { left: 12px; right: auto; bottom: 34px; }
+.scene--gsap .mock--c { left: 12px; right: auto; top: 84px; bottom: auto; }
 /* phones: one card over the still map (the one that matches the marker on it), the other two stay in the desktop scene */
 @media (max-width: 979px) { .mock { width: min(250px, 66%); animation: none; opacity: 1; transform: none; } .mock--a, .mock--c { display: none; } .mock--b { left: 10px; bottom: 10px; right: auto; top: auto; } }
 @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
