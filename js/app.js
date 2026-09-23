@@ -227,7 +227,8 @@ function metricFor(p) {
   const trip = haversineKm(from.lat, from.lng, to.lat, to.lng);
   if (state.route?.from && state.route?.to && !isCustomer()) {
     const d = detourKm(state.route, from, to);
-    return { detour: d, dist: null, trip, big: d <= 5 ? t('on_the_way') : t('detour', { km: fmtInt(d) }), good: d <= 5, sub: t('direct', { km: fmtInt(trip) }), sortKey: d };
+    const base = haversineKm(state.route.from.lat, state.route.from.lng, state.route.to.lat, state.route.to.lng);
+    return { detour: d, base, dist: null, trip, big: d <= 5 ? t('on_the_way') : t('detour', { km: fmtInt(d) }), good: d <= 5, sub: t('direct', { km: fmtInt(trip) }), sortKey: d };
   }
   const c = myCity();
   if (c) {
@@ -235,6 +236,18 @@ function metricFor(p) {
     return { detour: null, dist: d, trip, big: d < 3 ? t('in_your_town') : t('from_you', { km: fmtInt(d) }), good: d <= 20, sub: t('direct', { km: fmtInt(trip) }), sortKey: d };
   }
   return { detour: null, dist: null, trip, big: t('direct', { km: fmtInt(trip) }), good: false, sub: '', sortKey: trip };
+}
+// The detour in big figures next to the carrier's own route (client, 18.09.2026: «+25 km / līkums и рядом
+// 153 km pamatmaršruts — чтобы перевозчик сразу видел: я еду 153 км и груз добавит мне всего 25 км»).
+function metricBlock(p, m, cls) {
+  const cell = (num, label, good) => h('span.km', { class: good ? 'is-good' : '' }, h('b.km__n', null, num), label ? h('span.km__l', null, label) : null);
+  const km = (n) => `${fmtInt(n)} ${t('km_unit')}`;
+  const tripLabel = p.kind === 'truck' ? t('m_trip_truck') : t('m_trip');
+  const box = h('div', { class: `${cls} metric2${m.good ? ' is-good' : ''}` }, detourGlyph(m));
+  if (m.detour != null) box.append(cell(m.detour <= 5 ? t('on_the_way') : `+${km(m.detour)}`, m.detour <= 5 ? t('m_detour_none') : t('m_detour'), m.good), cell(km(m.base), t('m_route')));
+  else if (m.dist != null) box.append(cell(m.dist < 3 ? t('in_your_town') : km(m.dist), m.dist < 3 ? '' : t('m_from_you'), m.good), cell(km(m.trip), tripLabel));
+  else box.append(cell(km(m.trip), tripLabel));
+  return box;
 }
 // On his own cargo the customer needs the offers, not kilometres from himself (audit 13.09, 4.3).
 const offersSummary = (p) => (p.bid_count ? `${t('bids_n', { n: p.bid_count })}${p.best_bid != null ? ' · ' + t('best_bid', { p: fmtInt(p.best_bid) }) : ''}` : t('no_bids'));
@@ -316,7 +329,7 @@ function postingCard(p, opts = {}) {
     tagRow(p),
     h('div.pcard__route', null, h('span', null, p.from_name), icon('arrow'), h('span', null, p.to_name)),
     ownCargo(p) ? h('div.pcard__metric', null, h('b', { class: p.bid_count ? 'is-good' : '' }, offersSummary(p)), h('span', null, t('direct', { km: fmtInt(m.trip) })))
-      : h('div.pcard__metric', null, detourGlyph(m), h('b', { class: m.good ? 'is-good' : '' }, m.big), m.sub ? h('span', null, m.sub) : null),
+      : metricBlock(p, m, 'pcard__metric'),
     factsLine(p) ? h('div.pcard__facts', null, factsLine(p)) : null,
     h('div.pcard__meta', null, p.photos?.length ? h('img.pcard__thumb', { src: photoThumb(p.photos[0]), alt: '', loading: 'lazy', width: 44, height: 44 }) : null, h('span', null, typeLine(p))),
     priceLine(p));
@@ -676,7 +689,7 @@ async function buildDetail(id, { inline = false } = {}) {
     tagRow(p),
     h(inline ? 'h2.detail__route' : 'h1.detail__route', null, h('span', null, p.from_name + (p.from_radius_km ? ` ${t('km_plus', { km: p.from_radius_km })}` : '')), icon('arrow'), h('span', null, p.to_name + (p.to_radius_km ? ` ${t('km_plus', { km: p.to_radius_km })}` : ''))),
     ownCargo(p) ? h('div.detail__metric', { class: p.bid_count ? 'is-good' : '' }, h('span', null, offersSummary(p)), h('span.muted.small', null, ' · ' + t('direct', { km: fmtInt(m.trip) })))
-      : h('div.detail__metric', { class: m.good ? 'is-good' : '' }, detourGlyph(m), h('span', null, m.big), m.sub ? h('span.muted.small', null, ' · ' + m.sub) : null),
+      : metricBlock(p, m, 'detail__metric'),
     h('p.muted', { style: { marginTop: '8px' } }, `${t('when')}: ${fmtDateRange(p.date_from, p.date_to)}`),
     h('p.muted.small', { style: { marginTop: '4px' } }, `${t('posted_by')}: ${p.owner?.display_name || ''}${p.owner?.city_name ? ', ' + p.owner.city_name : ''}`)));
   // what the person came for goes right under the route: contacts after a deal, offers for the owner

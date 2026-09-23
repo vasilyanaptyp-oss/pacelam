@@ -193,6 +193,14 @@ img { max-width: 100%; display: block; }
 .dg.is-good .dg__bump { stroke: var(--green); }
 .dg circle { fill: var(--ink); }
 .pcard__metric b.is-good { color: var(--green-text); }
+/* +25 km / detour  |  153 km / your route — big figure first, the base route beside it */
+.metric2 { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; margin-top: 8px; font-family: inherit; }
+.metric2 .km { display: grid; gap: 1px; line-height: 1.05; }
+.metric2 .km__n { font-family: var(--display); font-size: 24px; font-weight: 800; letter-spacing: -.01em; color: var(--acc-text); white-space: nowrap; }
+.metric2 .km.is-good .km__n { color: var(--green-text); }
+.metric2 .km + .km .km__n { font-size: 18px; color: var(--ink); }
+.metric2 .km__l { color: var(--mut); font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.metric2 .dg { align-self: center; }
 .pcard__metric span { color: var(--mut); font-size: 13px; }
 .pcard__facts { margin-top: 8px; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .pcard__meta { margin-top: 8px; display: flex; align-items: center; gap: 10px; color: var(--mut); font-size: 13px; }
