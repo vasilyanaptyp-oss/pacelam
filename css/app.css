@@ -244,6 +244,7 @@ img { max-width: 100%; display: block; }
 .bidrow__who { flex: 1; min-width: 0; }
 .bidrow__who b { display: block; font-size: 15px; }
 .bidrow__who small { color: var(--mut); font-size: 13px; }
+.bidrow__who small.bidrow__facts { display: block; margin-top: 2px; color: var(--ink); }
 .bidrow__amt { font-family: var(--display); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* "Agree" / "Let me think" under each carrier's offer, full width, thumb-sized */
 .bidrow__actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(130px, 100%), 1fr)); gap: 8px; width: 100%; }

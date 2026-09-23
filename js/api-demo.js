@@ -25,12 +25,12 @@ const P = { riga: [56.95, 24.11], dgp: [55.87, 26.52], rez: [56.51, 27.33], jel:
 
 function seed() {
   const profiles = {
-    [U.boris]: { id: U.boris, role: 'carrier', display_name: 'Boriss', city_name: 'Daugavpils', city_lat: 55.87, city_lng: 26.52, lang: 'ru', max_detour_km: 60, is_operator: false, subscription_until: null },
-    [U.anna]: { id: U.anna, role: 'customer', display_name: 'Anna', city_name: 'Rīga', city_lat: 56.95, city_lng: 24.11, lang: 'lv', max_detour_km: 60, is_operator: false, subscription_until: null },
-    [U.op]: { id: U.op, role: 'customer', display_name: 'SOS Evakuators', city_name: 'Daugavpils', city_lat: 55.87, city_lng: 26.52, lang: 'lv', max_detour_km: 60, is_operator: true, subscription_until: null },
-    [U.janis]: { id: U.janis, role: 'carrier', display_name: 'Jānis K.', city_name: 'Rēzekne', city_lat: 56.51, city_lng: 27.33, lang: 'lv', max_detour_km: 80, is_operator: false, subscription_until: null },
-    [U.ilze]: { id: U.ilze, role: 'customer', display_name: 'Ilze SIA Būvnieks', city_name: 'Jelgava', city_lat: 56.65, city_lng: 23.71, lang: 'lv', max_detour_km: 60, is_operator: false, subscription_until: null },
-    [U.tomas]: { id: U.tomas, role: 'carrier', display_name: 'Tomas', city_name: 'Vilnius', city_lat: 54.69, city_lng: 25.28, lang: 'en', max_detour_km: 100, is_operator: false, subscription_until: null },
+    [U.boris]: { created_at: ago(9000), id: U.boris, role: 'carrier', display_name: 'Boriss', city_name: 'Daugavpils', city_lat: 55.87, city_lng: 26.52, lang: 'ru', max_detour_km: 60, is_operator: false, subscription_until: null },
+    [U.anna]: { created_at: ago(8000), id: U.anna, role: 'customer', display_name: 'Anna', city_name: 'Rīga', city_lat: 56.95, city_lng: 24.11, lang: 'lv', max_detour_km: 60, is_operator: false, subscription_until: null },
+    [U.op]: { created_at: ago(12000), id: U.op, role: 'customer', display_name: 'SOS Evakuators', city_name: 'Daugavpils', city_lat: 55.87, city_lng: 26.52, lang: 'lv', max_detour_km: 60, is_operator: true, subscription_until: null },
+    [U.janis]: { created_at: ago(15000), id: U.janis, role: 'carrier', display_name: 'Jānis K.', city_name: 'Rēzekne', city_lat: 56.51, city_lng: 27.33, lang: 'lv', max_detour_km: 80, is_operator: false, subscription_until: null },
+    [U.ilze]: { created_at: ago(10000), id: U.ilze, role: 'customer', display_name: 'Ilze SIA Būvnieks', city_name: 'Jelgava', city_lat: 56.65, city_lng: 23.71, lang: 'lv', max_detour_km: 60, is_operator: false, subscription_until: null },
+    [U.tomas]: { created_at: ago(4000), id: U.tomas, role: 'carrier', display_name: 'Tomas', city_name: 'Vilnius', city_lat: 54.69, city_lng: 25.28, lang: 'en', max_detour_km: 100, is_operator: false, subscription_until: null },
   };
   const contacts = {
     [U.boris]: { profile_id: U.boris, phone: '+371 20000002', email: 'boriss@example.com', company: 'SIA Boriss Trans' },
@@ -42,6 +42,8 @@ function seed() {
   };
   const vehicles = [
     { id: uuid(), owner_id: U.boris, type_code: 'VT10', plate: 'KM-1234', tonnage_t: 8, volume_m3: 40, length_m: 7.2, width_m: 2.45, height_m: 2.4, note: null, is_default: true, created_at: ago(9000) },
+    { id: uuid(), owner_id: U.janis, type_code: 'VT16', plate: null, tonnage_t: 20, volume_m3: 90, length_m: 13.6, width_m: 2.45, height_m: 2.7, note: null, is_default: true, created_at: ago(14000) },
+    { id: uuid(), owner_id: U.tomas, type_code: 'VT10', plate: null, tonnage_t: 5, volume_m3: 30, length_m: 7.2, width_m: 2.45, height_m: 2.4, note: null, is_default: true, created_at: ago(3900) },
     { id: uuid(), owner_id: U.boris, type_code: 'VT08', plate: 'KM-5678', tonnage_t: 3.5, volume_m3: null, length_m: 5.5, width_m: 2.2, height_m: null, note: null, is_default: false, created_at: ago(8000) },
   ];
   const mk = (o) => ({ id: uuid(), currency: 'EUR', status: 'open', from_radius_km: 0, to_radius_km: 0, cargo_fields: {}, photos: [], note: null, is_operator_posting: false, bid_count: 0, best_bid: null, vehicle_id: null, weight_kg: null, length_m: null, width_m: null, height_m: null, volume_m3: null, price: null, ...o });
@@ -77,7 +79,7 @@ function seed() {
 export function createDemoApi() {
   let db;
   try { db = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { db = null; }
-  if (!db || db.version !== 6) { db = { version: 6, seededOn: day(0), ...seed() }; }
+  if (!db || db.version !== 7) { db = { version: 7, seededOn: day(0), ...seed() }; }
   // sample urgent calls keep counting down: a finished sample wait is re-armed on load
   for (const p of db.postings) if (p.demo_wait_min && p.status === 'open' && (!p.wait_until || new Date(p.wait_until) <= new Date())) p.wait_until = iso(Date.now() + p.demo_wait_min * 60000);
   // Demo dates are relative to "today": shift everything by the days elapsed since seeding so the
@@ -149,7 +151,7 @@ export function createDemoApi() {
     getSession: () => db.session,
     userId: uid,
     photoUrl: (p) => p,
-    resetDemo() { db = { version: 6, seededOn: day(0), ...seed() }; for (const p of db.postings) if (p.demo_wait_min) p.wait_until = iso(Date.now() + p.demo_wait_min * 60000); save(); emit(); },
+    resetDemo() { db = { version: 7, seededOn: day(0), ...seed() }; for (const p of db.postings) if (p.demo_wait_min) p.wait_until = iso(Date.now() + p.demo_wait_min * 60000); save(); emit(); },
 
     async signInDemo(id) { db.session = { user: { id, email: db.contacts[id]?.email || '' } }; save(); emit(); return db.session; },
     async signUp() { throw new Error('demo'); },
@@ -298,6 +300,14 @@ export function createDemoApi() {
       save();
     },
 
+    // 0009: facts next to an offer — vehicle and payload, deals closed here, since when; no contacts, no plates
+    async carrierFacts(ids) {
+      need();
+      return (ids || []).slice(0, 50).filter((id) => db.profiles[id]).map((id) => {
+        const v = db.vehicles.filter((x) => x.owner_id === id).sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))[0];
+        return { user_id: id, deals_done: db.deals.filter((d) => d.carrier_id === id && d.status === 'confirmed').length, vehicle_type_code: v?.type_code || null, tonnage_t: v?.tonnage_t ?? null, member_since: db.profiles[id].created_at || null };
+      });
+    },
     async nudgeTruck(cargoId, truckId) {
       const me = need();
       const c = db.postings.find((x) => x.id === cargoId), t = db.postings.find((x) => x.id === truckId);

@@ -447,7 +447,9 @@ await as(U.dace, async () => {
 });
 await as(E.eva, async () => {
   const n = await rows(`select payload->>'kind' as kind, payload->>'for_cargo' as cargo from notifications where user_id = $1 and posting_id = $2`, [E.eva, daceTruck]);
-  check('0008: a new truck on the route of an open cargo reaches its customer', n.length === 1 && n[0].kind === 'truck' && n[0].cargo === alongId, JSON.stringify(n));
+  // one notice per customer; it names one of her fitting cargo (any of them — ids are random)
+  const own = n.length === 1 ? await rows(`select owner_id from postings where id = $1`, [n[0].cargo]) : [];
+  check('0008: a new truck on the route of an open cargo reaches its customer', n.length === 1 && n[0].kind === 'truck' && own[0]?.owner_id === E.eva, JSON.stringify(n));
   await rows(`select nudge_truck($1, $2)`, [alongId, daceTruck]);
   await rows(`select nudge_truck($1, $2)`, [alongId, daceTruck]);
 });

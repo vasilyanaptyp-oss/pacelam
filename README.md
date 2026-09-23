@@ -15,7 +15,8 @@ Vehicle types: `docs/vehicle-types.json`. Product decisions are kept outside thi
   "Offer: cargo / transport", two big doors (also on the public page and behind the "+" of the bottom
   bar, `#/post`). A door opens the posting wizard, one question per screen: map from → to, calendar,
   what / which vehicle, publish (`#/post/cargo`, `#/post/truck`; every field in one form:
-  `#/post/cargo/full`). Only the carrier names a price; the customer taps "Agree" or "Let me think"
+  `#/post/cargo/full`). A guest fills the cargo wizard without an account; it is asked for only at
+  "Publish" and the filled-in posting waits on the last step. Only the carrier names a price; the customer taps "Agree" or "Let me think"
   on each offer. `#/operator` — keyboard-first form for the dispatcher posting on behalf of callers
   (profiles with `is_operator`).
 - Links from the public page: `app/?demo=carrier|customer|operator` signs into the demo,
@@ -47,6 +48,8 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
    `0008_pairs.sql` (the exchange finds pairs by itself: a cargo that fits an open truck's route within the
    carrier's detour limit notifies the carrier, a new truck notifies customers of fitting cargo; the customer
    can "call" a carrier on the way once).
+   `0009_carrier_facts.sql` (facts next to an offer: the carrier's vehicle and payload, deals closed here, since
+   when he is on Paceļam — no contacts, no plates).
 2. Authentication → Providers → Email: for a test project turn **off** "Confirm email";
    set Site URL to the page URL (for password-reset links).
 3. Put the project URL and the anon key into `config.js`:
@@ -69,7 +72,7 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
   via `node scripts/gen-seed.mjs`), `js/i18n.js` lv/ru/en.
 - `supabase/migrations/0001_init.sql` — the whole model: tables, RLS, bids/deals functions,
   contact unlocks, saved-search notifications, subscription switch.
-- `_audit/` — checks: `db-test.mjs` (92 policy tests in PGlite), `leak-rest.mjs` (contact leak
+- `_audit/` — checks: `db-test.mjs` (96 policy tests in PGlite), `leak-rest.mjs` (contact leak
   through the real REST API), `timing.mjs` (20-second posting), `lang-fonts.mjs` (?lang and
   Latvian diacritics by pixel comparison), `screens.mjs` (every screen at 360/390/1280/1920),
   `keyboard-operator.mjs` (operator posts with the keyboard only), `table-rows.mjs`, `shots.mjs`,

@@ -586,6 +586,8 @@ async function screenFeed() {
     h('button.btn.btn--ghost.btn--sm', { type: 'button', onclick: () => { state.filter = emptyFilter(); state.showAll = false; render(); } }, t('reset')));
   el.append(aside);
 
+  const pendingPost = store.get('pacelam.pendingPost');
+  if (pendingPost && state.me?.profile) main.append(h('div.card.cta', null, h('p', null, `${t('pending_post')}: ${pendingPost.draft?.from?.name || ''} → ${pendingPost.draft?.to?.name || ''}`), h('a.btn.btn--primary', { href: `#/post/${pendingPost.kind}` }, t('wiz_publish'))));
   main.append(offerBlock());
   if (api.mode === 'demo') main.append(h('div.banner', null, t('demo_banner')));
   if (!state.session) main.append(h('div.card.cta', null, h('p', null, t('feed_visitors_cta')), h('a.btn.btn--primary', { href: '#/auth' }, t('sign_in'))));
@@ -758,6 +760,8 @@ async function buildDetail(id, { inline = false } = {}) {
       // "Agree" closes the deal at once and opens contacts; "Let me think" only moves the offer to the end
       // of the list on this device — the carrier is not told, the offer stays valid.
       const later = new Set(store.get('pacelam.later', []));
+      // who is behind each offer (client, 18.09.2026 22:35): vehicle, payload, deals here, since when — no contacts
+      const facts = new Map(((await api.carrierFacts?.(active.map((b) => b.bidder_id)).catch(() => [])) || []).map((f) => [f.user_id, f]));
       const ordered = [...sorted.filter((b) => !later.has(b.id)), ...sorted.filter((b) => later.has(b.id))];
       ordered.forEach((b, i) => {
         const isLater = later.has(b.id);
@@ -767,7 +771,7 @@ async function buildDetail(id, { inline = false } = {}) {
         };
         const think = () => { later.add(b.id); store.set('pacelam.later', [...later].slice(-200)); toast(t('think_ok')); rerender(); };
         list.append(h('div.card.bidrow', { class: [i === 0 && state.bidSort === 'price' && !isLater && b.status === 'active' && sorted.length > 1 ? 'is-best' : '', isLater ? 'is-later' : ''].join(' ').trim() },
-          h('div.bidrow__who', null, h('b', null, b.bidder?.display_name || '—'), h('small', null, [isLater ? t('later_tag') : null, b.bidder?.city_name, relTime(b.created_at), b.note].filter(Boolean).join(' · '))),
+          h('div.bidrow__who', null, h('b', null, b.bidder?.display_name || '—'), h('small', null, [isLater ? t('later_tag') : null, b.bidder?.city_name, relTime(b.created_at), b.note].filter(Boolean).join(' · ')), factsLineFor(facts.get(b.bidder_id))),
           h('div.bidrow__amt', null, fmtMoney(b.amount)),
           b.status === 'active' && p.status === 'open'
             ? h('div.bidrow__actions', null,
@@ -831,6 +835,13 @@ function pairsSection(p, board) {
   section.append(list);
   return section;
 }
+function factsLineFor(f) {
+  if (!f) return null;
+  const vt = f.vehicle_type_code ? vtype(f.vehicle_type_code) : null;
+  const since = f.member_since ? new Intl.DateTimeFormat(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(f.member_since)) : '';
+  const bits = [vt ? `${nameOf(vt)}${f.tonnage_t != null ? ` · ${fmtNum(f.tonnage_t, 1)} ${t('t')}` : ''}` : null, f.deals_done ? t('deals_n', { n: f.deals_done }) : t('deals_new'), since ? t('member_since', { d: since }) : null];
+  return h('small.bidrow__facts', null, bits.filter(Boolean).join(' · '));
+}
 async function screenDetail(id) {
   return h('section.screen.narrow', null, await buildDetail(id));
 }
@@ -843,6 +854,8 @@ async function screenPost(param) {
   const [kindParam, variant] = String(param || '').split('/');
   if (kindParam !== 'cargo' && kindParam !== 'truck') return h('section.screen.narrow', null, offerBlock({ page: true }));
   state.postKind = kindParam;
+  // client, 18.09.2026 22:36: «человек реально проходит создание объявления без регистрации до последнего шага»
+  if (variant !== 'full' && kindParam === 'cargo') return wizard('cargo');
   if (!requireAuth()) return h('div');
   if (variant !== 'full') return wizard(kindParam);
   const me = state.me;
@@ -1051,7 +1064,7 @@ const BALTICS = [[53.9, 20.9], [59.7, 28.3]];
 const dimLabel = (k) => `${t('dim_' + k)}, ${t('m')}`;
 
 function wizard(kind) {
-  const me = state.me;
+  const me = state.me || {};
   const last = store.get(lastRouteKey());
   const pre = store.get('pacelam.prefill');   // "offer my cargo" on a truck card
   if (pre) store.set('pacelam.prefill', null);
@@ -1067,9 +1080,14 @@ function wizard(kind) {
     weight_kg: '', volume_m3: '', length_m: '', width_m: '', height_m: '', ...fromVehicle(defVehicle),
     photos: [], price: '', note: '', operator: false, urgent: false, wait_minutes: 60,
   };
+  // a guest filled everything and went to sign up: his posting waits here, on the last step
+  const pending = store.get('pacelam.pendingPost');
+  const resumed = !!(pending && pending.kind === kind && state.session && state.me?.profile);
+  if (resumed) { Object.assign(draft, pending.draft, { photos: [] }); store.set('pacelam.pendingPost', null); }
   const fromLast = !pre && !!last?.from && !!last?.to;
   const STEPS = ['route', 'when', 'what', 'check'];
   let step = 0;
+  const resumeStep = () => { if (resumed) step = STEPS.length - 1; };
   let cleanup = null;
   const el = h('section.screen.narrow.wiz');
   const head = h('div.wiz__head');
@@ -1084,6 +1102,13 @@ function wizard(kind) {
     return null;
   };
   const publish = async (btn) => {
+    if (!state.session || !state.me?.profile) {
+      store.set('pacelam.pendingPost', { kind, draft: { ...draft, photos: [] } });
+      state.roleHint = state.roleHint || 'customer';
+      toast(t('signup_to_publish'));
+      requireAuth();
+      return;
+    }
     btn.disabled = true;
     try {
       const id = uuid();
@@ -1116,6 +1141,7 @@ function wizard(kind) {
     foot.append(next);
     if (name === 'what' || name === 'check') body.append(h('a.wiz__full', { href: `#/post/${kind}/full` }, t('wiz_full_form')));
   };
+  resumeStep();
   paint();
   el.cleanup = () => cleanup?.();
   return el;
@@ -1331,7 +1357,8 @@ function checkStep(draft, kind) {
   const box = h('div.stack', null, card);
   if (kind === 'cargo') box.append(h('p.card.price-note', null, icon('bolt'), h('span', null, t('cargo_price_hint'))));
   if (kind === 'cargo' && draft.for_posting_id) box.append(h('p.card.price-note', null, icon('bell'), h('span', null, t('wiz_for_truck'))));
-  if (kind === 'cargo' && state.me.profile.is_operator) box.append(h('label.check', null, h('input', { type: 'checkbox', checked: draft.operator, onchange: (e) => { draft.operator = e.target.checked; } }), h('span', null, `${t('operator')} — ${t('operator_hint')}`)));
+  if (!state.session) box.append(h('p.card.price-note', null, icon('user'), h('span', null, t('guest_last_step'))));
+  if (kind === 'cargo' && state.me?.profile?.is_operator) box.append(h('label.check', null, h('input', { type: 'checkbox', checked: draft.operator, onchange: (e) => { draft.operator = e.target.checked; } }), h('span', null, `${t('operator')} — ${t('operator_hint')}`)));
   return box;
 }
 
