@@ -131,6 +131,7 @@ img { max-width: 100%; display: block; }
 .tag--truck { background: rgba(245, 166, 35, .16); color: var(--acc-text); }
 .tag--urgent { background: var(--acc); color: #17110A; }
 .tag--planned { background: rgba(63, 191, 127, .18); color: var(--green-text); }
+.tag--today { background: rgba(245, 166, 35, .18); color: var(--acc-text); box-shadow: inset 0 0 0 1px rgba(245, 166, 35, .55); }
 .tag--op { background: var(--card2); color: var(--mut); }
 .tag--status { background: var(--card2); color: var(--mut); }
 :root[data-theme="light"] .tag--cargo { background: rgba(61, 123, 184, .14); }

@@ -184,10 +184,17 @@ const rerender = () => render();
 // ---------------------------------------------------------------------------------------
 // Shared pieces
 // ---------------------------------------------------------------------------------------
+// Arthur, 23.09.2026 (question 2, answer a): no "urgent" question in the form — a posting available today
+// gets the "Today" tag by itself. The operator's urgent calls keep their own "Urgent" tag.
+const isToday = (p) => !!p.date_from && p.date_from <= isoDate() && isoDate() <= (p.date_to || p.date_from);
+function whenTag(p) {
+  if (p.kind === 'cargo' && (p.mode === 'urgent' || URGENT_CHOICE)) return h('span.tag', { class: p.mode === 'urgent' ? 'tag--urgent' : 'tag--planned' }, p.mode === 'urgent' ? t('mode_urgent') : t('mode_planned'));
+  return isToday(p) && p.status !== 'deal' && p.status !== 'closed' ? h('span.tag.tag--today', null, t('today')) : null;
+}
 function tagRow(p, extra = []) {
   return h('div.pcard__top', null,
     h('span.tag', { class: p.kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, p.kind === 'cargo' ? t('kind_cargo') : t('kind_truck')),
-    p.kind === 'cargo' && (p.mode === 'urgent' || URGENT_CHOICE) ? h('span.tag', { class: p.mode === 'urgent' ? 'tag--urgent' : 'tag--planned' }, p.mode === 'urgent' ? t('mode_urgent') : t('mode_planned')) : null,
+    whenTag(p),
     p.is_operator_posting ? h('span.tag.tag--op', { title: t('operator_hint') }, t('operator')) : null,
     p.status && p.status !== 'open' ? h('span.tag.tag--status', null, t('status_' + p.status)) : null,
     ...extra,
@@ -242,7 +249,8 @@ function priceLine(p) {
     if (p.kind === 'cargo' && p.mode === 'planned') el.append(h('b', null, fmtMoney(p.price)), h('span', null, t('price_instant', { p: '' }).replace(/^\s*€?\s*—\s*/, '')));
     else if (p.kind === 'truck') el.append(h('span', null, t('kv_asking').toLowerCase()), h('b', null, fmtMoney(p.price)));
     else el.append(h('b', null, fmtMoney(p.price)));
-  }
+  } else if (p.kind === 'truck') el.append(h('span', null, t('price_word')), h('b', null, t('negotiable')));
+  if (p.kind === 'truck' && !p.bid_count) return el.childNodes.length ? el : null;   // Arthur 23.09: idea from aizvest.eu
   {
     el.append(h('span', null, p.bid_count ? t('bids_n', { n: p.bid_count }) : t('no_bids')));
     if (p.best_bid != null) el.append(h('span', null, t('best_bid', { p: fmtInt(p.best_bid) })));
@@ -252,6 +260,8 @@ function priceLine(p) {
 function priceCell(p) {
   const bits = [];
   if (p.price != null) bits.push(fmtMoney(p.price));
+  else if (p.kind === 'truck') bits.push(t('negotiable'));
+  if (p.kind === 'truck' && !p.bid_count) return bits.join(' · ');
   if (p.mode === 'planned' || p.kind === 'truck') bits.push(p.bid_count ? `${t('bids_n', { n: p.bid_count })}${p.best_bid != null ? ' · ' + fmtMoney(p.best_bid) : ''}` : t('no_bids'));
   return bits.join(' · ');
 }
@@ -584,7 +594,7 @@ async function screenFeed() {
         class: [selected ? 'is-selected' : '', p.mode === 'urgent' && p.status === 'open' ? 'is-urgent' : '', p.owner_id === myId() ? 'is-mine' : ''].join(' ').trim(),
         onclick: () => select(p.id), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(p.id); } },
       },
-      h('td', null, h('span.tag', { class: p.kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, p.kind === 'cargo' ? t('kind_cargo') : t('kind_truck')), p.kind === 'cargo' ? h('span.tag', { class: p.mode === 'urgent' ? 'tag--urgent' : 'tag--planned' }, p.mode === 'urgent' ? t('mode_urgent') : t('mode_planned')) : null, p.is_operator_posting ? h('span.tag.tag--op', null, t('operator')) : null),
+      h('td', null, h('span.tag', { class: p.kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, p.kind === 'cargo' ? t('kind_cargo') : t('kind_truck')), whenTag(p), p.is_operator_posting ? h('span.tag.tag--op', null, t('operator')) : null),
       h('td.tbl__route', null, h('b', null, p.from_name), h('span.muted', null, ' → '), h('b', null, p.to_name)),
       h('td.tbl__num', null, detourGlyph(x.m), h('b', { class: x.m.good ? 'is-good' : 'is-acc' }, x.m.detour != null ? (x.m.detour <= 5 ? t('on_the_way') : `+${fmtInt(x.m.detour)} km`) : `${fmtInt(x.m.dist ?? x.m.trip)} km`), h('small.muted', null, ` · ${fmtInt(x.m.trip)} km`)),
       h('td', null, fmtDateRange(p.date_from, p.date_to)),
@@ -670,6 +680,7 @@ async function buildDetail(id, { inline = false } = {}) {
     kv.append(h('dt', null, labelOf(f)), h('dd', null, text));
   }
   if (p.price != null) kv.append(h('dt', null, p.kind === 'truck' ? t('kv_asking') : (p.mode === 'urgent' ? t('price') : t('kv_instant'))), h('dd', null, fmtMoney(p.price)));
+  else if (p.kind === 'truck') kv.append(h('dt', null, t('price_word')), h('dd', null, t('negotiable')));
   el.append(h('div.card', { style: { padding: '12px 14px' } }, kv));
   if (p.note) el.append(h('div.card.note', null, p.note));
 
@@ -1226,7 +1237,7 @@ function checkStep(draft, kind) {
   add(t('when'), fmtDateRange(draft.date_from, draft.date_to));
   if (kind === 'truck') {
     add(t('vehicle'), draft.vehicle ? `${draft.vehicle.type_code} ${nameOf(vtype(draft.vehicle.type_code)) || ''}` : '');
-    add(t('kv_asking'), num(draft.price) != null ? fmtMoney(num(draft.price)) : '');
+    if (num(draft.price) != null) add(t('kv_asking'), fmtMoney(num(draft.price))); else add(t('price_word'), t('negotiable'));
   } else {
     add(t('cargo_type'), nameOf(ctype(draft.cargo_type_id)));
     add(t('photos'), draft.photos.length ? String(draft.photos.length) : '');
