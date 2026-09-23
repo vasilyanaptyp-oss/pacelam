@@ -231,6 +231,12 @@ img { max-width: 100%; display: block; }
 .bidrow__who b { display: block; font-size: 15px; }
 .bidrow__who small { color: var(--mut); font-size: 13px; }
 .bidrow__amt { font-family: var(--display); font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* "Agree" / "Let me think" under each carrier's offer, full width, thumb-sized */
+.bidrow__actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(130px, 100%), 1fr)); gap: 8px; width: 100%; }
+.bidrow__actions .btn { min-width: 0; }
+.bidrow.is-later { border-style: dashed; }
+.price-note { display: flex; align-items: center; gap: 10px; padding: 12px 14px; color: var(--ink); font-size: 15px; font-weight: 600; }
+.price-note .ic { color: var(--acc-text); }
 .contacts { padding: 16px; display: grid; gap: 10px; border-color: var(--green); }
 .contacts .btn { justify-content: flex-start; min-width: 0; max-width: 100%; text-align: left; overflow-wrap: anywhere; }
 .note { padding: 12px 14px; color: var(--ink); white-space: pre-wrap; }

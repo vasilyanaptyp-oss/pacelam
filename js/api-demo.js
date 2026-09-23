@@ -48,15 +48,15 @@ function seed() {
   const at = (name, [lat, lng]) => ({ name, lat, lng });
   const route = (f, fp, t, tp) => ({ from_name: f, from_lat: fp[0], from_lng: fp[1], to_name: t, to_lat: tp[0], to_lng: tp[1] });
   const postings = [
-    mk({ kind: 'cargo', mode: 'urgent', owner_id: U.op, ...route('Daugavpils', P.dgp, 'Rīga', P.riga), date_from: day(0), date_to: day(0), vehicle_type_code: 'VT08', cargo_type_id: 'vehicle', weight_kg: 1450, length_m: 4.5, width_m: 1.8, height_m: 1.5, cargo_fields: { rolls: false, all_wheels: true, location: 'roadside', model: 'VW Passat 2012' }, price: 140, is_operator_posting: true, note: 'Pēc avārijas, stāv uz A6 pie Līvāniem. Zvanīt uzreiz.', created_at: ago(14) }),
-    mk({ kind: 'cargo', mode: 'planned', owner_id: U.anna, ...route('Rēzekne', P.rez, 'Rīga', P.riga), date_from: day(2), date_to: day(3), vehicle_type_code: 'VT10', cargo_type_id: 'pallets', weight_kg: 2400, length_m: 2.4, width_m: 1.2, height_m: 1.6, volume_m3: 4.6, cargo_fields: { pallet_count: 4, stackable: false }, price: 180, bid_count: 2, best_bid: 170, created_at: ago(95) }),
+    mk({ kind: 'cargo', mode: 'urgent', owner_id: U.op, ...route('Daugavpils', P.dgp, 'Rīga', P.riga), date_from: day(0), date_to: day(0), vehicle_type_code: 'VT08', cargo_type_id: 'vehicle', weight_kg: 1450, length_m: 4.5, width_m: 1.8, height_m: 1.5, cargo_fields: { rolls: false, all_wheels: true, location: 'roadside', model: 'VW Passat 2012' }, price: null, is_operator_posting: true, note: 'Pēc avārijas, stāv uz A6 pie Līvāniem. Zvanīt uzreiz.', created_at: ago(14) }),
+    mk({ kind: 'cargo', mode: 'planned', owner_id: U.anna, ...route('Rēzekne', P.rez, 'Rīga', P.riga), date_from: day(2), date_to: day(3), vehicle_type_code: 'VT10', cargo_type_id: 'pallets', weight_kg: 2400, length_m: 2.4, width_m: 1.2, height_m: 1.6, volume_m3: 4.6, cargo_fields: { pallet_count: 4, stackable: false }, price: null, bid_count: 2, best_bid: 170, created_at: ago(95) }),
     mk({ kind: 'cargo', mode: 'planned', owner_id: U.ilze, ...route('Jelgava', P.jel, 'Daugavpils', P.dgp), date_from: day(1), date_to: day(4), vehicle_type_code: null, cargo_type_id: 'building', weight_kg: 1800, length_m: 2.4, width_m: 1.2, height_m: 1.2, cargo_fields: { packed: 'pallets' }, price: null, bid_count: 1, best_bid: 210, note: 'Ģipškartons, 3 paletes. Iekraušana ar iekrāvēju.', created_at: ago(200) }),
     mk({ kind: 'truck', mode: 'planned', owner_id: U.janis, ...route('Rīga', P.riga, 'Daugavpils', P.dgp), date_from: day(1), date_to: day(1), vehicle_type_code: 'VT16', weight_kg: 20000, volume_m3: 90, length_m: 13.6, width_m: 2.45, height_m: 2.7, price: 350, created_at: ago(40) }),
-    mk({ kind: 'cargo', mode: 'planned', owner_id: U.ilze, ...route('Liepāja', P.lie, 'Ventspils', P.ven), date_from: day(3), date_to: day(5), vehicle_type_code: 'VT11', cargo_type_id: 'machinery', weight_kg: 2800, length_m: 3.9, width_m: 1.6, height_m: 2.4, cargo_fields: { self_propelled: true, tracked: true }, price: 260, created_at: ago(310) }),
+    mk({ kind: 'cargo', mode: 'planned', owner_id: U.ilze, ...route('Liepāja', P.lie, 'Ventspils', P.ven), date_from: day(3), date_to: day(5), vehicle_type_code: 'VT11', cargo_type_id: 'machinery', weight_kg: 2800, length_m: 3.9, width_m: 1.6, height_m: 2.4, cargo_fields: { self_propelled: true, tracked: true }, price: null, created_at: ago(310) }),
     mk({ kind: 'cargo', mode: 'urgent', owner_id: U.op, ...route('Krāslava', P.kra, 'Daugavpils', P.dgp), date_from: day(0), date_to: day(0), vehicle_type_code: 'VT08', cargo_type_id: 'vehicle', weight_kg: 1200, cargo_fields: { rolls: true, all_wheels: true, location: 'parking', model: 'Toyota Yaris' }, price: null, is_operator_posting: true, created_at: ago(3) }),
     mk({ kind: 'truck', mode: 'planned', owner_id: U.boris, ...route('Vilnius', P.vil, 'Rīga', P.riga), date_from: day(2), date_to: day(2), vehicle_type_code: 'VT10', weight_kg: 5000, volume_m3: 30, length_m: 7.2, width_m: 2.45, height_m: 2.4, price: null, note: 'Atpakaļceļš, brīva puse kravas kastes.', created_at: ago(600) }),
-    mk({ kind: 'cargo', mode: 'planned', owner_id: U.anna, ...route('Cēsis', P.ces, 'Rīga', P.riga), date_from: day(1), date_to: day(2), vehicle_type_code: 'LTL', cargo_type_id: 'pallets', weight_kg: 600, length_m: 1.2, width_m: 0.8, height_m: 1.4, volume_m3: 1.3, cargo_fields: { pallet_count: 2, stackable: true }, price: 60, created_at: ago(1300) }),
-    mk({ kind: 'cargo', mode: 'planned', owner_id: U.ilze, ...route('Daugavpils', P.dgp, 'Vilnius', P.vil), date_from: day(4), date_to: day(6), vehicle_type_code: 'VT20', cargo_type_id: 'bulk', weight_kg: 11000, volume_m3: 8, cargo_fields: { material: 'gravel' }, price: 220, created_at: ago(2000) }),
+    mk({ kind: 'cargo', mode: 'planned', owner_id: U.anna, ...route('Cēsis', P.ces, 'Rīga', P.riga), date_from: day(1), date_to: day(2), vehicle_type_code: 'LTL', cargo_type_id: 'pallets', weight_kg: 600, length_m: 1.2, width_m: 0.8, height_m: 1.4, volume_m3: 1.3, cargo_fields: { pallet_count: 2, stackable: true }, price: null, created_at: ago(1300) }),
+    mk({ kind: 'cargo', mode: 'planned', owner_id: U.ilze, ...route('Daugavpils', P.dgp, 'Vilnius', P.vil), date_from: day(4), date_to: day(6), vehicle_type_code: 'VT20', cargo_type_id: 'bulk', weight_kg: 11000, volume_m3: 8, cargo_fields: { material: 'gravel' }, price: null, created_at: ago(2000) }),
     mk({ kind: 'cargo', mode: 'planned', owner_id: U.anna, ...route('Valmiera', P.val, 'Tartu', P.tar), date_from: day(5), date_to: day(7), vehicle_type_code: 'VT18', cargo_type_id: 'oversize', weight_kg: 9000, length_m: 12, width_m: 3.2, height_m: 3.4, cargo_fields: { escort_needed: true }, price: null, created_at: ago(2900) }),
   ];
   const bids = [
@@ -77,7 +77,7 @@ function seed() {
 export function createDemoApi() {
   let db;
   try { db = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { db = null; }
-  if (!db || db.version !== 4) { db = { version: 4, seededOn: day(0), ...seed() }; }
+  if (!db || db.version !== 5) { db = { version: 5, seededOn: day(0), ...seed() }; }
   // Demo dates are relative to "today": shift everything by the days elapsed since seeding so the
   // board never goes stale for someone who opens the link a week later.
   {
@@ -133,7 +133,7 @@ export function createDemoApi() {
     getSession: () => db.session,
     userId: uid,
     photoUrl: (p) => p,
-    resetDemo() { db = { version: 4, seededOn: day(0), ...seed() }; save(); emit(); },
+    resetDemo() { db = { version: 5, seededOn: day(0), ...seed() }; save(); emit(); },
 
     async signInDemo(id) { db.session = { user: { id, email: db.contacts[id]?.email || '' } }; save(); emit(); return db.session; },
     async signUp() { throw new Error('demo'); },
@@ -215,8 +215,9 @@ export function createDemoApi() {
       if (p.status !== 'open') throw new Error('posting is not open');
       if (b.status !== 'active') throw new Error('bid is not active');
       b.status = 'accepted';
-      if (p.mode === 'urgent') {
-        // urgent: the bidder committed by bidding, the owner's acceptance closes the deal at once
+      if (p.mode === 'urgent' || p.kind === 'cargo') {
+        // the carrier committed by naming his price: the customer's "Agree" closes the deal at once
+        // (urgent since 13.09; every cargo since 23.09 — mirrors 0005_carrier_price.sql)
         const d = { id: uuid(), posting_id: p.id, customer_id: p.kind === 'cargo' ? p.owner_id : b.bidder_id, carrier_id: p.kind === 'cargo' ? b.bidder_id : p.owner_id, bid_id: b.id, amount: b.amount, status: 'confirmed', customer_confirmed_at: iso(Date.now()), carrier_confirmed_at: iso(Date.now()), created_at: iso(Date.now()) };
         db.deals.push(d); p.status = 'deal';
         db.bids.forEach((x) => { if (x.posting_id === p.id && x.status === 'active') x.status = 'rejected'; });

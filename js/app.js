@@ -14,6 +14,12 @@ const store = {
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); }));
 const num = (v) => { const s = String(v ?? '').trim().replace(',', '.'); if (s === '') return null; const n = Number(s); return Number.isFinite(n) ? n : null; };
 
+// Decision of 23.09.2026: only the carrier names a price; the customer waits for offers and taps
+// "Agree" or "Let me think". The customer's price field and the urgent/planned choice are switched
+// off here, not removed — flip back if the client changes his mind (urgent mark: open question).
+const CUSTOMER_PRICE = false;
+const URGENT_CHOICE = false;
+
 const mqTable = window.matchMedia('(min-width: 1024px)');
 const mqWide = window.matchMedia('(min-width: 1440px)');
 const layout = () => (mqTable.matches ? 'table' : 'cards');
@@ -177,7 +183,7 @@ const rerender = () => render();
 function tagRow(p, extra = []) {
   return h('div.pcard__top', null,
     h('span.tag', { class: p.kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, p.kind === 'cargo' ? t('kind_cargo') : t('kind_truck')),
-    p.kind === 'cargo' ? h('span.tag', { class: p.mode === 'urgent' ? 'tag--urgent' : 'tag--planned' }, p.mode === 'urgent' ? t('mode_urgent') : t('mode_planned')) : null,
+    p.kind === 'cargo' && (p.mode === 'urgent' || URGENT_CHOICE) ? h('span.tag', { class: p.mode === 'urgent' ? 'tag--urgent' : 'tag--planned' }, p.mode === 'urgent' ? t('mode_urgent') : t('mode_planned')) : null,
     p.is_operator_posting ? h('span.tag.tag--op', { title: t('operator_hint') }, t('operator')) : null,
     p.status && p.status !== 'open' ? h('span.tag.tag--status', null, t('status_' + p.status)) : null,
     ...extra,
@@ -247,6 +253,12 @@ function actionButtons(p, opts = {}) {
   if (!me || p.owner_id === me || p.status !== 'open') return null;
   const row = h('div.pcard__actions');
   const cls = opts.big ? 'btn--big' : '';
+  if (p.kind === 'truck' && !CUSTOMER_PRICE) {
+    // transport: the carrier's price — agree to it; or put your cargo on this route and wait for his offer
+    if (p.price != null) row.append(h('button.btn.btn--primary', { type: 'button', class: cls, onclick: () => doTake(p) }, icon('check'), t('agree_for', { p: fmtInt(p.price) })));
+    row.append(h('button.btn', { type: 'button', class: [cls, p.price == null ? 'btn--primary' : 'btn--ghost'].join(' '), onclick: () => offerCargoFor(p) }, t('offer_my_cargo')));
+    return row;
+  }
   if (p.kind === 'cargo' && p.mode === 'urgent') {
     // urgent: price decides here too — agreeing to the customer's price is a bid at that price, the customer picks
     if (p.price != null && !opts.myBid) row.append(h('button.btn.btn--primary', { type: 'button', class: cls, onclick: () => doAgree(p) }, icon('bolt'), t('take_for', { p: fmtInt(p.price) })));
@@ -288,13 +300,22 @@ async function doAgree(p) {
 async function doTake(p) {
   if (!requireAuth()) return;
   const text = `${p.from_name} → ${p.to_name}` + (p.price != null ? ` · ${fmtMoney(p.price)}` : '') + '\n' + (p.mode === 'urgent' ? t('mode_urgent_hint') : t('deal_done'));
-  const ok = await confirmSheet(p.price != null ? t('take_for', { p: fmtInt(p.price) }) : t('take'), text, t('take'));
+  const truck = p.kind === 'truck' && p.price != null;
+  const ok = await confirmSheet(truck ? t('agree_for', { p: fmtInt(p.price) }) : (p.price != null ? t('take_for', { p: fmtInt(p.price) }) : t('take')), truck ? `${p.from_name} → ${p.to_name} · ${fmtMoney(p.price)}\n${t('agree_truck_hint')}` : text, truck ? t('agree') : t('take'));
   if (!ok) return;
   try {
     await api.takePosting(p.id);
     toast(t('deal_done'));
     if (route().name === 'p' || (route().name === 'feed' && layout() === 'table')) { state.selected = p.id; rerender(); } else go(`#/p/${p.id}`);
   } catch (e) { fail(e); }
+}
+// The customer never names a price: "offer my cargo" on a truck opens the cargo posting with that
+// route and date filled in; carriers, this one included, then send their offers.
+function offerCargoFor(p) {
+  if (!requireAuth()) return;
+  store.set('pacelam.prefill', { from: { name: p.from_name, lat: p.from_lat, lng: p.from_lng, radius: p.from_radius_km || 0 }, to: { name: p.to_name, lat: p.to_lat, lng: p.to_lng, radius: p.to_radius_km || 0 }, date_from: p.date_from, date_to: p.date_to });
+  state.postKind = 'cargo';
+  go('#/post/cargo');
 }
 function bidSheet(p, existing) {
   if (!requireAuth()) return;
@@ -616,6 +637,9 @@ async function buildDetail(id, { inline = false } = {}) {
     h('div.detail__metric', { class: m.good ? 'is-good' : '' }, detourGlyph(m), h('span', null, m.big), m.sub ? h('span.muted.small', null, ' · ' + m.sub) : null),
     h('p.muted', { style: { marginTop: '8px' } }, `${t('when')}: ${fmtDateRange(p.date_from, p.date_to)}`),
     h('p.muted.small', { style: { marginTop: '4px' } }, `${t('posted_by')}: ${p.owner?.display_name || ''}${p.owner?.city_name ? ', ' + p.owner.city_name : ''}`)));
+  // what the person came for goes right under the route: contacts after a deal, offers for the owner
+  const slot = h('div.stack');
+  el.append(slot);
   const facts = h('div.facts');
   if (p.weight_kg != null) facts.append(h('div.card.fact', null, h('div.fact__k', null, t('weight')), h('div.fact__v', null, `${fmtInt(p.weight_kg)} ${t('kg')}`)));
   if (p.length_m != null || p.width_m != null || p.height_m != null) facts.append(h('div.card.fact', null, h('div.fact__k', null, t('dims')), h('div.fact__v', null, [p.length_m, p.width_m, p.height_m].map((x) => (x == null ? '–' : fmtNum(x, 2))).join('×') + ' ' + t('m'))));
@@ -652,7 +676,7 @@ async function buildDetail(id, { inline = false } = {}) {
         if (c.email) box.append(h('a.btn.btn--ghost', { href: `mailto:${c.email}` }, icon('mail'), c.email));
         if (c.company) box.append(h('p.muted', null, `${t('company')}: ${c.company}`));
       } else box.append(h('p.muted', null, t('contacts_locked')));
-      el.append(box);
+      slot.append(box);
     } else if (deal.status === 'pending') {
       const mine = deal.customer_id === me ? deal.customer_confirmed_at : deal.carrier_confirmed_at;
       const box = h('div.card', { style: { padding: '14px' } }, h('p', null, mine ? t('deal_pending_other') : t('deal_pending_you')), h('p.muted.small', { style: { marginTop: '6px' } }, `${t('deal_amount')}: ${deal.amount != null ? fmtMoney(deal.amount) : '—'}`));
@@ -660,7 +684,7 @@ async function buildDetail(id, { inline = false } = {}) {
       if (!mine) row.append(h('button.btn.btn--primary.btn--big', { type: 'button', style: { flex: '1' }, onclick: async () => { try { await api.confirmDeal(deal.id); toast(t('deal_done')); rerender(); } catch (e) { fail(e); } } }, icon('check'), t('deal_confirm')));
       row.append(h('button.btn.btn--danger', { type: 'button', onclick: async () => { if (!(await confirmSheet(t('deal_cancel'), `${p.from_name} → ${p.to_name}`, t('deal_cancel'), true))) return; try { await api.cancelDeal(deal.id); rerender(); } catch (e) { fail(e); } } }, t('deal_cancel')));
       box.append(row);
-      el.append(box);
+      slot.append(box);
     }
   }
 
@@ -674,14 +698,28 @@ async function buildDetail(id, { inline = false } = {}) {
       const section = h('div.section', null, h('div.section__title', null, h('h2', null, `${t('owner_bids')}${active.length ? ` · ${active.length}` : ''}`), active.length > 1 ? sortCtl : null));
       if (!active.length) section.append(h('p.lead', null, t('owner_no_bids')));
       const list = h('div.bids');
-      sorted.forEach((b, i) => {
-        list.append(h('div.card.bidrow', { class: i === 0 && state.bidSort === 'price' && b.status === 'active' && sorted.length > 1 ? 'is-best' : '' },
-          h('div.bidrow__who', null, h('b', null, b.bidder?.display_name || '—'), h('small', null, [b.bidder?.city_name, relTime(b.created_at), b.note].filter(Boolean).join(' · '))),
+      // "Agree" closes the deal at once and opens contacts; "Let me think" only moves the offer to the end
+      // of the list on this device — the carrier is not told, the offer stays valid.
+      const later = new Set(store.get('pacelam.later', []));
+      const ordered = [...sorted.filter((b) => !later.has(b.id)), ...sorted.filter((b) => later.has(b.id))];
+      ordered.forEach((b, i) => {
+        const isLater = later.has(b.id);
+        const agree = async () => {
+          if (!(await confirmSheet(`${t('agree')} · ${fmtMoney(b.amount)}`, t('agree_confirm', { p: fmtInt(b.amount), name: b.bidder?.display_name || '' }), t('agree')))) return;
+          try { await api.acceptBid(b.id); toast(p.kind === 'cargo' || p.mode === 'urgent' ? t('deal_done') : t('deal_pending_other')); rerender(); } catch (e) { fail(e); }
+        };
+        const think = () => { later.add(b.id); store.set('pacelam.later', [...later].slice(-200)); toast(t('think_ok')); rerender(); };
+        list.append(h('div.card.bidrow', { class: [i === 0 && state.bidSort === 'price' && !isLater && b.status === 'active' && sorted.length > 1 ? 'is-best' : '', isLater ? 'is-later' : ''].join(' ').trim() },
+          h('div.bidrow__who', null, h('b', null, b.bidder?.display_name || '—'), h('small', null, [isLater ? t('later_tag') : null, b.bidder?.city_name, relTime(b.created_at), b.note].filter(Boolean).join(' · '))),
           h('div.bidrow__amt', null, fmtMoney(b.amount)),
-          b.status === 'active' && p.status === 'open' ? h('button.btn.btn--primary.btn--sm', { type: 'button', onclick: async () => { try { await api.acceptBid(b.id); toast(p.mode === 'urgent' ? t('deal_done') : t('deal_pending_other')); rerender(); } catch (e) { fail(e); } } }, t('accept')) : h('span.tag.tag--planned', null, t(b.status))));
+          b.status === 'active' && p.status === 'open'
+            ? h('div.bidrow__actions', null,
+              h('button.btn.btn--primary', { type: 'button', onclick: agree }, icon('check'), t('agree')),
+              isLater ? null : h('button.btn.btn--ghost', { type: 'button', onclick: think }, t('think')))
+            : h('span.tag.tag--planned', null, t(b.status))));
       });
       section.append(list);
-      el.append(section);
+      slot.append(section);
     }
     if (['open', 'pending'].includes(p.status)) {
       el.append(h('div.row.row--end', { style: { marginTop: '8px' } }, h('button.btn.btn--danger', { type: 'button', onclick: async () => { if (!(await confirmSheet(t('close_posting'), t('close_confirm'), t('close_posting'), true))) return; try { await api.closePosting(p.id); toast(t('closed_ok')); rerender(); } catch (e) { fail(e); } } }, t('close_posting'))));
@@ -699,6 +737,7 @@ async function buildDetail(id, { inline = false } = {}) {
     if (p.status === 'open' && !deal) el.append(h('p.muted.small', null, t('contacts_locked')));
   }
   if (!me && p.status === 'open') el.append(h('div.actionbar', null, h('a.btn.btn--primary.btn--big', { href: '#/auth' }, t('sign_in')), h('p.muted.small', { style: { textAlign: 'center' } }, t('feed_visitors_cta'))));
+  if (!slot.childNodes.length) slot.remove();
   return el;
 }
 async function screenDetail(id) {
@@ -848,7 +887,9 @@ function cargoPayload(draft, id, photos) {
 function cargoForm() {
   const me = state.me;
   const last = store.get('pacelam.lastRoute');
-  const draft = { mode: 'planned', from: last?.from || (myCity() ? { ...myCity(), radius: 0 } : null), to: last?.to || null, date_from: isoDate(), date_to: isoDate(), cargo_type_id: state.ref.cargoTypes[0]?.id || null, fields: {}, vehicle_type_code: null, weight_kg: '', volume_m3: '', length_m: '', width_m: '', height_m: '', photos: [], price: '', note: '', operator: false };
+  const pre = store.get('pacelam.prefill');   // "offer my cargo" on a truck card
+  if (pre) store.set('pacelam.prefill', null);
+  const draft = { mode: 'planned', from: pre?.from || last?.from || (myCity() ? { ...myCity(), radius: 0 } : null), to: pre?.to || last?.to || null, date_from: pre?.date_from || isoDate(), date_to: pre?.date_to || pre?.date_from || isoDate(), cargo_type_id: state.ref.cargoTypes[0]?.id || null, fields: {}, vehicle_type_code: null, weight_kg: '', volume_m3: '', length_m: '', width_m: '', height_m: '', photos: [], price: '', note: '', operator: false };
   const form = h('form.form', { novalidate: true });
   const fromBtn = placeButton('from', () => draft.from, (p) => { draft.from = p; }, true);
   const toBtn = placeButton('to', () => draft.to, (p) => { draft.to = p; }, true);
@@ -859,7 +900,7 @@ function cargoForm() {
   let dateWrap = dateChips(draft, true);
   const modeChips = chips([{ value: 'urgent', label: t('mode_urgent') }, { value: 'planned', label: t('mode_planned') }], { value: draft.mode, name: t('mode'), onChange: (v) => { draft.mode = v; modeHint.textContent = v === 'urgent' ? t('mode_urgent_hint') : t('mode_planned_hint'); priceLabel.textContent = v === 'urgent' ? t('price_urgent_label') : t('price_instant_label'); if (v === 'urgent') { draft.date_from = isoDate(); draft.date_to = isoDate(); } const next = dateChips(draft, v === 'planned'); dateWrap.replaceWith(next); dateWrap = next; } });
   modeChips.querySelectorAll('.chip').forEach((c, i) => c.classList.add(i === 0 ? 'chip--urgent' : 'chip--planned'));
-  form.append(h('div.form__section', null, h('div.form__title', null, t('mode')), modeChips, modeHint));
+  if (URGENT_CHOICE) form.append(h('div.form__section', null, h('div.form__title', null, t('mode')), modeChips, modeHint));
   form.append(dateWrap);
   const dyn = cargoFieldsBlock(draft);
   const ctChips = chips(state.ref.cargoTypes.map((c) => ({ value: c.id, label: nameOf(c) })), { value: draft.cargo_type_id, name: t('cargo_type'), onChange: (v) => { draft.cargo_type_id = v; draft.fields = {}; dyn.repaint(); } });
@@ -867,7 +908,7 @@ function cargoForm() {
   form.append(h('div.form__title', null, `${t('weight')} · ${t('dims')} · ${t('volume')}`), dimsFields(draft));
   form.append(field(t('vehicle_needed'), vehicleSelect(draft)));
   form.append(photoPicker(draft));
-  form.append(h('div.field', null, priceLabel, priceInput));
+  form.append(CUSTOMER_PRICE ? h('div.field', null, priceLabel, priceInput) : h('p.card.price-note', null, icon('bolt'), h('span', null, t('cargo_price_hint'))));
   form.append(field(t('note'), h('textarea.textarea', { placeholder: t('note_ph'), maxlength: 600, oninput: (e) => { draft.note = e.target.value; } })));
   if (me.profile.is_operator) form.append(h('label.check', null, h('input', { type: 'checkbox', onchange: (e) => { draft.operator = e.target.checked; } }), h('span', null, `${t('operator')} — ${t('operator_hint')}`)));
   const submit = h('button.btn.btn--primary.btn--big.btn--wide', { type: 'submit' }, t('submit_post'));
@@ -913,7 +954,7 @@ async function screenOperator() {
     dyn,
     h('div.grid2', null, mk('weight_kg', `${t('weight')}, ${t('kg')}`, '1200'), mk('volume_m3', `${t('volume')}, ${t('m3')}`, '4')),
     h('div.grid3', null, mk('length_m', `L, ${t('m')}`, '2.4'), mk('width_m', `W, ${t('m')}`, '1.2'), mk('height_m', `H, ${t('m')}`, '1.6')),
-    h('div.grid2', null, field(t('vehicle_needed'), vehicleSelect(draft)), mk('price', t('price_urgent_label'), '120')),
+    CUSTOMER_PRICE ? h('div.grid2', null, field(t('vehicle_needed'), vehicleSelect(draft)), mk('price', t('price_urgent_label'), '120')) : field(t('vehicle_needed'), vehicleSelect(draft)),
     field(t('note'), noteIn, t('operator_privacy')),
     submit);
   form.addEventListener('submit', async (e) => {
