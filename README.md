@@ -32,7 +32,9 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
 1. Create a project (free tier). In the SQL editor run, in order:
    `supabase/migrations/0001_init.sql`, `0002_seed.sql`, `0003_storage.sql`, `0004_urgent_price.sql`
    (price decides in the urgent mode too: carriers agree to the customer's price or offer their own,
-   the customer picks, and accepting an urgent offer confirms the deal and opens contacts at once).
+   the customer picks, and accepting an urgent offer confirms the deal and opens contacts at once),
+   `0005_carrier_price.sql` (only the carrier names a price: a new cargo posting carries none, the
+   customer taps "Agree" on an offer and the deal closes at once with contacts open on both sides).
 2. Authentication → Providers → Email: for a test project turn **off** "Confirm email";
    set Site URL to the page URL (for password-reset links).
 3. Put the project URL and the anon key into `config.js`:
@@ -55,7 +57,7 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
   via `node scripts/gen-seed.mjs`), `js/i18n.js` lv/ru/en.
 - `supabase/migrations/0001_init.sql` — the whole model: tables, RLS, bids/deals functions,
   contact unlocks, saved-search notifications, subscription switch.
-- `_audit/` — checks: `db-test.mjs` (60 policy tests in PGlite), `leak-rest.mjs` (contact leak
+- `_audit/` — checks: `db-test.mjs` (77 policy tests in PGlite), `leak-rest.mjs` (contact leak
   through the real REST API), `timing.mjs` (20-second posting), `lang-fonts.mjs` (?lang and
   Latvian diacritics by pixel comparison), `screens.mjs` (every screen at 360/390/1280/1920),
   `keyboard-operator.mjs` (operator posts with the keyboard only), `table-rows.mjs`, `shots.mjs`,

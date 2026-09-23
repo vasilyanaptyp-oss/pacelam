@@ -1,6 +1,8 @@
 // Database-level test of the Paceļam schema in PGlite (real Postgres, WASM).
 // Applies the auth shim, the migrations, then plays the business scenarios as different users
 // through `set role authenticated` + JWT claims, exactly how Supabase evaluates RLS.
+// 0001–0004 scenarios first (postings made before 23.09 keep the customer's price), then 0005 is
+// applied and the carrier-price rules are played on fresh users.
 // Run: node _audit/db-test.mjs
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
@@ -321,6 +323,59 @@ await asAnon(async () => {
   check('board closed to visitors: anonymous sees nothing', open[0].n === 0, JSON.stringify(open));
 });
 await db.exec(`update settings set value = 'true' where key = 'board_open_to_visitors'`);
+
+// --- 0005 (23.09.2026): only the carrier names a price; "Agree" closes the deal at once ---------------
+// Fresh customer Eva and carrier Gatis: no earlier deals, so every open contact comes from this deal.
+await db.exec(read('supabase/migrations/0005_carrier_price.sql'));
+const E = { eva: '55555555-5555-4555-8555-555555555555', gatis: '66666666-6666-4666-8666-666666666666' };
+await db.exec(`insert into auth.users (id, email) values ('${E.eva}', 'eva@example.com'), ('${E.gatis}', 'gatis@example.com')`);
+await as(E.eva, async () => {
+  await db.query(`insert into profiles (id, role, display_name, city_name, city_lat, city_lng) values ($1, 'customer', 'Eva', 'Rīga', 56.95, 24.11)`, [E.eva]);
+  await db.query(`insert into profile_contacts (profile_id, phone) values ($1, '+371 20000005')`, [E.eva]);
+});
+await as(E.gatis, async () => {
+  await db.query(`insert into profiles (id, role, display_name, city_name, city_lat, city_lng) values ($1, 'carrier', 'Gatis', 'Rēzekne', 56.51, 27.33)`, [E.gatis]);
+  await db.query(`insert into profile_contacts (profile_id, phone) values ($1, '+371 20000006')`, [E.gatis]);
+});
+let plainId;
+await as(E.eva, async () => {
+  const r = await rows(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, price)
+    values ('cargo', 'planned', $1, 'Rēzekne', 56.51, 27.33, 'Rīga', 56.95, 24.11, current_date + 1, current_date + 2, 500) returning id, price`, [E.eva]);
+  plainId = r[0].id;
+  check('0005: a customer\'s cargo keeps no price even if one is sent', r[0].price === null, JSON.stringify(r[0]));
+  await db.query(`update postings set price = 300, is_operator_posting = true where id = $1`, [plainId]);
+  const p = (await rows(`select price, is_operator_posting from postings where id = $1`, [plainId]))[0];
+  check('0005: nor can the customer add a price or the operator tag later', p.price === null && p.is_operator_posting === false, JSON.stringify(p));
+});
+let gatisBid;
+await as(E.gatis, async () => {
+  const takeErr = await fails(`select take_posting($1)`, [plainId]);
+  check('0005: cargo without a price cannot be taken, only offered on', /no instant price/.test(takeErr || ''), takeErr);
+  gatisBid = (await rows(`select place_bid($1, 210) as id`, [plainId]))[0].id;
+  check('0005: the carrier names his price', !!gatisBid);
+  const c = await rows(`select phone from profile_contacts where profile_id = $1`, [E.eva]);
+  check('0005: naming a price opens no contacts', c.length === 0, JSON.stringify(c));
+});
+await as(U.dace, async () => { await rows(`select place_bid($1, 230)`, [plainId]); });
+await as(E.eva, async () => {
+  const before = await rows(`select phone from profile_contacts where profile_id = $1`, [E.gatis]);
+  check('0005: before agreeing the customer sees no carrier phone', before.length === 0, JSON.stringify(before));
+  await rows(`select accept_bid($1)`, [gatisBid]);
+  const d = await rows(`select status, carrier_id, amount from deals where posting_id = $1`, [plainId]);
+  check('0005: "Agree" on a planned cargo confirms the deal at once', d.length === 1 && d[0].status === 'confirmed' && d[0].carrier_id === E.gatis && Number(d[0].amount) === 210, JSON.stringify(d));
+  const c = await rows(`select phone from profile_contacts where profile_id = $1`, [E.gatis]);
+  check('0005: right after agreeing the customer sees the carrier\'s phone', c.length === 1, JSON.stringify(c));
+  const other = await rows(`select status from bids where posting_id = $1 and bidder_id = $2`, [plainId, U.dace]);
+  check('0005: the other offer is rejected', other.length === 1 && other[0].status === 'rejected', JSON.stringify(other));
+});
+await as(E.gatis, async () => {
+  const c = await rows(`select phone from profile_contacts where profile_id = $1`, [E.eva]);
+  check('0005: the carrier sees the customer\'s phone too', c.length === 1, JSON.stringify(c));
+});
+await as(U.dace, async () => {
+  const c = await rows(`select phone from profile_contacts where profile_id = $1`, [E.eva]);
+  check('0005: the carrier whose offer lost sees no contacts', c.length === 0, JSON.stringify(c));
+});
 
 console.log(`\n${results.length} checks, ${failures} failed`);
 process.exit(failures ? 1 : 0);
