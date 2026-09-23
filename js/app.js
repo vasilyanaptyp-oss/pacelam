@@ -2,7 +2,7 @@
 // One adaptive layout: cards below 1024 px, a sortable table with a filter sidebar from 1024 px,
 // plus an inline details panel from 1440 px. Data and logic are shared; only rendering switches.
 import { api } from './api.js';
-import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf } from './i18n.js';
+import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js';
 import { h, $, $$, clear, append, icon, toast, sheet, confirmSheet, field, input, chips, spinner, emptyState, fmtMoney, fmtInt, fmtNum, fmtDate, fmtDateRange, relTime, isoDate, addDays } from './ui.js';
 import { CITIES, searchCities, findCity, nearestCity, haversineKm, detourKm } from './geo.js';
 import { compressPhoto } from './photos.js';
@@ -54,6 +54,8 @@ const myCity = () => (state.me?.profile?.city_lat != null ? { lat: state.me.prof
 const isCustomer = () => state.me?.profile?.role === 'customer';
 const photoThumb = (p) => (api.mode === 'demo' ? p : api.photoUrl(p.replace(/\.jpg$/, '_t.jpg')));
 const photoFull = (p) => api.photoUrl(p);
+// The last route is remembered per user: one browser may hold the carrier and the customer (demo, a shared office phone).
+const lastRouteKey = () => `pacelam.lastRoute.${myId() || 'guest'}`;
 
 function errorText(e) {
   const m = String(e?.message || '');
@@ -748,17 +750,19 @@ async function screenDetail(id) {
 // Posting forms
 // ---------------------------------------------------------------------------------------
 async function screenPost(param) {
-  // #/post — the two doors; #/post/cargo, #/post/truck — the posting itself
-  if (param !== 'cargo' && param !== 'truck') return h('section.screen.narrow', null, offerBlock({ page: true }));
-  state.postKind = param;
+  // #/post — the two doors; #/post/cargo, #/post/truck — the wizard; …/full — every field in one form
+  const [kindParam, variant] = String(param || '').split('/');
+  if (kindParam !== 'cargo' && kindParam !== 'truck') return h('section.screen.narrow', null, offerBlock({ page: true }));
+  state.postKind = kindParam;
   if (!requireAuth()) return h('div');
+  if (variant !== 'full') return wizard(kindParam);
   const me = state.me;
   const kind = state.postKind || (me.profile.role === 'carrier' ? 'truck' : 'cargo');
   const el = h('section.screen.narrow');
   el.append(h('div.row.row--between', { style: { marginBottom: '12px' } }, h('h1', null, t('post_title')), me.profile.is_operator ? h('a.btn.btn--ghost.btn--sm', { href: '#/operator' }, icon('bolt'), t('operator_title')) : null));
   el.append(h('div.seg', { role: 'tablist' },
-    h('button', { type: 'button', role: 'tab', 'aria-selected': kind === 'cargo' ? 'true' : 'false', class: kind === 'cargo' ? 'is-on' : '', onclick: () => { state.postKind = 'cargo'; render(); } }, t('kind_cargo_long')),
-    h('button', { type: 'button', role: 'tab', 'aria-selected': kind === 'truck' ? 'true' : 'false', class: kind === 'truck' ? 'is-on' : '', onclick: () => { state.postKind = 'truck'; render(); } }, t('kind_truck_long'))));
+    h('button', { type: 'button', role: 'tab', 'aria-selected': kind === 'cargo' ? 'true' : 'false', class: kind === 'cargo' ? 'is-on' : '', onclick: () => go('#/post/cargo/full') }, t('kind_cargo_long')),
+    h('button', { type: 'button', role: 'tab', 'aria-selected': kind === 'truck' ? 'true' : 'false', class: kind === 'truck' ? 'is-on' : '', onclick: () => go('#/post/truck/full') }, t('kind_truck_long'))));
   el.append(kind === 'truck' ? truckForm() : cargoForm());
   return el;
 }
@@ -807,7 +811,7 @@ function dimsFields(draft) {
     h('div.grid3', null, mk('length_m', `L, ${t('m')}`, '2.4'), mk('width_m', `W, ${t('m')}`, '1.2'), mk('height_m', `H, ${t('m')}`, '1.6')));
 }
 function afterPost(p) {
-  store.set('pacelam.lastRoute', { from: { name: p.from_name, lat: p.from_lat, lng: p.from_lng, radius: p.from_radius_km }, to: { name: p.to_name, lat: p.to_lat, lng: p.to_lng, radius: p.to_radius_km } });
+  store.set(lastRouteKey(), { from: { name: p.from_name, lat: p.from_lat, lng: p.from_lng, radius: p.from_radius_km }, to: { name: p.to_name, lat: p.to_lat, lng: p.to_lng, radius: p.to_radius_km } });
   if (p.kind === 'truck') { state.route = { from: { name: p.from_name, lat: p.from_lat, lng: p.from_lng }, to: { name: p.to_name, lat: p.to_lat, lng: p.to_lng }, maxDetour: state.route?.maxDetour || state.me?.profile?.max_detour_km || 60 }; store.set('pacelam.route', state.route); }
   toast(t('posted_ok'));
   go(`#/p/${p.id}`);
@@ -819,7 +823,7 @@ function vehicleChips(vehicles, draft) {
 }
 function truckForm() {
   const me = state.me;
-  const last = store.get('pacelam.lastRoute');
+  const last = store.get(lastRouteKey());
   const vehicles = me.vehicles || [];
   const def = vehicles.find((v) => v.is_default) || vehicles[0] || null;
   const draft = { vehicle: def, from: last?.from || (myCity() ? { ...myCity(), radius: 0 } : null), to: last?.to || null, date_from: addDays(1), date_to: addDays(1), weight_kg: def?.tonnage_t != null ? Math.round(def.tonnage_t * 1000) : '', volume_m3: def?.volume_m3 ?? '', length_m: def?.length_m ?? '', width_m: def?.width_m ?? '', height_m: def?.height_m ?? '', price: '', note: '' };
@@ -843,11 +847,14 @@ function truckForm() {
     submit.disabled = true;
     try {
       const id = uuid();
-      const p = await api.createPosting({ id, kind: 'truck', mode: 'planned', from_name: draft.from.name, from_lat: draft.from.lat, from_lng: draft.from.lng, from_radius_km: draft.from.radius || 0, to_name: draft.to.name, to_lat: draft.to.lat, to_lng: draft.to.lng, to_radius_km: draft.to.radius || 0, date_from: draft.date_from, date_to: draft.date_to || draft.date_from, vehicle_type_code: draft.vehicle.type_code, vehicle_id: draft.vehicle.id, weight_kg: num(draft.weight_kg), volume_m3: num(draft.volume_m3), length_m: num(draft.length_m), width_m: num(draft.width_m), height_m: num(draft.height_m), price: num(draft.price), note: draft.note.trim() || null });
+      const p = await api.createPosting(truckPayload(draft, id));
       afterPost(p);
     } catch (err) { fail(err); submit.disabled = false; }
   });
   return form;
+}
+function truckPayload(draft, id) {
+  return { id, kind: 'truck', mode: 'planned', from_name: draft.from.name, from_lat: draft.from.lat, from_lng: draft.from.lng, from_radius_km: draft.from.radius || 0, to_name: draft.to.name, to_lat: draft.to.lat, to_lng: draft.to.lng, to_radius_km: draft.to.radius || 0, date_from: draft.date_from, date_to: draft.date_to || draft.date_from, vehicle_type_code: draft.vehicle.type_code, vehicle_id: draft.vehicle.id, weight_kg: num(draft.weight_kg), volume_m3: num(draft.volume_m3), length_m: num(draft.length_m), width_m: num(draft.width_m), height_m: num(draft.height_m), price: num(draft.price), note: String(draft.note || '').trim() || null };
 }
 function cargoFieldsBlock(draft, mode = 'chips') {
   const dyn = h('div.stack.stack--tight');
@@ -886,7 +893,7 @@ function cargoPayload(draft, id, photos) {
 }
 function cargoForm() {
   const me = state.me;
-  const last = store.get('pacelam.lastRoute');
+  const last = store.get(lastRouteKey());
   const pre = store.get('pacelam.prefill');   // "offer my cargo" on a truck card
   if (pre) store.set('pacelam.prefill', null);
   const draft = { mode: 'planned', from: pre?.from || last?.from || (myCity() ? { ...myCity(), radius: 0 } : null), to: pre?.to || last?.to || null, date_from: pre?.date_from || isoDate(), date_to: pre?.date_to || pre?.date_from || isoDate(), cargo_type_id: state.ref.cargoTypes[0]?.id || null, fields: {}, vehicle_type_code: null, weight_kg: '', volume_m3: '', length_m: '', width_m: '', height_m: '', photos: [], price: '', note: '', operator: false };
@@ -926,6 +933,306 @@ function cargoForm() {
     } catch (err) { fail(err); submit.disabled = false; }
   });
   return form;
+}
+
+// ---------------------------------------------------------------------------------------
+// Posting wizard: one question per screen — map (from → to), calendar, what, publish.
+// Client's wording (23.09.2026): "открывается карта, там отмечаешь на карте откуда и куда нужно,
+// и после этого открывается календарь, там помечаешь дни, когда еду или когда можно забрать груз".
+// A tap on the map snaps to the nearest town: the exchange works with towns, exact GPS is never kept.
+// The map library (Leaflet, vendor/) loads only here, so the board stays light.
+// ---------------------------------------------------------------------------------------
+let leafletReady = null;
+function loadLeaflet() {
+  if (window.L) return Promise.resolve(window.L);
+  if (!leafletReady) {
+    leafletReady = new Promise((resolve, reject) => {
+      document.head.append(h('link', { rel: 'stylesheet', href: '../vendor/leaflet/leaflet.css' }));
+      const s = document.createElement('script');
+      s.src = '../vendor/leaflet/leaflet.js';
+      s.onload = () => resolve(window.L);
+      s.onerror = () => { leafletReady = null; reject(new Error('map')); };
+      document.head.append(s);
+    });
+  }
+  return leafletReady;
+}
+const whenConnected = (el, fn, tries = 120) => { if (el.isConnected) fn(); else if (tries > 0) requestAnimationFrame(() => whenConnected(el, fn, tries - 1)); };
+const BALTICS = [[53.9, 20.9], [59.7, 28.3]];
+const dimLabel = (k) => `${t('dim_' + k)}, ${t('m')}`;
+
+function wizard(kind) {
+  const me = state.me;
+  const last = store.get(lastRouteKey());
+  const pre = store.get('pacelam.prefill');   // "offer my cargo" on a truck card
+  if (pre) store.set('pacelam.prefill', null);
+  const vehicles = me.vehicles || [];
+  const defVehicle = vehicles.find((v) => v.is_default) || vehicles[0] || null;
+  const fromVehicle = (v) => (kind === 'truck' && v ? { weight_kg: v.tonnage_t != null ? Math.round(v.tonnage_t * 1000) : '', volume_m3: v.volume_m3 ?? '', length_m: v.length_m ?? '', width_m: v.width_m ?? '', height_m: v.height_m ?? '' } : {});
+  const firstDay = kind === 'truck' ? addDays(1) : isoDate();
+  const draft = {
+    mode: 'planned', from: pre?.from || last?.from || (myCity() ? { ...myCity(), radius: 0 } : null), to: pre?.to || last?.to || null,
+    date_from: pre?.date_from || firstDay, date_to: pre?.date_to || pre?.date_from || firstDay,
+    cargo_type_id: state.ref.cargoTypes[0]?.id || null, fields: {}, vehicle_type_code: null, vehicle: defVehicle,
+    weight_kg: '', volume_m3: '', length_m: '', width_m: '', height_m: '', ...fromVehicle(defVehicle),
+    photos: [], price: '', note: '', operator: false,
+  };
+  const fromLast = !pre && !!last?.from && !!last?.to;
+  const STEPS = ['route', 'when', 'what', 'check'];
+  let step = 0;
+  let cleanup = null;
+  const el = h('section.screen.narrow.wiz');
+  const head = h('div.wiz__head');
+  const body = h('div.wiz__body');
+  const foot = h('div.wiz__foot');
+  el.append(head, body, foot);
+  const titles = { route: t('wiz_route_title'), when: kind === 'truck' ? t('wiz_when_truck') : t('wiz_when_cargo'), what: kind === 'truck' ? t('wiz_what_truck') : t('wiz_what_cargo'), check: t('wiz_check') };
+  const valid = () => {
+    if (STEPS[step] === 'route') { if (!draft.from || !draft.to) return t('validation_route'); if (draft.from.name === draft.to.name) return t('wiz_same_city'); }
+    if (STEPS[step] === 'when' && !draft.date_from) return t('validation_date');
+    if (STEPS[step] === 'what' && kind === 'truck' && !draft.vehicle) return t('validation_vehicle');
+    return null;
+  };
+  const publish = async (btn) => {
+    btn.disabled = true;
+    try {
+      const id = uuid();
+      let p;
+      if (kind === 'truck') p = await api.createPosting(truckPayload(draft, id));
+      else p = await api.createPosting(cargoPayload(draft, id, await uploadPhotos(draft, id)));
+      afterPost(p);
+    } catch (e) { fail(e); btn.disabled = false; }
+  };
+  const paint = () => {
+    cleanup?.(); cleanup = null;
+    clear(head); clear(body); clear(foot);
+    const name = STEPS[step];
+    head.append(
+      h('button.icon-btn.wiz__back', { type: 'button', 'aria-label': t('back'), onclick: () => { if (step === 0) go('#/post'); else { step--; paint(); } } }, icon('back')),
+      h('div.wiz__titles', null, h('p.wiz__step', null, t('wiz_step', { n: step + 1, total: STEPS.length })), h('h1.wiz__title', null, titles[name])),
+      h('div.wiz__dots', { 'aria-hidden': 'true' }, STEPS.map((s, i) => h('i', { class: i === step ? 'is-on' : (i < step ? 'is-done' : '') }))));
+    if (name === 'route') { const r = routeStep(draft, { fromLast, onPick: () => refreshNext() }); body.append(r); cleanup = r.cleanup; }
+    if (name === 'when') body.append(calendarStep(draft, kind));
+    if (name === 'what') body.append(kind === 'truck' ? truckWhatStep(draft, fromVehicle, paint) : cargoWhatStep(draft));
+    if (name === 'check') body.append(checkStep(draft, kind));
+    const isLast = step === STEPS.length - 1;
+    const next = h('button.btn.btn--primary.btn--big.btn--wide', { type: 'button', onclick: () => {
+      if (isLast) { publish(next); return; }
+      const err = valid(); if (err) { toast(err, 'error'); return; }
+      step++; paint(); window.scrollTo(0, 0);
+    } }, isLast ? icon('check') : null, isLast ? t('wiz_publish') : t('wiz_next'), isLast ? null : icon('arrow'));
+    const refreshNext = () => next.classList.toggle('is-waiting', !!valid());
+    refreshNext();
+    foot.append(next);
+    if (name === 'what' || name === 'check') body.append(h('a.wiz__full', { href: `#/post/${kind}/full` }, t('wiz_full_form')));
+  };
+  paint();
+  el.cleanup = () => cleanup?.();
+  return el;
+}
+
+// Step 1: two points on a map. "From"/"To" buttons choose which point the next tap sets; the search
+// field is the same thing for those who would rather type; ⇅ turns the last trip into the way back.
+function routeStep(draft, { fromLast, onPick }) {
+  let active = !draft.from ? 'from' : (!draft.to ? 'to' : null);
+  let map = null; let layer = null; let L = null;
+  const wrap = h('div.wroute');
+  const pt = (key) => h('button.wpt', { type: 'button', class: `wpt--${key}`, 'aria-pressed': 'false', onclick: () => { active = key; paintPts(); q.focus({ preventScroll: true }); } },
+    h('span.wpt__badge', { 'aria-hidden': 'true' }, key === 'from' ? 'A' : 'B'),
+    h('span.wpt__txt', null, h('span.wpt__k', null, t(key)), h('span.wpt__v')));
+  const fromBtn = pt('from');
+  const toBtn = pt('to');
+  const swap = h('button.wroute__swap', { type: 'button', 'aria-label': t('wiz_swap'), title: t('wiz_swap'), onclick: () => { [draft.from, draft.to] = [draft.to, draft.from]; paintPts(); draw(); onPick(); } }, icon('swap'));
+  const lastNote = h('p.wiz__hint', null, fromLast ? `↺ ${t('wiz_last')}` : t('wiz_route_hint'));
+  const q = input({ placeholder: t('city_search'), autocomplete: 'off', enterkeyhint: 'search', 'aria-label': t('city_search') });
+  const list = h('div.wsearch__list', { hidden: true });
+  const set = (key, c) => {
+    draft[key] = { name: c.name, lat: c.lat, lng: c.lng, radius: 0 };
+    active = key === 'from' ? (draft.to ? null : 'to') : null;
+    q.value = ''; list.hidden = true;
+    paintPts(); draw(); onPick();
+  };
+  const pickCity = (c) => set(active || 'to', c);
+  const showList = (items) => {
+    clear(list);
+    if (!items.length) { list.hidden = true; return; }
+    for (const c of items) list.append(h('button.cityrow', { type: 'button', onclick: () => pickCity(c) }, h('span', null, c.name), h('small', null, c.country)));
+    list.hidden = false;
+  };
+  q.addEventListener('input', () => { const v = q.value.trim(); showList(v ? searchCities(v, 6) : []); });
+  q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const first = searchCities(q.value.trim(), 1)[0]; if (first) pickCity(first); } if (e.key === 'Escape') list.hidden = true; });
+  const geoBtn = h('button.wmap__geo', { type: 'button', 'aria-label': t('my_location'), title: t('my_location'), onclick: () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((pos) => { set(active || 'from', nearestCity(pos.coords.latitude, pos.coords.longitude).city); }, () => toast(t('error_generic'), 'error'), { timeout: 8000, maximumAge: 60000 });
+  } }, icon('target'));
+  const mapBox = h('div.wmap', null, h('div.wmap__canvas'), geoBtn);
+  const mapNote = h('p.wmap__attr', null, '© ', h('a', { href: 'https://www.openstreetmap.org/copyright', target: '_blank', rel: 'noopener' }, 'OpenStreetMap'));
+  const paintPts = () => {
+    for (const [key, btn] of [['from', fromBtn], ['to', toBtn]]) {
+      const v = btn.querySelector('.wpt__v');
+      v.textContent = draft[key]?.name || t('pick_city');
+      v.classList.toggle('is-empty', !draft[key]);
+      btn.classList.toggle('is-active', active === key);
+      btn.setAttribute('aria-pressed', active === key ? 'true' : 'false');
+    }
+    q.placeholder = active === 'from' ? `${t('from')}: ${t('city_search')}` : (active === 'to' ? `${t('to')}: ${t('city_search')}` : t('city_search'));
+  };
+  const pin = (key) => L.divIcon({ className: '', html: `<span class="wpin wpin--${key}"><b>${key === 'from' ? 'A' : 'B'}</b></span>`, iconSize: [34, 34], iconAnchor: [17, 34] });
+  const draw = () => {
+    if (!map) return;
+    layer.clearLayers();
+    const pts = [];
+    for (const key of ['from', 'to']) if (draft[key]) { L.marker([draft[key].lat, draft[key].lng], { icon: pin(key), keyboard: false, interactive: false }).addTo(layer); pts.push([draft[key].lat, draft[key].lng]); }
+    if (pts.length === 2) { L.polyline(pts, { color: '#F5A623', weight: 4, opacity: 0.9, dashArray: '8 8' }).addTo(layer); map.fitBounds(pts, { padding: [48, 48], maxZoom: 9, animate: false }); } else if (pts.length === 1) map.setView(pts[0], 8, { animate: false }); else map.fitBounds(BALTICS, { animate: false });
+  };
+  wrap.append(h('div.wroute__pts', null, fromBtn, swap, toBtn), lastNote, h('div.wsearch', null, q, list), mapBox, mapNote);
+  paintPts();
+  whenConnected(mapBox, () => {
+    loadLeaflet().then((lib) => {
+      if (!mapBox.isConnected) return;
+      L = lib;
+      // no zoom animation: lighter on cheap phones, and a step change mid-animation cannot break the map
+      map = L.map(mapBox.querySelector('.wmap__canvas'), { attributionControl: false, zoomAnimation: false, markerZoomAnimation: false, zoomSnap: 1, minZoom: 5, maxZoom: 12, maxBounds: [[52.5, 18.5], [61, 31]] });
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 12, minZoom: 5 }).addTo(map);
+      layer = L.layerGroup().addTo(map);
+      map.on('click', (e) => set(active || 'to', nearestCity(e.latlng.lat, e.latlng.lng).city));
+      map.fitBounds(BALTICS);
+      draw();
+    }).catch(() => { mapBox.replaceWith(h('p.card.wmap__off', null, t('wiz_map_off'))); });
+  });
+  wrap.cleanup = () => { try { map?.off(); map?.remove(); } catch { /* already gone */ } map = null; };
+  return wrap;
+}
+
+// Step 2: a calendar. One tap — one day; a second, later day — the range between them.
+function calendarStep(draft, kind) {
+  const wrap = h('div.cal');
+  const sel = h('p.cal__sel', { 'aria-live': 'polite' });
+  const quickWrap = h('div');
+  const months = h('div.cal__months');
+  let anchor = null;   // the first tap always picks one day; a later second tap makes the range
+  const today = isoDate();
+  const fmtWd = new Intl.DateTimeFormat(locale(), { weekday: 'short' });
+  const fmtMonth = new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric' });
+  const fmtLong = new Intl.DateTimeFormat(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
+  const ymd = (y, m, d) => isoDate(new Date(y, m, d, 12));
+  const pick = (day) => {
+    if (anchor && day > anchor) { draft.date_from = anchor; draft.date_to = day; anchor = null; }
+    else { draft.date_from = day; draft.date_to = day; anchor = day; }
+    paint();
+  };
+  const paint = () => {
+    sel.textContent = fmtDateRange(draft.date_from, draft.date_to);
+    clear(quickWrap);
+    quickWrap.append(chips([{ value: today, label: t('today') }, { value: addDays(1), label: t('tomorrow') }, { value: addDays(2), label: fmtDate(addDays(2)) }],
+      { value: draft.date_from === draft.date_to ? draft.date_from : null, name: t('when'), onChange: (v) => { draft.date_from = v; draft.date_to = v; anchor = v; paint(); } }));
+    clear(months);
+    const now = new Date();
+    for (let k = 0; k < 2; k++) {
+      const y = new Date(now.getFullYear(), now.getMonth() + k, 1).getFullYear();
+      const m = new Date(now.getFullYear(), now.getMonth() + k, 1).getMonth();
+      const grid = h('div.cal__grid', { role: 'group', 'aria-label': fmtMonth.format(new Date(y, m, 1)) });
+      for (let i = 0; i < 7; i++) grid.append(h('span.cal__wd', { 'aria-hidden': 'true' }, fmtWd.format(new Date(2024, 0, 1 + i))));
+      const lead = (new Date(y, m, 1).getDay() + 6) % 7;
+      for (let i = 0; i < lead; i++) grid.append(h('span'));
+      const days = new Date(y, m + 1, 0).getDate();
+      for (let d = 1; d <= days; d++) {
+        const day = ymd(y, m, d);
+        const past = day < today;
+        const edge = day === draft.date_from || day === draft.date_to;
+        const inside = day > draft.date_from && day < draft.date_to;
+        grid.append(h('button.cal__day', {
+          type: 'button', disabled: past, class: [edge ? 'is-edge' : '', inside ? 'is-in' : '', day === today ? 'is-today' : ''].join(' ').trim(),
+          'aria-pressed': edge || inside ? 'true' : 'false', 'aria-label': fmtLong.format(new Date(y, m, d, 12)), onclick: () => pick(day),
+        }, String(d)));
+      }
+      months.append(h('div.cal__month', null, h('h2.cal__mname', null, fmtMonth.format(new Date(y, m, 1))), grid));
+    }
+  };
+  wrap.append(sel, quickWrap, h('p.wiz__hint', null, t('wiz_when_hint')), months);
+  paint();
+  return wrap;
+}
+
+// Step 3, cargo: category, weight, size, photos — the rest folds away.
+function cargoWhatStep(draft) {
+  const dyn = cargoFieldsBlock(draft);
+  const ctChips = chips(state.ref.cargoTypes.map((c) => ({ value: c.id, label: nameOf(c) })), { value: draft.cargo_type_id, name: t('cargo_type'), onChange: (v) => { draft.cargo_type_id = v; draft.fields = {}; dyn.repaint(); } });
+  const mk = (key, label, ph) => field(label, input({ inputmode: 'decimal', value: draft[key] ?? '', placeholder: ph, class: 'input--num', oninput: (e) => { draft[key] = e.target.value; } }));
+  return h('div.stack', null,
+    h('div.form__section', null, h('div.form__title', null, t('cargo_type')), ctChips, dyn),
+    h('div.grid2', null, mk('weight_kg', `${t('weight')}, ${t('kg')}`, '1200'), mk('volume_m3', `${t('volume')}, ${t('m3')}`, '4')),
+    h('div.grid3', null, mk('length_m', dimLabel('l'), '2.4'), mk('width_m', dimLabel('w'), '1.2'), mk('height_m', dimLabel('h'), '1.6')),
+    photoPicker(draft),
+    h('details.wiz__more', null, h('summary', null, t('wiz_more')),
+      h('div.stack', null, field(t('vehicle_needed'), vehicleSelect(draft)),
+        field(t('note'), h('textarea.textarea', { placeholder: t('note_ph'), maxlength: 600, oninput: (e) => { draft.note = e.target.value; } }, draft.note || '')))),
+    h('p.card.price-note', null, icon('bolt'), h('span', null, t('cargo_price_hint'))));
+}
+
+// Step 3, transport: the vehicle from the profile. No vehicle yet — it is added right here, once.
+function truckWhatStep(draft, fromVehicle, repaint) {
+  const vehicles = state.me.vehicles || [];
+  const box = h('div.stack');
+  if (vehicles.length) {
+    box.append(h('div.form__section', null, h('div.form__title', null, t('my_vehicle')), chips(vehicles.map((v) => ({ value: v.id, label: `${v.type_code} ${nameOf(vtype(v.type_code)) || ''}${v.plate ? ' · ' + v.plate : ''}` })), {
+      value: draft.vehicle?.id, name: t('my_vehicle'), onChange: (id) => { draft.vehicle = vehicles.find((x) => x.id === id) || null; Object.assign(draft, fromVehicle(draft.vehicle)); },
+    })));
+  } else {
+    const nv = { type_code: 'VT10', tonnage_t: '', plate: '' };
+    const sel = h('select.select', { onchange: (e) => { nv.type_code = e.target.value; } });
+    for (const g of state.ref.groups) {
+      const types = state.ref.vehicleTypes.filter((v) => v.group_id === g.id);
+      if (!types.length) continue;
+      const og = h('optgroup', { label: nameOf(g) });
+      for (const v of types) og.append(h('option', { value: v.code, selected: v.code === nv.type_code }, `${v.code} · ${nameOf(v)}`));
+      sel.append(og);
+    }
+    const save = h('button.btn.btn--primary.btn--wide', { type: 'button', onclick: async () => {
+      save.disabled = true;
+      try {
+        await api.addVehicle({ type_code: nv.type_code, plate: nv.plate.trim() || null, tonnage_t: num(nv.tonnage_t), volume_m3: null, length_m: null, width_m: null, height_m: null, is_default: true });
+        await loadMe();
+        const v = (state.me.vehicles || []).find((x) => x.is_default) || state.me.vehicles?.[0] || null;
+        draft.vehicle = v; Object.assign(draft, fromVehicle(v));
+        toast(t('saved')); repaint();
+      } catch (e) { fail(e); save.disabled = false; }
+    } }, icon('check'), t('wiz_vehicle_save'));
+    box.append(h('p.lead', null, t('wiz_vehicle_once')), field(t('vehicle_type'), sel),
+      h('div.grid2', null, field(t('tonnage'), input({ inputmode: 'decimal', class: 'input--num', placeholder: '8', oninput: (e) => { nv.tonnage_t = e.target.value; } })), field(t('plate'), input({ placeholder: 'AB-1234', maxlength: 16, oninput: (e) => { nv.plate = e.target.value; } }))),
+      save);
+  }
+  const mk = (key, label, ph) => field(label, input({ inputmode: 'decimal', value: draft[key] ?? '', placeholder: ph, class: 'input--num', oninput: (e) => { draft[key] = e.target.value; } }));
+  box.append(field(t('price_truck_label'), input({ inputmode: 'decimal', class: 'input--num', value: draft.price || '', oninput: (e) => { draft.price = e.target.value; } }), t('wiz_truck_price_hint')));
+  box.append(h('details.wiz__more', null, h('summary', null, t('wiz_more_truck')),
+    h('div.stack', null, h('div.grid2', null, mk('weight_kg', `${t('weight')}, ${t('kg')}`, '8000'), mk('volume_m3', `${t('volume')}, ${t('m3')}`, '40')),
+      h('div.grid3', null, mk('length_m', dimLabel('l'), '7.2'), mk('width_m', dimLabel('w'), '2.45'), mk('height_m', dimLabel('h'), '2.4')),
+      field(t('note'), h('textarea.textarea', { placeholder: t('note_ph'), maxlength: 600, oninput: (e) => { draft.note = e.target.value; } }, draft.note || '')))));
+  return box;
+}
+
+// Step 4: what will be published, one card, then the big button.
+function checkStep(draft, kind) {
+  const rows = h('dl.kv');
+  const add = (k, v) => { if (v) rows.append(h('dt', null, k), h('dd', null, v)); };
+  add(t('when'), fmtDateRange(draft.date_from, draft.date_to));
+  if (kind === 'truck') {
+    add(t('vehicle'), draft.vehicle ? `${draft.vehicle.type_code} ${nameOf(vtype(draft.vehicle.type_code)) || ''}` : '');
+    add(t('kv_asking'), num(draft.price) != null ? fmtMoney(num(draft.price)) : '');
+  } else {
+    add(t('cargo_type'), nameOf(ctype(draft.cargo_type_id)));
+    add(t('photos'), draft.photos.length ? String(draft.photos.length) : '');
+  }
+  const facts = factsLine({ weight_kg: num(draft.weight_kg), length_m: num(draft.length_m), width_m: num(draft.width_m), height_m: num(draft.height_m), volume_m3: num(draft.volume_m3) });
+  add(kind === 'truck' ? t('capacity') : `${t('weight')} · ${t('dims')}`, facts);
+  const card = h('div.card.wcheck', null,
+    h('span.tag', { class: kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, kind === 'cargo' ? t('kind_cargo') : t('kind_truck')),
+    h('div.wcheck__route', null, h('span', null, draft.from?.name || ''), icon('arrow'), h('span', null, draft.to?.name || '')),
+    rows);
+  const box = h('div.stack', null, card);
+  if (kind === 'cargo') box.append(h('p.card.price-note', null, icon('bolt'), h('span', null, t('cargo_price_hint'))));
+  if (kind === 'cargo' && state.me.profile.is_operator) box.append(h('label.check', null, h('input', { type: 'checkbox', checked: draft.operator, onchange: (e) => { draft.operator = e.target.checked; } }), h('span', null, `${t('operator')} — ${t('operator_hint')}`)));
+  return box;
 }
 
 // Operator: post on behalf of a caller, keyboard only, form stays ready for the next call.
@@ -1115,7 +1422,7 @@ async function screenProfile() {
   vs.append(list);
   el.append(vs);
   const foot = h('div.row', { style: { marginTop: '10px' } }, h('button.btn.btn--ghost', { type: 'button', onclick: async () => { await api.signOut(); state.me = null; go('#/'); } }, t('sign_out')));
-  if (api.mode === 'demo') foot.append(h('button.btn.btn--ghost', { type: 'button', onclick: () => { api.resetDemo(); state.me = null; state.route = null; state.selected = null; store.set('pacelam.route', null); store.set('pacelam.lastRoute', null); go('#/'); } }, 'Reset demo'));
+  if (api.mode === 'demo') foot.append(h('button.btn.btn--ghost', { type: 'button', onclick: () => { api.resetDemo(); state.me = null; state.route = null; state.selected = null; store.set('pacelam.route', null); store.set('pacelam.lastRoute', null); store.set(lastRouteKey(), null); go('#/'); } }, 'Reset demo'));
   el.append(foot);
   return el;
 }
