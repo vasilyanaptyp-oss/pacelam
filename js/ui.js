@@ -52,6 +52,7 @@ export const icons = {
   mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
   target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
   route: '<circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h5a4 4 0 0 0 0-8H11a4 4 0 0 1 0-8h5"/>',
+  down: '<path d="M12 4v15M6 13l6 6 6-6"/>',
 };
 export function icon(name, cls = '') {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

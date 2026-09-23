@@ -6,7 +6,8 @@ const KEY = 'pacelam.lang';
 const D = {
   lv: {
     brand_tag: 'Kravu birža atpakaļceļam',
-    nav_feed: 'Plūsma', nav_post: 'Pieteikt', nav_my: 'Mani', nav_search: 'Meklējumi', nav_profile: 'Profils',
+    nav_feed: 'Plūsma', nav_post: 'Piedāvāt', nav_my: 'Mani', nav_search: 'Meklējumi', nav_profile: 'Profils',
+    offer_title: 'Piedāvāt', offer_truck: 'Piedāvāt transportu',
     lang_pick: 'Valoda', notifications: 'Paziņojumi', no_notifications: 'Paziņojumu vēl nav.',
     demo_banner: 'Demonstrācijas režīms: dati ir piemērs un glabājas tikai šajā pārlūkā.',
     demo_login: 'Ieiet demo režīmā kā', demo_carrier: 'Pārvadātājs — Boriss, Daugavpils', demo_customer: 'Pasūtītājs — Anna, Rīga',
@@ -60,7 +61,8 @@ const D = {
   },
   ru: {
     brand_tag: 'Биржа обратной загрузки',
-    nav_feed: 'Лента', nav_post: 'Подать', nav_my: 'Мои', nav_search: 'Поиски', nav_profile: 'Профиль',
+    nav_feed: 'Лента', nav_post: 'Предложить', nav_my: 'Мои', nav_search: 'Поиски', nav_profile: 'Профиль',
+    offer_title: 'Предложить', offer_truck: 'Предложить транспорт',
     lang_pick: 'Язык', notifications: 'Уведомления', no_notifications: 'Уведомлений пока нет.',
     demo_banner: 'Демо-режим: данные примерные и хранятся только в этом браузере.',
     demo_login: 'Войти в демо как', demo_carrier: 'Перевозчик — Борис, Даугавпилс', demo_customer: 'Заказчик — Анна, Рига',
@@ -114,7 +116,8 @@ const D = {
   },
   en: {
     brand_tag: 'Backload exchange',
-    nav_feed: 'Board', nav_post: 'Post', nav_my: 'Mine', nav_search: 'Alerts', nav_profile: 'Profile',
+    nav_feed: 'Board', nav_post: 'Offer', nav_my: 'Mine', nav_search: 'Alerts', nav_profile: 'Profile',
+    offer_title: 'Offer', offer_truck: 'Offer transport',
     lang_pick: 'Language', notifications: 'Notifications', no_notifications: 'No notifications yet.',
     demo_banner: 'Demo mode: sample data, stored only in this browser.',
     demo_login: 'Enter the demo as', demo_carrier: 'Carrier — Boriss, Daugavpils', demo_customer: 'Customer — Anna, Rīga',
@@ -176,7 +179,13 @@ export function detectLang() {
   const saved = localStorage.getItem(KEY);
   if (saved && LANGS.includes(saved)) return saved;
   const nav = (navigator.languages || [navigator.language || '']).map((l) => String(l).slice(0, 2).toLowerCase());
-  return nav.find((l) => LANGS.includes(l)) || 'lv';
+  return nav.find((l) => LANGS.includes(l)) || fallbackLang(nav);
+}
+// Phone in a language the site does not have: a Ukrainian or Belarusian driver reads Russian better
+// than Latvian, anyone else gets English. Latvian stays for Latvian phones.
+export function fallbackLang(nav) {
+  if (nav.some((l) => ['uk', 'be', 'kk', 'ky', 'uz', 'tg', 'az', 'hy', 'ka', 'mo'].includes(l))) return 'ru';
+  return nav.some((l) => l) ? 'en' : 'lv';
 }
 
 export function setLang(lang, { persist = true } = {}) {

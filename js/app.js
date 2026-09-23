@@ -71,6 +71,14 @@ function applyTheme(theme) {
   $('meta[name="theme-color"]')?.setAttribute('content', theme === 'light' ? '#F3F5F8' : '#0B0D11');
   store.set('pacelam.theme', theme);
 }
+// LV | RU | EN always in the header, big enough for a thumb: a driver who does not read Latvian
+// must find his language without reading anything. The choice is remembered (i18n.setLang).
+function langSwitch() {
+  return h('div.langsw', { role: 'group', 'aria-label': t('lang_pick') }, LANGS.map((l) => h('button', {
+    type: 'button', lang: l, class: l === getLang() ? 'is-on' : '', 'aria-pressed': l === getLang() ? 'true' : 'false',
+    onclick: () => { if (l === getLang()) return; setLang(l); renderChrome(); render(); },
+  }, l.toUpperCase())));
+}
 function langSheet() {
   const s = sheet({
     title: t('lang_pick'),
@@ -109,7 +117,7 @@ function renderChrome() {
     topActions.append(bell);
   }
   topActions.append(h('a.lang-btn.top__about', { href: `../?lang=${getLang()}` }, t('about')));
-  topActions.append(h('button.lang-btn', { type: 'button', 'aria-label': t('lang_pick'), onclick: langSheet }, getLang().toUpperCase()));
+  topActions.append(langSwitch());
   clear(nav);
   for (const [href, ic, label, name] of navItems().filter((i) => i[3] !== 'operator')) {
     const active = current === name;
@@ -421,6 +429,30 @@ function filterSheet() {
 }
 
 // ---------------------------------------------------------------------------------------
+// "Offer" — two big doors: cargo and transport. The client's wording (23.09.2026): the first thing
+// on the site is "Предложить ⬇ Груз / Транспорт", understood from the pictures, not from the words.
+// ---------------------------------------------------------------------------------------
+function offerBlock({ page = false } = {}) {
+  const door = (kind) => h('button.offer__btn', {
+    type: 'button', class: `offer__btn--${kind}`, 'aria-label': kind === 'truck' ? t('offer_truck') : t('offer_cargo'),
+    onclick: () => startOffer(kind),
+  }, icon(kind === 'truck' ? 'truck' : 'box'), h('span', null, kind === 'truck' ? t('kind_truck') : t('kind_cargo')));
+  return h('section.offer', { class: page ? 'offer--page' : '' },
+    h(page ? 'h1.offer__title' : 'h2.offer__title', null, t('offer_title'), icon('down')),
+    h('div.offer__row', null, door('cargo'), door('truck')));
+}
+// A visitor in the demo becomes the matching sample user at once: cargo — the customer, transport — the carrier.
+async function startOffer(kind) {
+  if (!state.session && api.mode === 'demo') {
+    const u = api.demoUsers.find((x) => x.key === (kind === 'truck' ? 'demo_carrier' : 'demo_customer'));
+    if (u) { await api.signInDemo(u.id); await loadMe(); }
+  }
+  if (!state.session) state.roleHint = kind === 'truck' ? 'carrier' : 'customer';
+  state.postKind = kind;
+  go(`#/post/${kind}`);
+}
+
+// ---------------------------------------------------------------------------------------
 // Feed / board
 // ---------------------------------------------------------------------------------------
 const COLUMNS = [
@@ -479,13 +511,14 @@ async function screenFeed() {
     h('button.btn.btn--ghost.btn--sm', { type: 'button', onclick: () => { state.filter = emptyFilter(); state.showAll = false; render(); } }, t('reset')));
   el.append(aside);
 
+  main.append(offerBlock());
   if (api.mode === 'demo') main.append(h('div.banner', null, t('demo_banner')));
   if (!state.session) main.append(h('div.card.cta', null, h('p', null, t('feed_visitors_cta')), h('a.btn.btn--primary', { href: '#/auth' }, t('sign_in'))));
   const strip = h('div.strip', null, routeUi ? routeBtn() : h('div.picker', { style: { cursor: 'default' } }, h('span', null, h('span.picker__k', null, t('feed_title')), h('span.picker__v', null, myCity()?.name || ''))), h('button.icon-btn', { type: 'button', 'aria-label': t('feed_filter'), 'aria-pressed': filterActive() ? 'true' : 'false', class: filterActive() ? 'is-on' : '', onclick: filterSheet }, icon('list')));
   main.append(strip);
   if (routeUi && !state.route && state.session) main.append(h('p.lead.board__hint', null, t('feed_route_none')));
   const toolbar = h('div.board__toolbar');
-  main.append(toolbar, listWrap);
+  main.append(toolbar, listWrap, h('p.feed__about', null, h('a', { href: `../?lang=${getLang()}` }, t('about'))));
   el.append(main, detail);
 
   const compute = () => {
@@ -675,7 +708,10 @@ async function screenDetail(id) {
 // ---------------------------------------------------------------------------------------
 // Posting forms
 // ---------------------------------------------------------------------------------------
-async function screenPost() {
+async function screenPost(param) {
+  // #/post — the two doors; #/post/cargo, #/post/truck — the posting itself
+  if (param !== 'cargo' && param !== 'truck') return h('section.screen.narrow', null, offerBlock({ page: true }));
+  state.postKind = param;
   if (!requireAuth()) return h('div');
   const me = state.me;
   const kind = state.postKind || (me.profile.role === 'carrier' ? 'truck' : 'cargo');
@@ -1201,10 +1237,12 @@ async function boot() {
   if (params.get('role')) state.roleHint = params.get('role') === 'customer' ? 'customer' : 'carrier';
   const [vehicleTypes, groups, cargoTypes] = await Promise.all([api.getVehicleTypes(), api.getVehicleGroups(), api.getCargoTypes()]).catch(() => [[], [], []]);
   state.ref = { vehicleTypes: vehicleTypes || [], groups: groups || [], cargoTypes: cargoTypes || [] };
-  // Links from the public page: ?demo=carrier|customer|operator signs into the demo directly.
+  // Links from the public page: ?demo=carrier|customer|operator signs into the demo directly,
+  // ?post=cargo|truck opens posting straight away (the "Offer: cargo / transport" doors).
   const demo = params.get('demo');
+  const post = ['cargo', 'truck'].includes(params.get('post')) ? params.get('post') : null;
   // Not signed in, no invitation from the public page, straight to the board? Explain the service first.
-  if (!api.getSession() && !demo && !params.get('role') && !params.get('visit') && (route().name === 'feed')) {
+  if (!api.getSession() && !demo && !post && !params.get('role') && !params.get('visit') && (route().name === 'feed')) {
     location.replace(`../?lang=${getLang()}`);
     return;
   }
@@ -1212,12 +1250,17 @@ async function boot() {
     const u = api.demoUsers.find((x) => x.key === `demo_${demo}`);
     if (u && api.userId() !== u.id) await api.signInDemo(u.id);
   }
-  if (demo || params.get('role') || params.get('visit')) {
+  if (post && !api.getSession()) {
+    if (api.mode === 'demo') { const u = api.demoUsers.find((x) => x.key === (post === 'truck' ? 'demo_carrier' : 'demo_customer')); if (u) await api.signInDemo(u.id); }
+    else state.roleHint = post === 'truck' ? 'carrier' : 'customer';
+  }
+  if (demo || post || params.get('role') || params.get('visit')) {
     const url = new URL(location.href);
     url.searchParams.delete('demo');
+    url.searchParams.delete('post');
     url.searchParams.delete('role');
     url.searchParams.delete('visit');
-    history.replaceState(null, '', url.pathname + url.search + (location.hash || '#/'));
+    history.replaceState(null, '', url.pathname + url.search + (post ? `#/post/${post}` : (location.hash || '#/')));
   }
   await loadMe();
   api.onAuth(async () => { await loadMe(); renderChrome(); });

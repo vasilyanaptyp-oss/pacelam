@@ -50,11 +50,14 @@
       <div class="hero__copy">
         <p class="eyebrow a1"><i></i><span data-i18n="eyebrow">Kravu birža atpakaļceļam · Latvija un Baltija</span></p>
         <h1 class="a2" data-i18n-html="h1">Brauc atpakaļ <em>ar kravu</em>, nevis tukšs.</h1>
-        <p class="hero__lead a3" data-i18n-html="lead">Pārvadātājs atgriežas tukšs — tas ir tīrs zaudējums. Pasūtītājam tieši turp jāaizsūta krava. <b>Paceļam</b> saved abus: sludinājums 20 sekundēs, līkums kilometros uz katras kartītes, kontakti tikai pēc darījuma.</p>
-        <div class="hero__actions a4">
-          <a class="btn btn--primary btn--big" href="app/?role=customer#/auth" data-app><span data-i18n="cta_customer">MEKLĒJU transportu</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
-          <a class="btn btn--ghost btn--big" href="app/?role=carrier#/auth" data-app><span data-i18n="cta_carrier">PIEDĀVĀJU transportu</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
+        <div class="offer a3" role="group" aria-labelledby="offer-h">
+          <p class="offer__title" id="offer-h"><span data-i18n="offer_h">Piedāvāt</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v15M6 13l6 6 6-6"/></svg></p>
+          <div class="offer__row">
+            <a class="offer__btn offer__btn--cargo" href="app/?post=cargo" data-app aria-label="Piedāvāt kravu" data-i18n-aria="offer_cargo_aria"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 7v10l8 4 8-4V7z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg><span data-i18n="offer_cargo">Krava</span></a>
+            <a class="offer__btn offer__btn--truck" href="app/?post=truck" data-app aria-label="Piedāvāt transportu" data-i18n-aria="offer_truck_aria"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h10v9H3zM13 10h4l3 3v3h-7z"/><circle cx="7" cy="17.5" r="1.5"/><circle cx="17" cy="17.5" r="1.5"/></svg><span data-i18n="offer_truck">Transports</span></a>
+          </div>
         </div>
+        <p class="hero__lead a4" data-i18n-html="lead">Pārvadātājs atgriežas tukšs — tas ir tīrs zaudējums. Pasūtītājam tieši turp jāaizsūta krava. <b>Paceļam</b> saved abus: sludinājums 20 sekundēs, līkums kilometros uz katras kartītes, kontakti tikai pēc darījuma.</p>
         <div class="hero__demo a5">
           <p data-i18n="demo_p">Apskatīt bez reģistrācijas — demo ar piemēra datiem:</p>
           <div class="row">
@@ -198,7 +201,7 @@
             <li data-i18n-html="c4"><b>Vairākas transporta vienības</b> vienā profilā — dispečers izliek un sadala no viena ekrāna.</li>
             <li data-i18n-html="c5"><b>Bez maksas</b> starta posmā.</li>
           </ul>
-          <a class="btn btn--primary" href="app/?role=carrier#/auth" data-app><span data-i18n="cta_carrier2">Piedāvāt transportu</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
+          <a class="btn btn--primary" href="app/?post=truck" data-app><span data-i18n="cta_carrier2">Piedāvāt transportu</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
         </div>
         <div class="who__card is-customer rv">
           <h3><i></i><span data-i18n="customer_h">Pasūtītājam</span></h3>
@@ -209,7 +212,7 @@
             <li data-i18n-html="k4"><b>Kontakti slēgti līdz darījumam:</b> tālrunis nenonāk pie tiem, kas nebrauc.</li>
             <li data-i18n-html="k5"><b>Steidzami vai plānoti</b> — tu izvēlies, kas svarīgāks: ātrums vai cena.</li>
           </ul>
-          <a class="btn btn--primary" href="app/?role=customer#/auth" data-app><span data-i18n="cta_customer2">Izlikt kravu</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
+          <a class="btn btn--primary" href="app/?post=cargo" data-app><span data-i18n="cta_customer2">Izlikt kravu</span><i class="btn__arr" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></i></a>
         </div>
       </div>
     </div>

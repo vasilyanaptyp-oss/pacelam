@@ -10,6 +10,7 @@
       h1: 'Возвращайся <em>с грузом</em>, а не пустым.',
       lead: 'Перевозчик едет обратно порожним — это чистый убыток. Заказчику надо отправить груз ровно туда. <b>Paceļam</b> сводит обоих: объявление за 20 секунд, крюк в километрах на каждой карточке, контакты только после сделки.',
       cta_customer: 'ИЩУ транспорт', cta_carrier: 'ПРЕДЛАГАЮ транспорт',
+      offer_h: 'Предложить', offer_cargo: 'Груз', offer_truck: 'Транспорт', offer_cargo_aria: 'Предложить груз', offer_truck_aria: 'Предложить транспорт',
       demo_p: 'Посмотреть без регистрации — демо с примерными данными:', demo_carrier: 'Попробовать как перевозчик', demo_customer: 'Попробовать как заказчик',
       m_cargo: 'Груз', m_cargo2: 'Груз', m_urgent: 'Срочно', m_urgent2: 'Срочно', m_planned: 'Планово', m_planned2: 'Планово', m_age1: '3 мин назад', m_age2: '1 ч назад',
       m_metric1: 'по пути<small>41 км пути</small>', m_meta1: 'Автомобиль · VT08 Эвакуатор до 5 т · сегодня', m_take: 'Беру',
@@ -53,6 +54,7 @@
       h1: 'Drive back <em>with cargo</em>, not empty.',
       lead: 'A carrier returning empty is a straight loss. A customer needs cargo sent exactly that way. <b>Paceļam</b> brings them together: a posting in 20 seconds, the detour in kilometres on every card, contacts only after a deal.',
       cta_customer: 'I NEED transport', cta_carrier: 'I OFFER transport',
+      offer_h: 'Offer', offer_cargo: 'Cargo', offer_truck: 'Transport', offer_cargo_aria: 'Offer cargo', offer_truck_aria: 'Offer transport',
       demo_p: 'Look around without signing up — a demo with sample data:', demo_carrier: 'Try as a carrier', demo_customer: 'Try as a customer',
       m_cargo: 'Cargo', m_cargo2: 'Cargo', m_urgent: 'Urgent', m_urgent2: 'Urgent', m_planned: 'Planned', m_planned2: 'Planned', m_age1: '3 min ago', m_age2: '1 h ago',
       m_metric1: 'on the way<small>41 km trip</small>', m_meta1: 'Vehicle · VT08 Tow truck up to 5 t · today', m_take: 'Take it',
@@ -94,14 +96,18 @@
   const fromUrl = new URLSearchParams(location.search).get('lang');
   let saved = null;
   try { saved = localStorage.getItem(KEY); } catch { /* private mode */ }
-  const nav = (navigator.languages || [navigator.language || '']).map((l) => String(l).slice(0, 2).toLowerCase()).find((l) => LANGS.includes(l));
-  const lang = LANGS.includes(fromUrl) ? fromUrl : (LANGS.includes(saved) ? saved : (nav || 'lv'));
+  const navAll = (navigator.languages || [navigator.language || '']).map((l) => String(l).slice(0, 2).toLowerCase());
+  // phone language the site does not have: Ukrainian/Belarusian/… read Russian, anyone else gets English (same rule as js/i18n.js)
+  const fallback = navAll.some((l) => ['uk', 'be', 'kk', 'ky', 'uz', 'tg', 'az', 'hy', 'ka', 'mo'].includes(l)) ? 'ru' : (navAll.some((l) => l) ? 'en' : 'lv');
+  const nav = navAll.find((l) => LANGS.includes(l));
+  const lang = LANGS.includes(fromUrl) ? fromUrl : (LANGS.includes(saved) ? saved : (nav || fallback));
   document.documentElement.lang = lang;
   try { localStorage.setItem(KEY, lang); } catch { /* ignore */ }
   const dict = D[lang];
   if (dict) {
     document.querySelectorAll('[data-i18n]').forEach((el) => { const v = dict[el.dataset.i18n]; if (v != null) el.textContent = v; });
     document.querySelectorAll('[data-i18n-html]').forEach((el) => { const v = dict[el.dataset.i18nHtml]; if (v != null) el.innerHTML = v; });
+    document.querySelectorAll('[data-i18n-aria]').forEach((el) => { const v = dict[el.dataset.i18nAria]; if (v != null) el.setAttribute('aria-label', v); });
     document.title = dict.title;
     document.querySelector('meta[name="description"]')?.setAttribute('content', dict.description);
   }

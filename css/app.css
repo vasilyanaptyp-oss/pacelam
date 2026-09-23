@@ -58,6 +58,11 @@ img { max-width: 100%; display: block; }
 .icon-btn:active { transform: scale(.94); }
 .icon-btn .badge { position: absolute; top: 5px; right: 4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--acc); color: #17110A; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; }
 .lang-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; padding: 0 10px; border: 0; border-radius: 12px; background: transparent; color: var(--mut); font-size: 13px; font-weight: 800; letter-spacing: .06em; cursor: pointer; }
+/* LV | RU | EN — always visible, thumb-sized; the active language is filled */
+.langsw { display: inline-grid; grid-auto-flow: column; gap: 2px; margin-left: 4px; padding: 2px; border: 1px solid var(--line2); border-radius: 14px; background: var(--card); }
+.langsw button { min-width: 44px; min-height: 44px; padding: 0 6px; border: 0; border-radius: 11px; background: transparent; color: var(--ink); font-size: 15px; font-weight: 800; letter-spacing: .04em; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.langsw button.is-on { background: var(--acc); color: #17110A; }
+@media (max-width: 1023px) { .top__about { display: none; } }
 .view { max-width: 720px; margin: 0 auto; padding: 16px 16px 28px; }
 .view:focus { outline: none; }
 @media (min-width: 720px) { .view { padding: 24px 24px 40px; } }
@@ -131,6 +136,32 @@ img { max-width: 100%; display: block; }
 :root[data-theme="light"] .tag--cargo { background: rgba(61, 123, 184, .14); }
 :root[data-theme="light"] .tag--truck { background: rgba(245, 166, 35, .22); }
 :root[data-theme="light"] .tag--planned { background: rgba(46, 158, 100, .16); }
+
+/* ---------- offer: two big doors, cargo and transport ---------- */
+.offer { margin-bottom: 14px; }
+.offer__title { display: flex; align-items: center; gap: 6px; margin: 0 0 10px 2px; font-family: var(--display); font-size: 20px; font-weight: 800; }
+.offer__title .ic { width: 22px; height: 22px; color: var(--acc-text); stroke-width: 2.2; }
+.offer__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.offer__btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 108px; padding: 12px 8px; border: 0; border-radius: 20px; color: #17110A; font: inherit; font-size: 21px; font-weight: 800; letter-spacing: -.01em; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: transform 120ms var(--ease), filter 120ms var(--ease); }
+.offer__btn .ic { width: 46px; height: 46px; stroke-width: 1.8; }
+.offer__btn span { max-width: 100%; overflow-wrap: anywhere; text-align: center; line-height: 1.15; }
+.offer__btn:active { transform: scale(.97); }
+.offer__btn--cargo { background: linear-gradient(180deg, #9CC6F0, #5B93CC); box-shadow: 0 8px 22px rgba(91, 147, 204, .22), inset 0 1px 0 rgba(255, 255, 255, .4); }
+.offer__btn--truck { background: linear-gradient(180deg, var(--acc2), var(--acc)); box-shadow: 0 8px 22px rgba(245, 166, 35, .2), inset 0 1px 0 rgba(255, 255, 255, .35); }
+.offer--page { padding-top: 6px; }
+.offer--page .offer__title { font-size: 26px; margin-bottom: 14px; }
+.offer--page .offer__row { grid-template-columns: 1fr; gap: 12px; }
+.offer--page .offer__btn { min-height: 150px; font-size: 26px; }
+.offer--page .offer__btn .ic { width: 64px; height: 64px; }
+@media (min-width: 1024px) {
+  .offer { max-width: 720px; }
+  .offer__btn { flex-direction: row; min-height: 76px; gap: 14px; }
+  .offer__btn .ic { width: 38px; height: 38px; }
+  .offer--page .offer__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.feed__about { margin-top: 18px; text-align: center; }
+.feed__about a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; color: var(--mut); font-weight: 700; }
+@media (min-width: 1024px) { .feed__about { display: none; } }
 
 /* ---------- feed ---------- */
 .strip { display: flex; gap: 8px; align-items: stretch; margin-bottom: 14px; }
