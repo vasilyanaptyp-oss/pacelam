@@ -156,6 +156,7 @@ export function createSupabaseApi(cfg) {
 
     // ---- bids and deals (database functions) ----
     placeBid: (postingId, amount, note) => rpc('place_bid', { p_posting: postingId, p_amount: amount, p_note: note || null }),
+    nudgeTruck: (cargoId, truckId) => rpc('nudge_truck', { p_cargo: cargoId, p_truck: truckId }),
     withdrawBid: (bidId) => rpc('withdraw_bid', { p_bid: bidId }),
     acceptBid: (bidId) => rpc('accept_bid', { p_bid: bidId }),
     takePosting: (postingId) => rpc('take_posting', { p_posting: postingId }),

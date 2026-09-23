@@ -103,7 +103,7 @@ export function createDemoApi() {
   const canSee = (me, ownerId) => me && (me === ownerId || db.unlocks.some((u) => u.viewer_id === me && u.owner_id === ownerId));
   const notify = (user_id, type, posting, extra = {}) => {
     db.notifications.unshift({ id: uuid(), user_id, type, posting_id: posting?.id || null, bid_id: extra.bid_id || null, deal_id: extra.deal_id || null,
-      payload: { from: posting?.from_name, to: posting?.to_name, kind: posting?.kind, mode: posting?.mode, amount: extra.amount ?? null, above_price: extra.above_price ?? false }, deliver_after: iso(Date.now()), created_at: iso(Date.now()), read_at: null });
+      payload: { from: posting?.from_name, to: posting?.to_name, kind: posting?.kind, mode: posting?.mode, amount: extra.amount ?? null, above_price: extra.above_price ?? false, ...(extra.payload || {}) }, deliver_after: iso(Date.now()), created_at: iso(Date.now()), read_at: null });
   };
   const recount = (postingId) => {
     const p = db.postings.find((x) => x.id === postingId);
@@ -124,6 +124,20 @@ export function createDemoApi() {
       if (km(s.center_lat, s.center_lng, p.from_lat, p.from_lng) > s.radius_km + p.from_radius_km) continue;
       if (s.dest_lat != null && km(s.dest_lat, s.dest_lng, p.to_lat, p.to_lng) > (s.dest_radius_km || 0) + p.to_radius_km) continue;
       notify(s.owner_id, 'match', p, { amount: p.price });
+    }
+  };
+  // 0008: a cargo fits a truck when the detour it adds is within the carrier's max_detour_km and the days overlap
+  const detourOf = (t, c) => Math.max(0, km(t.from_lat, t.from_lng, c.from_lat, c.from_lng) + km(c.from_lat, c.from_lng, c.to_lat, c.to_lng) + km(c.to_lat, c.to_lng, t.to_lat, t.to_lng) - km(t.from_lat, t.from_lng, t.to_lat, t.to_lng));
+  const fits = (t, c) => t.status === 'open' && c.status === 'open' && t.owner_id !== c.owner_id && t.date_from <= c.date_to && c.date_from <= t.date_to && detourOf(t, c) <= (db.profiles[t.owner_id]?.max_detour_km ?? 60);
+  const told = (user, postingId) => db.notifications.some((n) => n.user_id === user && n.posting_id === postingId);
+  const notifyPairs = (row) => {
+    const seen = new Set();
+    for (const other of db.postings) {
+      if (other.kind === row.kind) continue;
+      const truck = row.kind === 'truck' ? row : other, cargo = row.kind === 'cargo' ? row : other;
+      if (seen.has(other.owner_id) || !fits(truck, cargo) || told(other.owner_id, row.id)) continue;
+      seen.add(other.owner_id);
+      notify(other.owner_id, 'match', row, { payload: row.kind === 'cargo' ? { for_truck: truck.id } : { kind: 'truck', for_cargo: cargo.id } });
     }
   };
   const emit = () => listeners.forEach((fn) => fn(db.session));
@@ -185,6 +199,7 @@ export function createDemoApi() {
       if (row.for_posting_id && (row.kind !== 'cargo' || !truck || truck.kind !== 'truck' || truck.status !== 'open' || truck.owner_id === id)) row.for_posting_id = null;
       db.postings.unshift(row); matchSearches(row);
       if (row.for_posting_id && !db.notifications.some((n) => n.user_id === truck.owner_id && n.posting_id === row.id)) notify(truck.owner_id, 'match', row);
+      notifyPairs(row);
       save();
       return withOwner(row);
     },
@@ -283,6 +298,13 @@ export function createDemoApi() {
       save();
     },
 
+    async nudgeTruck(cargoId, truckId) {
+      const me = need();
+      const c = db.postings.find((x) => x.id === cargoId), t = db.postings.find((x) => x.id === truckId);
+      if (!c || c.owner_id !== me || c.kind !== 'cargo' || c.status !== 'open' || !t || t.kind !== 'truck' || t.status !== 'open' || t.owner_id === me) throw new Error('posting not found or not open');
+      if (db.notifications.some((n) => n.user_id === t.owner_id && n.posting_id === c.id && n.payload?.nudge)) return;   // once per pair
+      notify(t.owner_id, 'match', c, { payload: { for_truck: t.id, nudge: true } }); save();
+    },
     async listSearches() { return clone(db.searches.filter((s) => s.owner_id === uid())); },
     async saveSearch(s) { const row = { id: uuid(), created_at: iso(Date.now()), is_active: true, name: null, dest_name: null, dest_lat: null, dest_lng: null, dest_radius_km: null, vehicle_type_codes: [], cargo_type_ids: [], modes: ['urgent', 'planned'], notify_browser: true, notify_email: false, ...s, owner_id: need() }; db.searches.push(row); save(); return clone(row); },
     async deleteSearch(id) { db.searches = db.searches.filter((s) => !(s.id === id && s.owner_id === uid())); save(); },

@@ -94,6 +94,9 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await audit(page, `${V} wizard truck: vehicle`);
   await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.wcheck');
   await audit(page, `${V} wizard truck: check`);
+  // published: the exchange lists cargo on the way at once (0008)
+  await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.detail__route');
+  await audit(page, `${V} truck published: cargo on the way`);
   await page.goto(APP + '?lang=lv#/post/cargo'); await page.waitForSelector('.wroute');
   await page.fill('.wsearch input', 'Rīg'); await page.locator('.wsearch__list .cityrow').first().click();
   await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.cal');
@@ -101,11 +104,14 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await audit(page, `${V} wizard cargo: calendar range`);
   await page.click('.wurgent__toggle'); await page.waitForSelector('.wurgent .chips');
   await audit(page, `${V} wizard cargo: urgent + waiting time`);
+  await page.click('.wurgent__toggle');   // back to a planned day: the urgent cards later in this run must stay someone else's
   await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.wiz .chips');
   await page.getByRole('button', { name: 'Automašīna' }).click();
   await audit(page, `${V} wizard cargo: what (vehicle fields)`);
   await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.wcheck');
   await audit(page, `${V} wizard cargo: check`);
+  await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.detail__route');
+  await audit(page, `${V} cargo published: vehicles on the way`);
   await page.goto(APP + '?lang=lv#/post/truck/full'); await page.waitForSelector('form');
   await audit(page, `${V} post truck (all fields)`);
   await page.getByRole('tab', { name: 'Meklēju transportu' }).click(); await page.waitForSelector('form .chip');

@@ -425,5 +425,59 @@ await as(E.eva, async () => {
   check('0007: the waiting time cannot be moved later', moved.secs <= 3600, JSON.stringify(moved));
 });
 
+// --- 0008 (23.09.2026): the exchange finds pairs and tells both sides; "call him again" -------------
+await db.exec(read('supabase/migrations/0008_pairs.sql'));
+let alongId, farId;
+await as(E.eva, async () => {
+  alongId = (await rows(`insert into postings (kind, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to)
+    values ('cargo', $1, 'Ogre', 56.82, 24.60, 'Jēkabpils', 56.50, 25.86, current_date + 1, current_date + 2) returning id`, [E.eva]))[0].id;
+  farId = (await rows(`insert into postings (kind, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to)
+    values ('cargo', $1, 'Liepāja', 56.51, 21.01, 'Ventspils', 57.39, 21.56, current_date + 1, current_date + 2) returning id`, [E.eva]))[0].id;
+});
+await as(E.gatis, async () => {
+  const along = await rows(`select payload->>'for_truck' as truck from notifications where user_id = $1 and posting_id = $2`, [E.gatis, alongId]);
+  check('0008: cargo along a carrier\'s open truck route reaches him at once', along.length === 1 && along[0].truck === gatisTruckId, JSON.stringify(along));
+  const far = await rows(`select id from notifications where user_id = $1 and posting_id = $2`, [E.gatis, farId]);
+  check('0008: cargo far off his route does not', far.length === 0, JSON.stringify(far));
+});
+let daceTruck;
+await as(U.dace, async () => {
+  daceTruck = (await rows(`insert into postings (kind, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, vehicle_type_code)
+    values ('truck', $1, 'Rīga', 56.95, 24.11, 'Daugavpils', 55.87, 26.52, current_date + 2, current_date + 2, 'VT10') returning id`, [U.dace]))[0].id;
+});
+await as(E.eva, async () => {
+  const n = await rows(`select payload->>'kind' as kind, payload->>'for_cargo' as cargo from notifications where user_id = $1 and posting_id = $2`, [E.eva, daceTruck]);
+  check('0008: a new truck on the route of an open cargo reaches its customer', n.length === 1 && n[0].kind === 'truck' && n[0].cargo === alongId, JSON.stringify(n));
+  await rows(`select nudge_truck($1, $2)`, [alongId, daceTruck]);
+  await rows(`select nudge_truck($1, $2)`, [alongId, daceTruck]);
+});
+await as(U.dace, async () => {
+  const n = await rows(`select id from notifications where user_id = $1 and posting_id = $2 and payload->>'nudge' = 'true'`, [U.dace, alongId]);
+  check('0008: "call him again" reaches the carrier once, a second tap changes nothing', n.length === 1, JSON.stringify(n));
+});
+await as(U.boris, async () => {
+  const err = await fails(`select nudge_truck($1, $2)`, [alongId, daceTruck]);
+  check('0008: only the cargo\'s owner can call a carrier about it', /not found or not open/.test(err || ''), err);
+});
+await asAnon(async () => {
+  const err = await fails(`select nudge_truck($1, $2)`, [alongId, daceTruck]);
+  check('0008: a visitor cannot call anyone', !!err, err);
+});
+
+// --- 0009 (23.09.2026): facts about a carrier next to his offer ---------------------------------------
+await db.exec(read('supabase/migrations/0009_carrier_facts.sql'));
+await as(E.eva, async () => {
+  const f = await rows(`select user_id, deals_done, vehicle_type_code, tonnage_t::float as t, member_since is not null as since from carrier_facts($1)`, [[U.boris, E.gatis]]);
+  const boris = f.find((x) => x.user_id === U.boris), gatis = f.find((x) => x.user_id === E.gatis);
+  check('0009: facts show the carrier\'s vehicle, payload and since when he is here', boris && boris.vehicle_type_code === 'VT10' && boris.t === 8 && boris.since, JSON.stringify(boris));
+  check('0009: deals closed on Paceļam are counted (Gatis: 1)', gatis && gatis.deals_done === 1, JSON.stringify(gatis));
+  const cols = Object.keys(f[0] || {});
+  check('0009: no contacts or plates among the facts', !cols.some((c) => /phone|mail|plate|company/.test(c)), cols.join(','));
+});
+await asAnon(async () => {
+  const err = await fails(`select * from carrier_facts($1)`, [[U.boris]]);
+  check('0009: a visitor gets no facts', !!err, err);
+});
+
 console.log(`\n${results.length} checks, ${failures} failed`);
 process.exit(failures ? 1 : 0);

@@ -249,6 +249,10 @@ img { max-width: 100%; display: block; }
 .bidrow__actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(130px, 100%), 1fr)); gap: 8px; width: 100%; }
 .bidrow__actions .btn { min-width: 0; }
 .bidrow.is-later { border-style: dashed; }
+/* what the exchange found: vehicles / cargo on the way */
+.pairrow__route { display: flex; align-items: center; min-height: 44px; color: var(--ink); font-family: var(--display); font-size: 16px; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+.pairrow__km { color: var(--acc-text); }
+.pairrow__km.is-good { color: var(--green-text); }
 .price-note { display: flex; align-items: center; gap: 10px; padding: 12px 14px; color: var(--ink); font-size: 15px; font-weight: 600; }
 .price-note .ic { color: var(--acc-text); }
 .contacts { padding: 16px; display: grid; gap: 10px; border-color: var(--green); }

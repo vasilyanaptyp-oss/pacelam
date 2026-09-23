@@ -683,6 +683,7 @@ async function buildDetail(id, { inline = false } = {}) {
   const { posting: p, bids, deal } = data;
   const me = myId();
   const isOwner = me && p.owner_id === me;
+  const board = isOwner && p.status === 'open' ? ((await api.listPostings().catch(() => [])) || []) : [];
   const m = metricFor(p);
   const el = h('div.detail.stack', { class: inline ? 'detail--inline' : '' });
   el.append(h('div.card.detail__hero', null,
@@ -777,6 +778,7 @@ async function buildDetail(id, { inline = false } = {}) {
       section.append(list);
       slot.append(section);
     }
+    if (p.status === 'open') slot.append(pairsSection(p, board));
     if (['open', 'pending'].includes(p.status)) {
       el.append(h('div.row.row--end', { style: { marginTop: '8px' } }, h('button.btn.btn--danger', { type: 'button', onclick: async () => { if (!(await confirmSheet(t('close_posting'), t('close_confirm'), t('close_posting'), true))) return; try { await api.closePosting(p.id); toast(t('closed_ok')); rerender(); } catch (e) { fail(e); } } }, t('close_posting'))));
     }
@@ -795,6 +797,39 @@ async function buildDetail(id, { inline = false } = {}) {
   if (!me && p.status === 'open') el.append(h('div.actionbar', null, h('a.btn.btn--primary.btn--big', { href: '#/auth' }, t('sign_in')), h('p.muted.small', { style: { textAlign: 'center' } }, t('feed_visitors_cta'))));
   if (!slot.childNodes.length) slot.remove();
   return el;
+}
+// What the exchange found for the owner's posting (client, 18.09.2026: «создать груз → получить подходящие
+// машины … перевозчик → указал свой маршрут → увидел грузы по пути → сразу предложил цену»). A cargo fits a truck
+// when the detour it adds is within the carrier's limit (60 km here, his own limit in 0008) and the days overlap.
+function pairsSection(p, board) {
+  const overlap = (a, b) => a.date_from <= b.date_to && b.date_from <= a.date_to;
+  const route = (x) => ({ from: { lat: x.from_lat, lng: x.from_lng }, to: { lat: x.to_lat, lng: x.to_lng } });
+  const limit = p.kind === 'truck' ? (state.me?.profile?.max_detour_km || 60) : 60;
+  const found = board.filter((x) => x.kind !== p.kind && x.owner_id !== p.owner_id && x.status === 'open' && overlap(x, p))
+    .map((x) => { const truck = p.kind === 'truck' ? p : x, cargo = p.kind === 'cargo' ? p : x; return { x, d: detourKm(route(truck), route(cargo).from, route(cargo).to) }; })
+    .filter((r) => r.d <= limit).sort((a, b) => a.d - b.d).slice(0, 5);
+  const nudged = new Set(store.get('pacelam.nudged', []));
+  const section = h('div.section', null, h('div.section__title', null, h('h2', null, `${p.kind === 'cargo' ? t('pairs_trucks') : t('pairs_cargo')}${found.length ? ` · ${found.length}` : ''}`)));
+  if (!found.length) section.append(h('p.lead', null, p.kind === 'cargo' ? t('pairs_none_trucks') : t('pairs_none_cargo')));
+  const list = h('div.bids');
+  for (const { x, d } of found) {
+    const actions = h('div.bidrow__actions');
+    if (p.kind === 'cargo') {
+      if (x.price != null) actions.append(h('button.btn.btn--primary', { type: 'button', onclick: () => doTake(x) }, icon('check'), t('agree_for', { p: fmtInt(x.price) })));
+      const key = `${p.id}:${x.id}`;
+      const btn = h('button.btn', { type: 'button', class: x.price != null ? 'btn--ghost' : 'btn--primary', disabled: nudged.has(key), onclick: async () => {
+        try { await api.nudgeTruck(p.id, x.id); nudged.add(key); store.set('pacelam.nudged', [...nudged].slice(-300)); btn.disabled = true; btn.textContent = t('nudged'); toast(t('nudge_ok')); } catch (e) { fail(e); }
+      } }, nudged.has(key) ? t('nudged') : t('nudge'));
+      actions.append(btn);
+    } else actions.append(h('button.btn.btn--primary', { type: 'button', onclick: () => bidSheet(x) }, t('bid')));
+    const facts = [fmtDateRange(x.date_from, x.date_to), p.kind === 'cargo' ? (x.vehicle_type_code ? `${x.vehicle_type_code} ${nameOf(vtype(x.vehicle_type_code)) || ''}` : '') : factsLine(x), p.kind === 'cargo' ? (x.price != null ? fmtMoney(x.price) : `${t('price_word')}: ${t('negotiable')}`) : ''].filter(Boolean).join(' · ');
+    list.append(h('div.card.bidrow.pairrow', null,
+      h('div.bidrow__who', null, h('a.pairrow__route', { href: `#/p/${x.id}` }, `${x.from_name} → ${x.to_name}`), h('small', null, [x.owner?.display_name, facts].filter(Boolean).join(' · '))),
+      h('div.bidrow__amt.pairrow__km', { class: d <= 5 ? 'is-good' : '' }, d <= 5 ? t('on_the_way') : `+${fmtInt(d)} ${t('km_unit')}`),
+      actions));
+  }
+  section.append(list);
+  return section;
 }
 async function screenDetail(id) {
   return h('section.screen.narrow', null, await buildDetail(id));
@@ -1598,7 +1633,7 @@ async function screenOnboarding() {
 function notifText(n) {
   const p = n.payload || {};
   const vars = { from: p.from || '', to: p.to || '', amount: p.amount != null ? fmtInt(p.amount) : '' };
-  const key = { match: 'n_match', bid: p.above_price ? 'n_bid_above' : 'n_bid', accepted: 'n_accepted', deal: 'n_deal', taken: 'n_taken', cancelled: 'n_cancelled' }[n.type] || 'n_match';
+  const key = { match: p.nudge ? 'n_nudge' : (p.kind === 'truck' ? 'n_truck' : 'n_match'), bid: p.above_price ? 'n_bid_above' : 'n_bid', accepted: 'n_accepted', deal: 'n_deal', taken: 'n_taken', cancelled: 'n_cancelled' }[n.type] || 'n_match';
   return t(key, vars);
 }
 async function screenInbox() {
