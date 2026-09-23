@@ -99,6 +99,8 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.cal');
   await page.locator('.cal__day:not([disabled])').nth(1).click(); await page.locator('.cal__day:not([disabled])').nth(3).click();
   await audit(page, `${V} wizard cargo: calendar range`);
+  await page.click('.wurgent__toggle'); await page.waitForSelector('.wurgent .chips');
+  await audit(page, `${V} wizard cargo: urgent + waiting time`);
   await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.wiz .chips');
   await page.getByRole('button', { name: 'Automašīna' }).click();
   await audit(page, `${V} wizard cargo: what (vehicle fields)`);

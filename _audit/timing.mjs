@@ -1,10 +1,11 @@
 // Stopwatch for the posting wizard (23.09.2026: doors → map → calendar → what → publish), phone 390 px,
-// Russian, human pacing: 700 ms per tap, 120 ms per typed character. Four runs, each from the board
+// Russian, human pacing: 700 ms per tap, 120 ms per typed character. Five runs, each from the board
 // to the posting being live:
 //   A. carrier, first time (no last route): the town is typed;
 //   B. carrier, every day: the last route is offered first;
 //   C. carrier, the way back: last route + ⇅;
-//   D. customer, cargo, first time: town typed, category, weight.
+//   D. customer, cargo, first time: town typed, category, weight;
+//   E. customer, URGENT cargo (23.09): town typed, «Срочно — сегодня», wait 1 h (default), category.
 // Limit: 20 s each. Run: node _audit/timing.mjs   (BASE=https://…/pacelam/ for the published site)
 import { chromium } from 'playwright-core';
 
@@ -15,7 +16,7 @@ const BORIS = 'd0000000-0000-4000-8000-000000000001';
 const browser = await chromium.launch({ channel: 'chrome' });
 const results = [];
 
-async function run(label, { who, lastRoute, swap, cargo }) {
+async function run(label, { who, lastRoute, swap, cargo, urgent }) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'ru-RU' });
   const page = await ctx.newPage();
   const errors = [];
@@ -46,11 +47,11 @@ async function run(label, { who, lastRoute, swap, cargo }) {
   await tap('«Дальше» (карта)', () => page.click('.wiz__foot .btn--primary'));
   await page.waitForSelector('.cal');
   if (!cargo) await tap('Нажать «Завтра»', () => page.locator('.cal .chip').nth(1).click());
+  if (urgent) await tap('Нажать «Срочно — сегодня» (ждать: 1 ч уже выбрано)', () => page.click('.wurgent__toggle'));
   await tap('«Дальше» (календарь)', () => page.click('.wiz__foot .btn--primary'));
   if (cargo) {
     await tap('Выбрать категорию «Паллеты»', () => page.locator('.wiz .chips .chip').first().click());
-    await tap('Нажать «Вес»', () => page.getByLabel('Вес, кг').click());
-    await type('Набрать «800»', '800');
+    if (!urgent) { await tap('Нажать «Вес»', () => page.getByLabel('Вес, кг').click()); await type('Набрать «800»', '800'); }
   }
   await tap(cargo ? '«Дальше» (что везём)' : '«Дальше» (машина уже выбрана)', () => page.click('.wiz__foot .btn--primary'));
   await page.waitForSelector('.wcheck');
@@ -68,6 +69,7 @@ await run('A. Перевозчик, первый раз (город набира
 await run('B. Перевозчик, обычный день (последний маршрут первым)', { who: 'carrier', lastRoute: { from: { name: 'Daugavpils', lat: 55.87, lng: 26.52, radius: 0 }, to: { name: 'Rīga', lat: 56.95, lng: 24.11, radius: 0 } } });
 await run('C. Перевозчик, обратный рейс (⇅)', { who: 'carrier', swap: true, lastRoute: { from: { name: 'Daugavpils', lat: 55.87, lng: 26.52, radius: 0 }, to: { name: 'Rīga', lat: 56.95, lng: 24.11, radius: 0 } } });
 await run('D. Заказчик, груз, первый раз', { who: 'customer', cargo: true });
+await run('E. Заказчик, СРОЧНЫЙ груз', { who: 'customer', cargo: true, urgent: true });
 console.log('\nРЕЗУЛЬТАТ: ' + results.map((r) => `${r.label.split('.')[0]} ${r.total.toFixed(1)} s`).join(', ') + ` (лимит 20 s) → ${results.every((r) => r.ok) ? 'УКЛАДЫВАЕТСЯ' : 'НЕ УКЛАДЫВАЕТСЯ'}`);
 await browser.close();
 process.exit(results.every((r) => r.ok) ? 0 : 1);

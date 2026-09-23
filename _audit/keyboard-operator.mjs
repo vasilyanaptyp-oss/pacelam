@@ -29,6 +29,7 @@ await type('Daugav'); steps.push('Откуда: набрать «Daugav»');
 await page.keyboard.press('Tab'); await type('Rīga'); steps.push('Tab → Куда: набрать «Rīga»');
 await page.keyboard.press('Tab'); steps.push('Tab → Дата (оставить сегодня)');
 await page.keyboard.press('Tab'); steps.push('Tab → Режим (оставить «Срочно»)');
+await page.keyboard.press('Tab'); steps.push('Tab → Ждёт (оставить 1 ч — пойдёт обратный отсчёт)');
 await page.keyboard.press('Tab'); steps.push('Tab → Категория (оставить «Автомобиль»)');
 // dynamic vehicle fields: rolls, all_wheels, location, model
 await page.keyboard.press('Tab'); await page.keyboard.press('ArrowDown'); steps.push('Tab → Катится: ↓ (Да)');

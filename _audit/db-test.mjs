@@ -405,5 +405,25 @@ await as(U.dace, async () => {
   check('0006: nobody else gets that notification', n.length === 0, JSON.stringify(n));
 });
 
+// --- 0007 (23.09.2026): urgent cargo waits until a moment, with a countdown ---------------------------
+await db.exec(read('supabase/migrations/0007_urgent_wait.sql'));
+await as(E.eva, async () => {
+  const urgent = (await rows(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, wait_until)
+    values ('cargo', 'urgent', $1, 'Rīga', 56.95, 24.11, 'Ogre', 56.82, 24.60, current_date, current_date, now() + interval '1 hour')
+    returning id, extract(epoch from (wait_until - now()))::int as secs`, [E.eva]))[0];
+  check('0007: urgent cargo keeps its waiting time (about 1 h)', urgent.secs > 3500 && urgent.secs <= 3600, JSON.stringify(urgent));
+  const far = (await rows(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, wait_until)
+    values ('cargo', 'urgent', $1, 'Rīga', 56.95, 24.11, 'Tukums', 56.97, 23.15, current_date, current_date, now() + interval '3 days')
+    returning extract(epoch from (wait_until - now()))::int as secs`, [E.eva]))[0];
+  check('0007: a waiting time further than 24 h is cut to 24 h', far.secs > 86000 && far.secs <= 86400, JSON.stringify(far));
+  const planned = (await rows(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, wait_until)
+    values ('cargo', 'planned', $1, 'Rīga', 56.95, 24.11, 'Bauska', 56.41, 24.19, current_date + 1, current_date + 1, now() + interval '1 hour')
+    returning wait_until`, [E.eva]))[0];
+  check('0007: only urgent cargo keeps a waiting time', planned.wait_until === null, JSON.stringify(planned));
+  await db.query(`update postings set wait_until = now() + interval '10 hours' where id = $1`, [urgent.id]);
+  const moved = (await rows(`select extract(epoch from (wait_until - now()))::int as secs from postings where id = $1`, [urgent.id]))[0];
+  check('0007: the waiting time cannot be moved later', moved.secs <= 3600, JSON.stringify(moved));
+});
+
 console.log(`\n${results.length} checks, ${failures} failed`);
 process.exit(failures ? 1 : 0);

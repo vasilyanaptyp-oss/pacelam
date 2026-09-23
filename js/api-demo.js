@@ -48,12 +48,12 @@ function seed() {
   const at = (name, [lat, lng]) => ({ name, lat, lng });
   const route = (f, fp, t, tp) => ({ from_name: f, from_lat: fp[0], from_lng: fp[1], to_name: t, to_lat: tp[0], to_lng: tp[1] });
   const postings = [
-    mk({ kind: 'cargo', mode: 'urgent', owner_id: U.op, ...route('Daugavpils', P.dgp, 'Rīga', P.riga), date_from: day(0), date_to: day(0), vehicle_type_code: 'VT08', cargo_type_id: 'vehicle', weight_kg: 1450, length_m: 4.5, width_m: 1.8, height_m: 1.5, cargo_fields: { rolls: false, all_wheels: true, location: 'roadside', model: 'VW Passat 2012' }, price: null, is_operator_posting: true, note: 'Pēc avārijas, stāv uz A6 pie Līvāniem. Zvanīt uzreiz.', created_at: ago(14) }),
+    mk({ kind: 'cargo', mode: 'urgent', owner_id: U.op, ...route('Daugavpils', P.dgp, 'Rīga', P.riga), date_from: day(0), date_to: day(0), vehicle_type_code: 'VT08', cargo_type_id: 'vehicle', weight_kg: 1450, length_m: 4.5, width_m: 1.8, height_m: 1.5, cargo_fields: { rolls: false, all_wheels: true, location: 'roadside', model: 'VW Passat 2012' }, price: null, is_operator_posting: true, note: 'Pēc avārijas, stāv uz A6 pie Līvāniem. Zvanīt uzreiz.', created_at: ago(14), demo_wait_min: 75 }),
     mk({ kind: 'cargo', mode: 'planned', owner_id: U.anna, ...route('Rēzekne', P.rez, 'Rīga', P.riga), date_from: day(2), date_to: day(3), vehicle_type_code: 'VT10', cargo_type_id: 'pallets', weight_kg: 2400, length_m: 2.4, width_m: 1.2, height_m: 1.6, volume_m3: 4.6, cargo_fields: { pallet_count: 4, stackable: false }, price: null, bid_count: 2, best_bid: 170, created_at: ago(95) }),
     mk({ kind: 'cargo', mode: 'planned', owner_id: U.ilze, ...route('Jelgava', P.jel, 'Daugavpils', P.dgp), date_from: day(1), date_to: day(4), vehicle_type_code: null, cargo_type_id: 'building', weight_kg: 1800, length_m: 2.4, width_m: 1.2, height_m: 1.2, cargo_fields: { packed: 'pallets' }, price: null, bid_count: 1, best_bid: 210, note: 'Ģipškartons, 3 paletes. Iekraušana ar iekrāvēju.', created_at: ago(200) }),
     mk({ kind: 'truck', mode: 'planned', owner_id: U.janis, ...route('Rīga', P.riga, 'Daugavpils', P.dgp), date_from: day(1), date_to: day(1), vehicle_type_code: 'VT16', weight_kg: 20000, volume_m3: 90, length_m: 13.6, width_m: 2.45, height_m: 2.7, price: 350, created_at: ago(40) }),
     mk({ kind: 'cargo', mode: 'planned', owner_id: U.ilze, ...route('Liepāja', P.lie, 'Ventspils', P.ven), date_from: day(3), date_to: day(5), vehicle_type_code: 'VT11', cargo_type_id: 'machinery', weight_kg: 2800, length_m: 3.9, width_m: 1.6, height_m: 2.4, cargo_fields: { self_propelled: true, tracked: true }, price: null, created_at: ago(310) }),
-    mk({ kind: 'cargo', mode: 'urgent', owner_id: U.op, ...route('Krāslava', P.kra, 'Daugavpils', P.dgp), date_from: day(0), date_to: day(0), vehicle_type_code: 'VT08', cargo_type_id: 'vehicle', weight_kg: 1200, cargo_fields: { rolls: true, all_wheels: true, location: 'parking', model: 'Toyota Yaris' }, price: null, is_operator_posting: true, created_at: ago(3) }),
+    mk({ kind: 'cargo', mode: 'urgent', owner_id: U.op, ...route('Krāslava', P.kra, 'Daugavpils', P.dgp), date_from: day(0), date_to: day(0), vehicle_type_code: 'VT08', cargo_type_id: 'vehicle', weight_kg: 1200, cargo_fields: { rolls: true, all_wheels: true, location: 'parking', model: 'Toyota Yaris' }, price: null, is_operator_posting: true, created_at: ago(3), demo_wait_min: 55 }),
     mk({ kind: 'truck', mode: 'planned', owner_id: U.boris, ...route('Vilnius', P.vil, 'Rīga', P.riga), date_from: day(2), date_to: day(2), vehicle_type_code: 'VT10', weight_kg: 5000, volume_m3: 30, length_m: 7.2, width_m: 2.45, height_m: 2.4, price: null, note: 'Atpakaļceļš, brīva puse kravas kastes.', created_at: ago(600) }),
     mk({ kind: 'cargo', mode: 'planned', owner_id: U.anna, ...route('Cēsis', P.ces, 'Rīga', P.riga), date_from: day(1), date_to: day(2), vehicle_type_code: 'LTL', cargo_type_id: 'pallets', weight_kg: 600, length_m: 1.2, width_m: 0.8, height_m: 1.4, volume_m3: 1.3, cargo_fields: { pallet_count: 2, stackable: true }, price: null, created_at: ago(1300) }),
     mk({ kind: 'cargo', mode: 'planned', owner_id: U.ilze, ...route('Daugavpils', P.dgp, 'Vilnius', P.vil), date_from: day(4), date_to: day(6), vehicle_type_code: 'VT20', cargo_type_id: 'bulk', weight_kg: 11000, volume_m3: 8, cargo_fields: { material: 'gravel' }, price: null, created_at: ago(2000) }),
@@ -77,7 +77,9 @@ function seed() {
 export function createDemoApi() {
   let db;
   try { db = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { db = null; }
-  if (!db || db.version !== 5) { db = { version: 5, seededOn: day(0), ...seed() }; }
+  if (!db || db.version !== 6) { db = { version: 6, seededOn: day(0), ...seed() }; }
+  // sample urgent calls keep counting down: a finished sample wait is re-armed on load
+  for (const p of db.postings) if (p.demo_wait_min && p.status === 'open' && (!p.wait_until || new Date(p.wait_until) <= new Date())) p.wait_until = iso(Date.now() + p.demo_wait_min * 60000);
   // Demo dates are relative to "today": shift everything by the days elapsed since seeding so the
   // board never goes stale for someone who opens the link a week later.
   {
@@ -133,7 +135,7 @@ export function createDemoApi() {
     getSession: () => db.session,
     userId: uid,
     photoUrl: (p) => p,
-    resetDemo() { db = { version: 5, seededOn: day(0), ...seed() }; save(); emit(); },
+    resetDemo() { db = { version: 6, seededOn: day(0), ...seed() }; for (const p of db.postings) if (p.demo_wait_min) p.wait_until = iso(Date.now() + p.demo_wait_min * 60000); save(); emit(); },
 
     async signInDemo(id) { db.session = { user: { id, email: db.contacts[id]?.email || '' } }; save(); emit(); return db.session; },
     async signUp() { throw new Error('demo'); },
@@ -176,6 +178,8 @@ export function createDemoApi() {
       const row = { id: uuid(), currency: 'EUR', from_radius_km: 0, to_radius_km: 0, cargo_fields: {}, photos: [], note: null, weight_kg: null, length_m: null, width_m: null, height_m: null, volume_m3: null, price: null, vehicle_id: null, vehicle_type_code: null, cargo_type_id: null, ...p, owner_id: id, status: 'open', bid_count: 0, best_bid: null, created_at: iso(Date.now()), updated_at: iso(Date.now()) };
       row.is_operator_posting = !!(p.is_operator_posting && db.profiles[id]?.is_operator);
       if (row.kind === 'truck') { row.mode = 'planned'; row.cargo_type_id = null; row.cargo_fields = {}; }
+      if (row.kind !== 'cargo' || row.mode !== 'urgent') row.wait_until = null;   // 0007: only urgent cargo waits, 5 min .. 24 h
+      else if (row.wait_until) row.wait_until = iso(Math.min(Math.max(new Date(row.wait_until).getTime(), Date.now() + 5 * 60000), Date.now() + 24 * 3600000));
       // "offer my cargo" on a truck: the link counts only for someone else's open truck, and its owner is told (0006)
       const truck = row.for_posting_id ? db.postings.find((x) => x.id === row.for_posting_id) : null;
       if (row.for_posting_id && (row.kind !== 'cargo' || !truck || truck.kind !== 'truck' || truck.status !== 'open' || truck.owner_id === id)) row.for_posting_id = null;
@@ -184,7 +188,7 @@ export function createDemoApi() {
       save();
       return withOwner(row);
     },
-    async updatePosting(id, p) { const row = db.postings.find((x) => x.id === id && x.owner_id === uid()); if (!row) throw new Error('posting not found'); if (row.status !== 'open') throw new Error('posting is not open'); Object.assign(row, p, { updated_at: iso(Date.now()), for_posting_id: row.for_posting_id ?? null }); save(); return withOwner(row); },
+    async updatePosting(id, p) { const row = db.postings.find((x) => x.id === id && x.owner_id === uid()); if (!row) throw new Error('posting not found'); if (row.status !== 'open') throw new Error('posting is not open'); Object.assign(row, p, { updated_at: iso(Date.now()), for_posting_id: row.for_posting_id ?? null, wait_until: row.wait_until ?? null }); save(); return withOwner(row); },
     async myPostings() { return db.postings.filter((p) => p.owner_id === uid()).map(withOwner); },
     async myBids() { return db.bids.filter((b) => b.bidder_id === uid()).map((b) => ({ ...clone(b), posting: withOwner(db.postings.find((p) => p.id === b.posting_id)) })); },
     async myDeals() { const me = uid(); return db.deals.filter((d) => d.customer_id === me || d.carrier_id === me).map((d) => ({ ...clone(d), posting: withOwner(db.postings.find((p) => p.id === d.posting_id)) })); },

@@ -43,6 +43,7 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
    customer taps "Agree" on an offer and the deal closes at once with contacts open on both sides).
    `0006_cargo_for_truck.sql` ("offer my cargo" on a truck: the cargo keeps a link to that truck and its
    owner is notified at once).
+   `0007_urgent_wait.sql` (urgent cargo: today, with the time the customer can wait — the card counts down).
 2. Authentication → Providers → Email: for a test project turn **off** "Confirm email";
    set Site URL to the page URL (for password-reset links).
 3. Put the project URL and the anon key into `config.js`:
@@ -65,7 +66,7 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
   via `node scripts/gen-seed.mjs`), `js/i18n.js` lv/ru/en.
 - `supabase/migrations/0001_init.sql` — the whole model: tables, RLS, bids/deals functions,
   contact unlocks, saved-search notifications, subscription switch.
-- `_audit/` — checks: `db-test.mjs` (82 policy tests in PGlite), `leak-rest.mjs` (contact leak
+- `_audit/` — checks: `db-test.mjs` (86 policy tests in PGlite), `leak-rest.mjs` (contact leak
   through the real REST API), `timing.mjs` (20-second posting), `lang-fonts.mjs` (?lang and
   Latvian diacritics by pixel comparison), `screens.mjs` (every screen at 360/390/1280/1920),
   `keyboard-operator.mjs` (operator posts with the keyboard only), `table-rows.mjs`, `shots.mjs`,

@@ -187,6 +187,27 @@ const rerender = () => render();
 // Arthur, 23.09.2026 (question 2, answer a): no "urgent" question in the form — a posting available today
 // gets the "Today" tag by itself. The operator's urgent calls keep their own "Urgent" tag.
 const isToday = (p) => !!p.date_from && p.date_from <= isoDate() && isoDate() <= (p.date_to || p.date_from);
+// Urgent cargo (client, 23.09.2026 19:15): today, with the time the customer can wait and a countdown.
+const WAITS = [30, 60, 120, 240];
+const waitLabel = (m) => (m < 60 ? `${m} ${t('min_short')}` : `${m / 60} ${t('h_short')}`);
+const activeUrgent = (p) => p.kind === 'cargo' && p.mode === 'urgent' && p.status === 'open' && (!p.wait_until || new Date(p.wait_until) > new Date());
+function waitText(until) {
+  const s = Math.floor((new Date(until).getTime() - Date.now()) / 1000);
+  if (s <= 0) return t('wait_over');
+  const hh = Math.floor(s / 3600), mm = Math.floor((s % 3600) / 60), ss = s % 60;
+  return t('wait_left', { t: (hh ? `${hh}:${String(mm).padStart(2, '0')}` : String(mm)) + `:${String(ss).padStart(2, '0')}` });
+}
+function waitBadge(p) {
+  if (!(p.kind === 'cargo' && p.mode === 'urgent' && p.wait_until && p.status === 'open')) return null;
+  return h('span.tag.tag--wait', { 'data-until': p.wait_until, class: new Date(p.wait_until) <= new Date() ? 'is-over' : '' }, icon('clock'), h('span', null, waitText(p.wait_until)));
+}
+// one ticker for every countdown on the screen
+setInterval(() => {
+  for (const el of document.querySelectorAll('[data-until]')) {
+    const span = el.querySelector('span'); if (span) span.textContent = waitText(el.dataset.until);
+    el.classList.toggle('is-over', new Date(el.dataset.until) <= new Date());
+  }
+}, 1000);
 function whenTag(p) {
   if (p.kind === 'cargo' && (p.mode === 'urgent' || URGENT_CHOICE)) return h('span.tag', { class: p.mode === 'urgent' ? 'tag--urgent' : 'tag--planned' }, p.mode === 'urgent' ? t('mode_urgent') : t('mode_planned'));
   return isToday(p) && p.status !== 'deal' && p.status !== 'closed' ? h('span.tag.tag--today', null, t('today')) : null;
@@ -194,7 +215,7 @@ function whenTag(p) {
 function tagRow(p, extra = []) {
   return h('div.pcard__top', null,
     h('span.tag', { class: p.kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, p.kind === 'cargo' ? t('kind_cargo') : t('kind_truck')),
-    whenTag(p),
+    whenTag(p), waitBadge(p),
     p.is_operator_posting ? h('span.tag.tag--op', { title: t('operator_hint') }, t('operator')) : null,
     p.status && p.status !== 'open' ? h('span.tag.tag--status', null, t('status_' + p.status)) : null,
     ...extra,
@@ -251,6 +272,7 @@ function priceLine(p) {
     else el.append(h('b', null, fmtMoney(p.price)));
   } else if (p.kind === 'truck') el.append(h('span', null, t('price_word')), h('b', null, t('negotiable')));
   if (p.kind === 'truck' && !p.bid_count) return el.childNodes.length ? el : null;   // Arthur 23.09: idea from aizvest.eu
+  if (ownCargo(p)) return el.childNodes.length ? el : null;   // the owner already sees the offers in the metric line
   {
     el.append(h('span', null, p.bid_count ? t('bids_n', { n: p.bid_count }) : t('no_bids')));
     if (p.best_bid != null) el.append(h('span', null, t('best_bid', { p: fmtInt(p.best_bid) })));
@@ -525,6 +547,7 @@ function sortList(list) {
   const s = state.sort || defaultSort();
   const dir = s.dir === 'desc' ? -1 : 1;
   return [...list].sort((a, b) => {
+    if (!state.sort) { const ua = activeUrgent(a.p), ub = activeUrgent(b.p); if (ua !== ub) return ua ? -1 : 1; }   // urgent that still waits comes first
     const va = sortValue(a, s.key), vb = sortValue(b, s.key);
     if (va === vb) return 0;
     if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
@@ -594,7 +617,7 @@ async function screenFeed() {
         class: [selected ? 'is-selected' : '', p.mode === 'urgent' && p.status === 'open' ? 'is-urgent' : '', p.owner_id === myId() ? 'is-mine' : ''].join(' ').trim(),
         onclick: () => select(p.id), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(p.id); } },
       },
-      h('td', null, h('span.tag', { class: p.kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, p.kind === 'cargo' ? t('kind_cargo') : t('kind_truck')), whenTag(p), p.is_operator_posting ? h('span.tag.tag--op', null, t('operator')) : null),
+      h('td', null, h('span.tag', { class: p.kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, p.kind === 'cargo' ? t('kind_cargo') : t('kind_truck')), whenTag(p), waitBadge(p), p.is_operator_posting ? h('span.tag.tag--op', null, t('operator')) : null),
       h('td.tbl__route', null, h('b', null, p.from_name), h('span.muted', null, ' → '), h('b', null, p.to_name)),
       h('td.tbl__num', null, detourGlyph(x.m), h('b', { class: x.m.good ? 'is-good' : 'is-acc' }, x.m.detour != null ? (x.m.detour <= 5 ? t('on_the_way') : `+${fmtInt(x.m.detour)} km`) : `${fmtInt(x.m.dist ?? x.m.trip)} km`), h('small.muted', null, ` · ${fmtInt(x.m.trip)} km`)),
       h('td', null, fmtDateRange(p.date_from, p.date_to)),
@@ -907,7 +930,7 @@ function vehicleSelect(draft, key = 'vehicle_type_code') {
   return sel;
 }
 function cargoPayload(draft, id, photos) {
-  return { id, kind: 'cargo', mode: draft.mode, from_name: draft.from.name, from_lat: draft.from.lat, from_lng: draft.from.lng, from_radius_km: draft.from.radius || 0, to_name: draft.to.name, to_lat: draft.to.lat, to_lng: draft.to.lng, to_radius_km: draft.to.radius || 0, date_from: draft.date_from, date_to: draft.mode === 'urgent' ? draft.date_from : (draft.date_to || draft.date_from), vehicle_type_code: draft.vehicle_type_code, cargo_type_id: draft.cargo_type_id, cargo_fields: Object.fromEntries(Object.entries(draft.fields).filter(([, v]) => v !== undefined)), weight_kg: num(draft.weight_kg) != null ? Math.round(num(draft.weight_kg)) : null, volume_m3: num(draft.volume_m3), length_m: num(draft.length_m), width_m: num(draft.width_m), height_m: num(draft.height_m), photos, price: num(draft.price), note: draft.note.trim() || null, is_operator_posting: !!draft.operator, ...(draft.for_posting_id ? { for_posting_id: draft.for_posting_id } : {}) };
+  return { id, kind: 'cargo', mode: draft.mode, from_name: draft.from.name, from_lat: draft.from.lat, from_lng: draft.from.lng, from_radius_km: draft.from.radius || 0, to_name: draft.to.name, to_lat: draft.to.lat, to_lng: draft.to.lng, to_radius_km: draft.to.radius || 0, date_from: draft.date_from, date_to: draft.mode === 'urgent' ? draft.date_from : (draft.date_to || draft.date_from), vehicle_type_code: draft.vehicle_type_code, cargo_type_id: draft.cargo_type_id, cargo_fields: Object.fromEntries(Object.entries(draft.fields).filter(([, v]) => v !== undefined)), weight_kg: num(draft.weight_kg) != null ? Math.round(num(draft.weight_kg)) : null, volume_m3: num(draft.volume_m3), length_m: num(draft.length_m), width_m: num(draft.width_m), height_m: num(draft.height_m), photos, price: num(draft.price), note: draft.note.trim() || null, is_operator_posting: !!draft.operator, ...(draft.for_posting_id ? { for_posting_id: draft.for_posting_id } : {}), ...(draft.mode === 'urgent' && draft.wait_minutes ? { wait_until: new Date(Date.now() + draft.wait_minutes * 60000).toISOString() } : {}) };
 }
 function cargoForm() {
   const me = state.me;
@@ -994,7 +1017,7 @@ function wizard(kind) {
     date_from: pre?.date_from || firstDay, date_to: pre?.date_to || pre?.date_from || firstDay,
     cargo_type_id: state.ref.cargoTypes[0]?.id || null, fields: {}, vehicle_type_code: null, vehicle: defVehicle,
     weight_kg: '', volume_m3: '', length_m: '', width_m: '', height_m: '', ...fromVehicle(defVehicle),
-    photos: [], price: '', note: '', operator: false,
+    photos: [], price: '', note: '', operator: false, urgent: false, wait_minutes: 60,
   };
   const fromLast = !pre && !!last?.from && !!last?.to;
   const STEPS = ['route', 'when', 'what', 'check'];
@@ -1018,7 +1041,7 @@ function wizard(kind) {
       const id = uuid();
       let p;
       if (kind === 'truck') p = await api.createPosting(truckPayload(draft, id));
-      else p = await api.createPosting(cargoPayload(draft, id, await uploadPhotos(draft, id)));
+      else { draft.mode = draft.urgent ? 'urgent' : 'planned'; if (draft.urgent) { draft.date_from = isoDate(); draft.date_to = isoDate(); } p = await api.createPosting(cargoPayload(draft, id, await uploadPhotos(draft, id))); }
       afterPost(p);
     } catch (e) { fail(e); btn.disabled = false; }
   };
@@ -1135,13 +1158,20 @@ function calendarStep(draft, kind) {
   const fmtMonth = new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric' });
   const fmtLong = new Intl.DateTimeFormat(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
   const ymd = (y, m, d) => isoDate(new Date(y, m, d, 12));
+  const urgentBox = h('div.wurgent');
   const pick = (day) => {
     if (anchor && day > anchor) { draft.date_from = anchor; draft.date_to = day; anchor = null; }
     else { draft.date_from = day; draft.date_to = day; anchor = day; }
     paint();
   };
   const paint = () => {
-    sel.textContent = fmtDateRange(draft.date_from, draft.date_to);
+    if (kind === 'cargo') {
+      clear(urgentBox);
+      urgentBox.append(h('button.wurgent__toggle', { type: 'button', 'aria-pressed': draft.urgent ? 'true' : 'false', class: draft.urgent ? 'is-on' : '', onclick: () => { draft.urgent = !draft.urgent; if (draft.urgent) { draft.date_from = today; draft.date_to = today; anchor = null; } paint(); } }, icon('bolt'), h('span', null, t('wiz_urgent'))));
+      if (draft.urgent) urgentBox.append(h('div.form__section', null, h('div.form__title', null, t('wiz_wait_q')), chips(WAITS.map((m) => ({ value: m, label: waitLabel(m) })), { value: draft.wait_minutes, name: t('wiz_wait_q'), onChange: (v) => { draft.wait_minutes = v; } }), h('p.field__hint', null, t('wiz_wait_hint'))));
+    }
+    for (const el of [quickWrap, months, hint]) el.hidden = !!draft.urgent;
+    sel.textContent = draft.urgent ? t('wiz_urgent_sel') : fmtDateRange(draft.date_from, draft.date_to);
     clear(quickWrap);
     quickWrap.append(chips([{ value: today, label: t('today') }, { value: addDays(1), label: t('tomorrow') }, { value: addDays(2), label: fmtDate(addDays(2)) }],
       { value: draft.date_from === draft.date_to ? draft.date_from : null, name: t('when'), onChange: (v) => { draft.date_from = v; draft.date_to = v; anchor = v; paint(); } }));
@@ -1168,7 +1198,8 @@ function calendarStep(draft, kind) {
       months.append(h('div.cal__month', null, h('h2.cal__mname', null, fmtMonth.format(new Date(y, m, 1))), grid));
     }
   };
-  wrap.append(sel, quickWrap, h('p.wiz__hint', null, t('wiz_when_hint')), months);
+  const hint = h('p.wiz__hint', null, t('wiz_when_hint'));
+  wrap.append(sel, urgentBox, quickWrap, hint, months);
   paint();
   return wrap;
 }
@@ -1234,7 +1265,8 @@ function truckWhatStep(draft, fromVehicle, repaint) {
 function checkStep(draft, kind) {
   const rows = h('dl.kv');
   const add = (k, v) => { if (v) rows.append(h('dt', null, k), h('dd', null, v)); };
-  add(t('when'), fmtDateRange(draft.date_from, draft.date_to));
+  add(t('when'), draft.urgent && kind === 'cargo' ? t('wiz_urgent_sel') : fmtDateRange(draft.date_from, draft.date_to));
+  if (draft.urgent && kind === 'cargo') add(t('wait_label'), waitLabel(draft.wait_minutes));
   if (kind === 'truck') {
     add(t('vehicle'), draft.vehicle ? `${draft.vehicle.type_code} ${nameOf(vtype(draft.vehicle.type_code)) || ''}` : '');
     if (num(draft.price) != null) add(t('kv_asking'), fmtMoney(num(draft.price))); else add(t('price_word'), t('negotiable'));
@@ -1261,13 +1293,14 @@ async function screenOperator() {
   if (!state.me.profile.is_operator) { go('#/post'); return h('div'); }
   const el = h('section.screen.narrow');
   el.append(h('h1', null, t('operator_title')), h('p.lead', { style: { margin: '6px 0 16px' } }, t('operator_lead')));
-  const draft = { mode: 'urgent', date_from: isoDate(), date_to: isoDate(), cargo_type_id: state.ref.cargoTypes.find((c) => c.id === 'vehicle')?.id || state.ref.cargoTypes[0]?.id || null, fields: {}, vehicle_type_code: null, weight_kg: '', volume_m3: '', length_m: '', width_m: '', height_m: '', photos: [], price: '', note: '', operator: true, from: null, to: null };
+  const draft = { wait_minutes: 60, mode: 'urgent', date_from: isoDate(), date_to: isoDate(), cargo_type_id: state.ref.cargoTypes.find((c) => c.id === 'vehicle')?.id || state.ref.cargoTypes[0]?.id || null, fields: {}, vehicle_type_code: null, weight_kg: '', volume_m3: '', length_m: '', width_m: '', height_m: '', photos: [], price: '', note: '', operator: true, from: null, to: null };
   const form = h('form.form.form--operator', { novalidate: true });
   const fromF = cityField('from');
   const toF = cityField('to');
   const fromIn = fromF.querySelector('input');
   const toIn = toF.querySelector('input');
   const dateIn = h('select.select', { onchange: (e) => { draft.date_from = e.target.value; draft.date_to = e.target.value; } }, Array.from({ length: 8 }, (_, i) => h('option', { value: addDays(i) }, i === 0 ? t('today') : i === 1 ? t('tomorrow') : fmtDate(addDays(i)))));
+  const waitSel = h('select.select', { onchange: (e) => { draft.wait_minutes = Number(e.target.value) || null; } }, WAITS.map((m) => h('option', { value: String(m), selected: m === 60 }, waitLabel(m))), h('option', { value: '' }, '—'));
   const modeSel = h('select.select', { onchange: (e) => { draft.mode = e.target.value; } }, h('option', { value: 'urgent' }, t('mode_urgent')), h('option', { value: 'planned' }, t('mode_planned')));
   const dyn = cargoFieldsBlock(draft, 'select');
   const catSel = h('select.select', { onchange: (e) => { draft.cargo_type_id = e.target.value; draft.fields = {}; dyn.repaint(); } });
@@ -1277,7 +1310,8 @@ async function screenOperator() {
   const submit = h('button.btn.btn--primary.btn--big.btn--wide', { type: 'submit' }, t('submit_post'));
   form.append(
     h('div.grid2', null, fromF, toF),
-    h('div.grid3', null, field(t('date'), dateIn), field(t('mode'), modeSel), field(t('cargo_type'), catSel)),
+    h('div.grid2', null, field(t('date'), dateIn), field(t('mode'), modeSel)),
+    h('div.grid2', null, field(t('wait_label'), waitSel), field(t('cargo_type'), catSel)),
     dyn,
     h('div.grid2', null, mk('weight_kg', `${t('weight')}, ${t('kg')}`, '1200'), mk('volume_m3', `${t('volume')}, ${t('m3')}`, '4')),
     h('div.grid3', null, mk('length_m', dimLabel('l'), '2.4'), mk('width_m', dimLabel('w'), '1.2'), mk('height_m', dimLabel('h'), '1.6')),
@@ -1299,7 +1333,7 @@ async function screenOperator() {
       form.querySelectorAll('input, textarea').forEach((i) => { i.value = ''; });
       for (const k of ['weight_kg', 'volume_m3', 'length_m', 'width_m', 'height_m', 'price', 'note']) draft[k] = '';
       draft.fields = {}; dyn.repaint(); draft.vehicle_type_code = null;
-      form.querySelectorAll('select').forEach((s) => { if (s !== modeSel && s !== catSel && s !== dateIn) s.selectedIndex = 0; });
+      form.querySelectorAll('select').forEach((s) => { if (s !== modeSel && s !== catSel && s !== dateIn && s !== waitSel) s.selectedIndex = 0; });
       submit.disabled = false;
       fromIn.focus();
     } catch (err) { fail(err); submit.disabled = false; }

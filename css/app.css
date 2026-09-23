@@ -27,6 +27,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }   /* a class with display must not bring hidden things back */
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--top-h) + var(--sat) + 12px); scroll-padding-bottom: calc(var(--nav-h) + var(--sab) + 96px); }
 body {
   margin: 0; background: var(--bg) radial-gradient(70% 40% at 50% -10%, rgba(245, 166, 35, .10), transparent 70%) no-repeat; color: var(--ink);
@@ -132,6 +133,10 @@ img { max-width: 100%; display: block; }
 .tag--urgent { background: var(--acc); color: #17110A; }
 .tag--planned { background: rgba(63, 191, 127, .18); color: var(--green-text); }
 .tag--today { background: rgba(245, 166, 35, .18); color: var(--acc-text); box-shadow: inset 0 0 0 1px rgba(245, 166, 35, .55); }
+/* countdown of an urgent cargo: ticks every second, tabular digits so it does not jump */
+.tag--wait { gap: 5px; background: var(--card2); color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: .02em; text-transform: none; }
+.tag--wait .ic { width: 14px; height: 14px; }
+.tag--wait.is-over { color: var(--mut); }
 .tag--op { background: var(--card2); color: var(--mut); }
 .tag--status { background: var(--card2); color: var(--mut); }
 :root[data-theme="light"] .tag--cargo { background: rgba(61, 123, 184, .14); }
@@ -295,6 +300,10 @@ img { max-width: 100%; display: block; }
 .wiz__more > summary { display: flex; align-items: center; min-height: 48px; padding: 0 14px; color: var(--ink); font-weight: 700; cursor: pointer; }
 .wiz__more > .stack { padding: 4px 14px 14px; }
 @media (min-width: 1024px) { .wiz__foot { bottom: 12px; } }
+/* step 2 (cargo): urgent — today, with a waiting time */
+.wurgent { display: grid; gap: 12px; }
+.wurgent__toggle { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 8px 14px; border: 2px solid var(--acc); border-radius: 16px; background: transparent; color: var(--acc-text); font: inherit; font-size: 18px; font-weight: 800; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.wurgent__toggle.is-on { background: var(--acc); color: #17110A; }
 /* step 1: route on a map */
 .wroute { display: grid; gap: 10px; min-width: 0; }
 .wroute__pts { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 6px; align-items: stretch; }
