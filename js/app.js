@@ -206,6 +206,9 @@ function metricFor(p) {
   }
   return { detour: null, dist: null, trip, big: t('direct', { km: fmtInt(trip) }), good: false, sub: '', sortKey: trip };
 }
+// On his own cargo the customer needs the offers, not kilometres from himself (audit 13.09, 4.3).
+const offersSummary = (p) => (p.bid_count ? `${t('bids_n', { n: p.bid_count })}${p.best_bid != null ? ' · ' + t('best_bid', { p: fmtInt(p.best_bid) }) : ''}` : t('no_bids'));
+const ownCargo = (p) => p.kind === 'cargo' && !!myId() && p.owner_id === myId();
 // A tiny route glyph: dotted straight line = my way, amber bump = the detour the cargo adds.
 function detourGlyph(m) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -278,7 +281,8 @@ function postingCard(p, opts = {}) {
   const link = h('a.pcard__link', { href: `#/p/${p.id}`, 'aria-label': `${p.from_name} → ${p.to_name}` },
     tagRow(p),
     h('div.pcard__route', null, h('span', null, p.from_name), icon('arrow'), h('span', null, p.to_name)),
-    h('div.pcard__metric', null, detourGlyph(m), h('b', { class: m.good ? 'is-good' : '' }, m.big), m.sub ? h('span', null, m.sub) : null),
+    ownCargo(p) ? h('div.pcard__metric', null, h('b', { class: p.bid_count ? 'is-good' : '' }, offersSummary(p)), h('span', null, t('direct', { km: fmtInt(m.trip) })))
+      : h('div.pcard__metric', null, detourGlyph(m), h('b', { class: m.good ? 'is-good' : '' }, m.big), m.sub ? h('span', null, m.sub) : null),
     factsLine(p) ? h('div.pcard__facts', null, factsLine(p)) : null,
     h('div.pcard__meta', null, p.photos?.length ? h('img.pcard__thumb', { src: photoThumb(p.photos[0]), alt: '', loading: 'lazy', width: 44, height: 44 }) : null, h('span', null, typeLine(p))),
     priceLine(p));
@@ -636,7 +640,8 @@ async function buildDetail(id, { inline = false } = {}) {
   el.append(h('div.card.detail__hero', null,
     tagRow(p),
     h(inline ? 'h2.detail__route' : 'h1.detail__route', null, h('span', null, p.from_name + (p.from_radius_km ? ` ${t('km_plus', { km: p.from_radius_km })}` : '')), icon('arrow'), h('span', null, p.to_name + (p.to_radius_km ? ` ${t('km_plus', { km: p.to_radius_km })}` : ''))),
-    h('div.detail__metric', { class: m.good ? 'is-good' : '' }, detourGlyph(m), h('span', null, m.big), m.sub ? h('span.muted.small', null, ' · ' + m.sub) : null),
+    ownCargo(p) ? h('div.detail__metric', { class: p.bid_count ? 'is-good' : '' }, h('span', null, offersSummary(p)), h('span.muted.small', null, ' · ' + t('direct', { km: fmtInt(m.trip) })))
+      : h('div.detail__metric', { class: m.good ? 'is-good' : '' }, detourGlyph(m), h('span', null, m.big), m.sub ? h('span.muted.small', null, ' · ' + m.sub) : null),
     h('p.muted', { style: { marginTop: '8px' } }, `${t('when')}: ${fmtDateRange(p.date_from, p.date_to)}`),
     h('p.muted.small', { style: { marginTop: '4px' } }, `${t('posted_by')}: ${p.owner?.display_name || ''}${p.owner?.city_name ? ', ' + p.owner.city_name : ''}`)));
   // what the person came for goes right under the route: contacts after a deal, offers for the owner
@@ -808,7 +813,7 @@ function dimsFields(draft) {
   const mk = (key, label, ph) => field(label, input({ inputmode: 'decimal', value: draft[key] ?? '', placeholder: ph, class: 'input--num', oninput: (e) => { draft[key] = e.target.value; } }));
   return h('div.form__section', null,
     h('div.grid2', null, mk('weight_kg', `${t('weight')}, ${t('kg')}`, '1200'), mk('volume_m3', `${t('volume')}, ${t('m3')}`, '4')),
-    h('div.grid3', null, mk('length_m', `L, ${t('m')}`, '2.4'), mk('width_m', `W, ${t('m')}`, '1.2'), mk('height_m', `H, ${t('m')}`, '1.6')));
+    h('div.grid3', null, mk('length_m', dimLabel('l'), '2.4'), mk('width_m', dimLabel('w'), '1.2'), mk('height_m', dimLabel('h'), '1.6')));
 }
 function afterPost(p) {
   store.set(lastRouteKey(), { from: { name: p.from_name, lat: p.from_lat, lng: p.from_lng, radius: p.from_radius_km }, to: { name: p.to_name, lat: p.to_lat, lng: p.to_lng, radius: p.to_radius_km } });
@@ -1260,7 +1265,7 @@ async function screenOperator() {
     h('div.grid3', null, field(t('date'), dateIn), field(t('mode'), modeSel), field(t('cargo_type'), catSel)),
     dyn,
     h('div.grid2', null, mk('weight_kg', `${t('weight')}, ${t('kg')}`, '1200'), mk('volume_m3', `${t('volume')}, ${t('m3')}`, '4')),
-    h('div.grid3', null, mk('length_m', `L, ${t('m')}`, '2.4'), mk('width_m', `W, ${t('m')}`, '1.2'), mk('height_m', `H, ${t('m')}`, '1.6')),
+    h('div.grid3', null, mk('length_m', dimLabel('l'), '2.4'), mk('width_m', dimLabel('w'), '1.2'), mk('height_m', dimLabel('h'), '1.6')),
     CUSTOMER_PRICE ? h('div.grid2', null, field(t('vehicle_needed'), vehicleSelect(draft)), mk('price', t('price_urgent_label'), '120')) : field(t('vehicle_needed'), vehicleSelect(draft)),
     field(t('note'), noteIn, t('operator_privacy')),
     submit);
@@ -1451,8 +1456,8 @@ function vehicleSheet() {
     },
     field(t('vehicle_type'), sel),
     h('div.grid2', null, field(t('plate'), input({ placeholder: 'AB-1234', maxlength: 16, oninput: (e) => { draft.plate = e.target.value; } })), mk('tonnage_t', t('tonnage'), '8')),
-    h('div.grid2', null, mk('volume_m3', `${t('volume')}, ${t('m3')}`, '40'), mk('length_m', `L, ${t('m')}`, '7.2')),
-    h('div.grid2', null, mk('width_m', `W, ${t('m')}`, '2.45'), mk('height_m', `H, ${t('m')}`, '2.4')),
+    h('div.grid2', null, mk('volume_m3', `${t('volume')}, ${t('m3')}`, '40'), mk('length_m', dimLabel('l'), '7.2')),
+    h('div.grid2', null, mk('width_m', dimLabel('w'), '2.45'), mk('height_m', dimLabel('h'), '2.4')),
     h('label.check', null, h('input', { type: 'checkbox', checked: draft.is_default, onchange: (e) => { draft.is_default = e.target.checked; } }), h('span', null, t('default_vehicle'))),
     h('button.btn.btn--primary.btn--big.btn--wide', { type: 'submit' }, t('save'))),
   });

@@ -1,6 +1,8 @@
 // Every screen at four widths (360, 390, 1280, 1920) with the compare.js criteria: axe WCAG 2.1 A/AA,
 // tap targets >= 44px, no horizontal scroll. Includes the public page, screens behind login, open
-// sheets, the desktop board with the details panel, the operator form and the deal screens.
+// sheets, the desktop board with the details panel, the operator form and the deal screens;
+// since 23.09 also the "Offer" doors, every step of the posting wizard (map, calendar, what, check)
+// and the customer's "Agree" / "Let me think" on carriers' offers.
 // Run: BASE=https://.../pacelam/ node _audit/screens.mjs   (BASE is the site root; the app is BASE + 'app/')
 import { chromium } from 'playwright-core';
 import { createRequire } from 'node:module';
@@ -55,9 +57,10 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await page.goto(APP + '?visit=1&lang=lv', { waitUntil: 'load' });
   await page.waitForSelector(rowSel);
   await audit(page, `${V} board (visitor)`);
-  await page.click('.lang-btn:not(.top__about)'); await page.waitForSelector('.sheet.is-open');
-  await audit(page, `${V} language sheet`);
-  await page.keyboard.press('Escape');
+  // since 23.09: LV | RU | EN in the header instead of a sheet
+  await page.click('.langsw button[lang="ru"]'); await page.waitForSelector(rowSel);
+  await audit(page, `${V} board (visitor, switched to ru)`);
+  await page.click('.langsw button[lang="lv"]'); await page.waitForSelector(rowSel);
   await page.goto(APP + '?lang=lv#/auth'); await page.waitForSelector('text=Ieiet demo');
   await audit(page, `${V} auth`);
   await page.getByRole('button', { name: 'Pārvadātājs' }).click(); await page.waitForSelector(rowSel);
@@ -76,11 +79,36 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await audit(page, `${V} city picker`);
   await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
   if (mobile) { await page.locator('.strip .icon-btn').click(); await page.waitForSelector('.sheet.is-open'); await audit(page, `${V} filter sheet`); await page.keyboard.press('Escape'); }
-  await page.goto(APP + '?lang=lv#/post'); await page.waitForSelector('form');
-  await audit(page, `${V} post truck`);
-  await page.getByRole('tab', { name: 'Meklēju transportu' }).click(); await page.waitForSelector('form');
+  // "Offer" doors and the posting wizard (23.09): map -> calendar -> what -> check
+  await page.goto(APP + '?lang=lv#/post'); await page.waitForSelector('.offer--page');
+  await audit(page, `${V} post doors`);
+  await page.click('.offer--page .offer__btn--truck'); await page.waitForSelector('.wroute');
+  await page.waitForSelector('.wmap .leaflet-tile-loaded', { timeout: 15000 }).catch(() => {});
+  await page.fill('.wsearch input', 'Rīg'); await page.waitForSelector('.wsearch__list .cityrow');
+  await audit(page, `${V} wizard truck: map + town list`);
+  await page.locator('.wsearch__list .cityrow').first().click();
+  await audit(page, `${V} wizard truck: map, route set`);
+  await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.cal');
+  await audit(page, `${V} wizard truck: calendar`);
+  await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.wiz .chips');
+  await audit(page, `${V} wizard truck: vehicle`);
+  await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.wcheck');
+  await audit(page, `${V} wizard truck: check`);
+  await page.goto(APP + '?lang=lv#/post/cargo'); await page.waitForSelector('.wroute');
+  await page.fill('.wsearch input', 'Rīg'); await page.locator('.wsearch__list .cityrow').first().click();
+  await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.cal');
+  await page.locator('.cal__day:not([disabled])').nth(1).click(); await page.locator('.cal__day:not([disabled])').nth(3).click();
+  await audit(page, `${V} wizard cargo: calendar range`);
+  await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.wiz .chips');
   await page.getByRole('button', { name: 'Automašīna' }).click();
-  await audit(page, `${V} post cargo`);
+  await audit(page, `${V} wizard cargo: what (vehicle fields)`);
+  await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.wcheck');
+  await audit(page, `${V} wizard cargo: check`);
+  await page.goto(APP + '?lang=lv#/post/truck/full'); await page.waitForSelector('form');
+  await audit(page, `${V} post truck (all fields)`);
+  await page.getByRole('tab', { name: 'Meklēju transportu' }).click(); await page.waitForSelector('form .chip');
+  await page.getByRole('button', { name: 'Automašīna' }).click();
+  await audit(page, `${V} post cargo (all fields)`);
   // planned detail + bid sheet
   await page.goto(APP + '?lang=lv#/'); await page.waitForSelector(rowSel);
   await page.evaluate(() => localStorage.removeItem('pacelam.route'));
@@ -88,27 +116,27 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await page.locator(mobile ? '.pcard' : '.tbl__row', { hasText: 'Rēzekne' }).first().locator(mobile ? 'a.pcard__link' : 'td').first().click();
   await page.waitForSelector('.detail');
   await audit(page, `${V} detail (planned)`);
-  await page.getByRole('button', { name: 'Sava cena' }).first().click(); await page.waitForSelector('.sheet.is-open');
+  await page.getByRole('button', { name: 'Piedāvāt cenu' }).first().click(); await page.waitForSelector('.sheet.is-open');
   await audit(page, `${V} bid sheet`);
   await page.fill('.sheet input[inputmode="decimal"]', '175');
   await page.getByRole('button', { name: 'Nosūtīt cenu' }).click(); await page.waitForTimeout(400);
   await audit(page, `${V} detail with my bid`);
-  // urgent: agree to the customer's price (a bid), the customer picks
+  // urgent cargo (operator): since 23.09 the carrier names his price here too
   await page.goto(APP + '?lang=lv#/'); await page.waitForSelector(rowSel);
-  await page.locator(mobile ? '.pcard.is-urgent' : '.tbl__row.is-urgent').filter({ hasText: '€' }).first().locator(mobile ? 'a.pcard__link' : 'td').first().click();
+  await page.locator(mobile ? '.pcard.is-urgent' : '.tbl__row.is-urgent').first().locator(mobile ? 'a.pcard__link' : 'td').first().click();
   await page.waitForSelector('.detail');
-  await page.getByRole('button', { name: 'Ņemu par' }).first().click(); await page.waitForSelector('.sheet.is-open');
-  await audit(page, `${V} urgent agree confirm`);
-  await page.locator('.sheet .btn--primary').click(); await page.waitForTimeout(400);
-  await audit(page, `${V} urgent agreed (my bid)`);
-  // planned cargo with an instant price: take -> contacts (the deal screens that overflowed in the previous build)
-  await page.goto(APP + '?lang=lv#/'); await page.waitForSelector(rowSel);
-  await page.locator(mobile ? '.pcard' : '.tbl__row').filter({ hasText: 'Liepāja' }).filter({ hasText: 'Ventspils' }).first().locator(mobile ? 'a.pcard__link' : 'td').first().click();
+  await page.getByRole('button', { name: 'Piedāvāt cenu' }).first().click(); await page.waitForSelector('.sheet.is-open');
+  await audit(page, `${V} urgent: offer a price`);
+  await page.keyboard.press('Escape');
+  // the customer on a truck with the carrier's price: "Agree for 350 EUR" -> contacts at once
+  await page.goto(APP + '?lang=lv&demo=customer#/'); await page.waitForSelector(rowSel);
+  await page.locator(mobile ? '.pcard' : '.tbl__row').filter({ hasText: '350' }).first().locator(mobile ? 'a.pcard__link' : 'td').first().click();
   await page.waitForSelector('.detail');
-  await page.getByRole('button', { name: 'Ņemu par' }).first().click(); await page.waitForSelector('.sheet.is-open');
-  await audit(page, `${V} take confirm`);
+  await page.getByRole('button', { name: 'Piekrist par 350' }).first().click(); await page.waitForSelector('.sheet.is-open');
+  await audit(page, `${V} agree to the carrier's price: confirm`);
   await page.locator('.sheet .btn--primary').click(); await page.waitForSelector('.contacts');
   await audit(page, `${V} deal contacts`);
+  await page.goto(APP + '?lang=lv&demo=carrier#/'); await page.waitForSelector(rowSel);
   await page.goto(APP + '?lang=lv#/my'); await page.waitForSelector('.tabs');
   await audit(page, `${V} my`);
   await page.getByRole('tab', { name: 'Darījumi' }).click(); await page.waitForTimeout(300);
@@ -130,9 +158,13 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await audit(page, `${V} board (customer)`);
   await page.goto(APP + '?lang=lv#/my'); await page.waitForSelector('.tabs');
   await page.locator('.pcard', { hasText: 'Rēzekne' }).first().locator('a.pcard__link').click(); await page.waitForSelector('.bids');
-  await audit(page, `${V} detail (owner, bids)`);
-  await page.locator('.bidrow', { hasText: '175' }).locator('button').click(); await page.waitForTimeout(400);
-  await audit(page, `${V} deal pending (owner)`);
+  await audit(page, `${V} detail (owner, offers: agree / think)`);
+  await page.locator('.bidrow', { hasText: '190' }).getByRole('button', { name: 'Vēl padomāšu' }).click(); await page.waitForTimeout(400);
+  await audit(page, `${V} owner: one offer put off`);
+  await page.locator('.bidrow', { hasText: '175' }).getByRole('button', { name: 'Piekrist' }).click(); await page.waitForSelector('.sheet.is-open');
+  await audit(page, `${V} owner: agree confirm`);
+  await page.locator('.sheet .btn--primary').click(); await page.waitForSelector('.contacts');
+  await audit(page, `${V} owner: deal, contacts open`);
   await page.goto(APP + '?lang=lv&demo=operator#/operator'); await page.waitForSelector('form.form--operator');
   await audit(page, `${V} operator form`);
   // light theme

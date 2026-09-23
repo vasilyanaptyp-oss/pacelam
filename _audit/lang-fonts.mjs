@@ -31,12 +31,44 @@ for (const lang of ['lv', 'ru', 'en']) {
   await page.waitForSelector('.pcard');
   const got = await page.evaluate(() => ({ lang: document.documentElement.lang, nav: document.querySelector('.nav a').textContent.trim() }));
   check(`stored ru, URL lv -> page is lv (${got.lang}, "${got.nav}")`, got.lang === 'lv' && got.nav === 'Plūsma');
-  // switching via the language sheet updates document lang and URL
-  await page.click('.lang-btn:not(.top__about)');
-  await page.getByRole('button', { name: 'English' }).click();
+  // the LV | RU | EN switch in the header (since 23.09 — no sheet) updates document lang and URL
+  await page.click('.langsw button[lang="en"]');
   await page.waitForTimeout(300);
   const after = await page.evaluate(() => ({ lang: document.documentElement.lang, url: location.search, nav: document.querySelector('.nav a').textContent.trim() }));
   check(`language switch updates html lang and URL (${after.lang}, ${after.url})`, after.lang === 'en' && after.url.includes('lang=en') && after.nav === 'Board');
+  // the choice is remembered: open the board again without ?lang
+  await page.goto(`${BASE}?visit=1`, { waitUntil: 'load' });
+  await page.waitForSelector('.pcard');
+  const again = await page.evaluate(() => document.documentElement.lang);
+  check(`the chosen language is remembered without ?lang (${again})`, again === 'en');
+  await ctx.close();
+}
+
+// --- the phone's language decides on the first visit (no ?lang, nothing stored) ---
+for (const [locale, expect] of [['ru-RU', 'ru'], ['lv-LV', 'lv'], ['en-GB', 'en'], ['uk-UA', 'ru'], ['de-DE', 'en']]) {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale });
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}?visit=1`, { waitUntil: 'load' });
+  await page.waitForSelector('.pcard');
+  const app = await page.evaluate(() => document.documentElement.lang);
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(BASE.replace(/app\/$/, ''), { waitUntil: 'load' });
+  await page.waitForSelector('.hero');
+  const pub = await page.evaluate(() => document.documentElement.lang);
+  check(`phone ${locale}: board opens in ${app}, public page in ${pub} (expected ${expect})`, app === expect && pub === expect);
+  await ctx.close();
+}
+
+// --- the LV | RU | EN switch is on every screen, thumb-sized ---
+{
+  const ctx = await browser.newContext({ viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: 'ru-RU' });
+  const page = await ctx.newPage();
+  for (const [hash, sel] of [['#/', '.pcard'], ['#/post', '.offer--page'], ['#/post/truck', '.wroute'], ['#/my', '.tabs'], ['#/me', 'form'], ['#/search', 'h1']]) {
+    await page.goto(`${BASE}?demo=carrier&lang=ru${hash}`, { waitUntil: 'load' });
+    await page.waitForSelector(sel);
+    const sw = await page.evaluate(() => [...document.querySelectorAll('.langsw button')].map((b) => { const r = b.getBoundingClientRect(); return { l: b.textContent, w: Math.round(r.width), h: Math.round(r.height), vis: r.top >= 0 && r.bottom <= innerHeight }; }));
+    check(`${hash}: LV|RU|EN visible, each >= 44 px (${sw.map((x) => `${x.l} ${x.w}x${x.h}`).join(', ')})`, sw.length === 3 && sw.map((x) => x.l).join('') === 'LVRUEN' && sw.every((x) => x.w >= 44 && x.h >= 44 && x.vis));
+  }
   await ctx.close();
 }
 

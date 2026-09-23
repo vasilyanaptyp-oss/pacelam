@@ -37,12 +37,13 @@ await page.keyboard.press('Tab'); await page.keyboard.press('ArrowDown'); await 
 await page.keyboard.press('Tab'); await type('Audi A4'); steps.push('Tab → Марка и модель: «Audi A4»');
 await page.keyboard.press('Tab'); await type('1500'); steps.push('Tab → Вес: 1500');
 await page.keyboard.press('Tab'); steps.push('Tab → Объём (пусто)');
-await page.keyboard.press('Tab'); await type('4.6'); steps.push('Tab → L: 4.6');
-await page.keyboard.press('Tab'); await type('1.8'); steps.push('Tab → W: 1.8');
-await page.keyboard.press('Tab'); await type('1.4'); steps.push('Tab → H: 1.4');
+await page.keyboard.press('Tab'); await type('4.6'); steps.push('Tab → Длина: 4.6');
+await page.keyboard.press('Tab'); await type('1.8'); steps.push('Tab → Ширина: 1.8');
+await page.keyboard.press('Tab'); await type('1.4'); steps.push('Tab → Высота: 1.4');
 await page.keyboard.press('Tab'); steps.push('Tab → Нужная машина (любая)');
-await page.keyboard.press('Tab'); await type('130'); steps.push('Tab → Цена: 130');
-await page.keyboard.press('Enter'); steps.push('Enter → отправить');
+// since 23.09 the operator names no price either (only the carrier does): after the vehicle comes the note
+await page.keyboard.press('Tab'); await type('Stāv pie veikala'); steps.push('Tab → Примечание: «Stāv pie veikala»');
+await page.keyboard.press('Control+Enter'); steps.push('Ctrl+Enter → отправить');
 await page.waitForSelector('.toast', { timeout: 5000 });
 const elapsed = (Date.now() - t0) / 1000;
 await page.waitForTimeout(400);
