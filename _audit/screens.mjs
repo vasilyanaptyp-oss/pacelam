@@ -111,7 +111,7 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await audit(page, `${V} post cargo (all fields)`);
   // planned detail + bid sheet
   await page.goto(APP + '?lang=lv#/'); await page.waitForSelector(rowSel);
-  await page.evaluate(() => localStorage.removeItem('pacelam.route'));
+  await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('pacelam.route')).forEach((k) => localStorage.removeItem(k)));
   await page.reload({ waitUntil: 'load' }); await page.waitForSelector(rowSel);
   await page.locator(mobile ? '.pcard' : '.tbl__row', { hasText: 'Rēzekne' }).first().locator(mobile ? 'a.pcard__link' : 'td').first().click();
   await page.waitForSelector('.detail');

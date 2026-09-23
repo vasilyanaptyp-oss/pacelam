@@ -29,7 +29,7 @@ const state = {
   session: api.getSession(),
   me: null,
   ref: { vehicleTypes: [], groups: [], cargoTypes: [] },
-  route: store.get('pacelam.route'),
+  route: null,              // filled per user by loadMe()
   filter: { kind: 'all', mode: 'all', vehicleTypes: [], cargoTypes: [] },
   sort: null,               // { key, dir } for the table; null = default
   selected: null,           // posting id shown in the board's details panel
@@ -56,6 +56,8 @@ const photoThumb = (p) => (api.mode === 'demo' ? p : api.photoUrl(p.replace(/\.j
 const photoFull = (p) => api.photoUrl(p);
 // The last route is remembered per user: one browser may hold the carrier and the customer (demo, a shared office phone).
 const lastRouteKey = () => `pacelam.lastRoute.${myId() || 'guest'}`;
+// The feed route ("my route", detour filter) too: otherwise the customer inherits the carrier's route (audit 13.09, 5.2).
+const routeKey = () => `pacelam.route.${myId() || 'guest'}`;
 
 function errorText(e) {
   const m = String(e?.message || '');
@@ -423,8 +425,8 @@ function routeSheet(after) {
     title: t('feed_route'),
     body: h('div.stack', null, fromBtn, toBtn, h('div.field', null, h('div.field__label', null, rangeLabel), range),
       h('div.row', null,
-        h('button.btn.btn--ghost', { type: 'button', onclick: () => { state.route = null; store.set('pacelam.route', null); s.close(); (after || render)(); } }, t('delete')),
-        h('button.btn.btn--primary', { type: 'button', style: { flex: '1' }, onclick: () => { if (!draft.from || !draft.to) { toast(t('validation_route'), 'error'); return; } state.route = draft; store.set('pacelam.route', draft); s.close(); (after || render)(); } }, t('save')))),
+        h('button.btn.btn--ghost', { type: 'button', onclick: () => { state.route = null; store.set(routeKey(), null); s.close(); (after || render)(); } }, t('delete')),
+        h('button.btn.btn--primary', { type: 'button', style: { flex: '1' }, onclick: () => { if (!draft.from || !draft.to) { toast(t('validation_route'), 'error'); return; } state.route = draft; store.set(routeKey(), draft); s.close(); (after || render)(); } }, t('save')))),
   });
 }
 const emptyFilter = () => ({ kind: 'all', mode: 'all', vehicleTypes: [], cargoTypes: [] });
@@ -817,7 +819,7 @@ function dimsFields(draft) {
 }
 function afterPost(p) {
   store.set(lastRouteKey(), { from: { name: p.from_name, lat: p.from_lat, lng: p.from_lng, radius: p.from_radius_km }, to: { name: p.to_name, lat: p.to_lat, lng: p.to_lng, radius: p.to_radius_km } });
-  if (p.kind === 'truck') { state.route = { from: { name: p.from_name, lat: p.from_lat, lng: p.from_lng }, to: { name: p.to_name, lat: p.to_lat, lng: p.to_lng }, maxDetour: state.route?.maxDetour || state.me?.profile?.max_detour_km || 60 }; store.set('pacelam.route', state.route); }
+  if (p.kind === 'truck') { state.route = { from: { name: p.from_name, lat: p.from_lat, lng: p.from_lng }, to: { name: p.to_name, lat: p.to_lat, lng: p.to_lng }, maxDetour: state.route?.maxDetour || state.me?.profile?.max_detour_km || 60 }; store.set(routeKey(), state.route); }
   toast(t('posted_ok'));
   go(`#/p/${p.id}`);
 }
@@ -1427,7 +1429,7 @@ async function screenProfile() {
   vs.append(list);
   el.append(vs);
   const foot = h('div.row', { style: { marginTop: '10px' } }, h('button.btn.btn--ghost', { type: 'button', onclick: async () => { await api.signOut(); state.me = null; go('#/'); } }, t('sign_out')));
-  if (api.mode === 'demo') foot.append(h('button.btn.btn--ghost', { type: 'button', onclick: () => { api.resetDemo(); state.me = null; state.route = null; state.selected = null; store.set('pacelam.route', null); store.set('pacelam.lastRoute', null); store.set(lastRouteKey(), null); go('#/'); } }, 'Reset demo'));
+  if (api.mode === 'demo') foot.append(h('button.btn.btn--ghost', { type: 'button', onclick: () => { api.resetDemo(); state.me = null; state.route = null; state.selected = null; store.set(routeKey(), null); store.set('pacelam.lastRoute', null); store.set(lastRouteKey(), null); go('#/'); } }, 'Reset demo'));
   el.append(foot);
   return el;
 }
@@ -1581,6 +1583,7 @@ async function pollNotifications() {
 async function loadMe() {
   state.session = api.getSession();
   state.me = state.session ? await api.getMe().catch(() => null) : null;
+  state.route = store.get(routeKey());
   return state.me;
 }
 async function boot() {
