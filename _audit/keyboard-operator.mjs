@@ -3,7 +3,8 @@
 // Run: BASE=https://.../pacelam/app/ node _audit/keyboard-operator.mjs
 import { chromium } from 'playwright-core';
 
-const BASE = process.env.BASE || 'http://localhost:5173/app/';
+// BASE may be the site root or the app — both work, the same as timing.mjs and screens.mjs
+const BASE = (process.env.BASE || 'http://localhost:5173/').replace(/\/?$/, '/').replace(/(app\/)?$/, 'app/');
 const browser = await chromium.launch({ channel: 'chrome' });
 let failures = 0;
 const check = (name, ok, detail = '') => { if (!ok) failures++; console.log((ok ? 'PASS ' : 'FAIL ') + name + (detail && !ok ? '  -- ' + detail : '')); };

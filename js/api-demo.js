@@ -1,8 +1,8 @@
 // Demo backend: the same API surface as api-supabase.js, kept in this browser only.
 // Lets the client click through every flow before the database is connected. The rules
 // mirror supabase/migrations/0001_init.sql; the database version is the source of truth.
-import { VEHICLE_GROUPS, VEHICLE_TYPES, CARGO_TYPES } from './data.js';
-import { blobToDataUrl } from './photos.js';
+import { VEHICLE_GROUPS, VEHICLE_TYPES, CARGO_TYPES } from './data.js?v=806ca22a';
+import { blobToDataUrl } from './photos.js?v=806ca22a';
 
 const KEY = 'pacelam.demo';
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); }));
@@ -79,7 +79,9 @@ function seed() {
 export function createDemoApi() {
   let db;
   try { db = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { db = null; }
-  if (!db || db.version !== 7) { db = { version: 7, seededOn: day(0), ...seed() }; }
+  // version 8 (23.09.2026 evening): a fresh demo after the client's edits — a truck posted under the sample customer
+  // (his 22:49 screenshot) should not stay in anyone's browser
+  if (!db || db.version !== 8) { db = { version: 8, seededOn: day(0), ...seed() }; }
   // sample urgent calls keep counting down: a finished sample wait is re-armed on load
   for (const p of db.postings) if (p.demo_wait_min && p.status === 'open' && (!p.wait_until || new Date(p.wait_until) <= new Date())) p.wait_until = iso(Date.now() + p.demo_wait_min * 60000);
   // Demo dates are relative to "today": shift everything by the days elapsed since seeding so the
@@ -151,7 +153,7 @@ export function createDemoApi() {
     getSession: () => db.session,
     userId: uid,
     photoUrl: (p) => p,
-    resetDemo() { db = { version: 7, seededOn: day(0), ...seed() }; for (const p of db.postings) if (p.demo_wait_min) p.wait_until = iso(Date.now() + p.demo_wait_min * 60000); save(); emit(); },
+    resetDemo() { db = { version: 8, seededOn: day(0), ...seed() }; for (const p of db.postings) if (p.demo_wait_min) p.wait_until = iso(Date.now() + p.demo_wait_min * 60000); save(); emit(); },
 
     async signInDemo(id) { db.session = { user: { id, email: db.contacts[id]?.email || '' } }; save(); emit(); return db.session; },
     async signUp() { throw new Error('demo'); },

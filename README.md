@@ -50,6 +50,7 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
    can "call" a carrier on the way once).
    `0009_carrier_facts.sql` (facts next to an offer: the carrier's vehicle and payload, deals closed here, since
    when he is on Paceļam — no contacts, no plates).
+   `0010_vehicle_names.sql` (vehicle names without codes, limits written with < and >: "Tow truck < 5 t").
 2. Authentication → Providers → Email: for a test project turn **off** "Confirm email";
    set Site URL to the page URL (for password-reset links).
 3. Put the project URL and the anon key into `config.js`:
@@ -72,12 +73,15 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
   via `node scripts/gen-seed.mjs`), `js/i18n.js` lv/ru/en.
 - `supabase/migrations/0001_init.sql` — the whole model: tables, RLS, bids/deals functions,
   contact unlocks, saved-search notifications, subscription switch.
-- `_audit/` — checks: `db-test.mjs` (96 policy tests in PGlite), `leak-rest.mjs` (contact leak
+- `_audit/` — checks: `db-test.mjs` (100 policy tests in PGlite), `leak-rest.mjs` (contact leak
   through the real REST API), `timing.mjs` (20-second posting), `lang-fonts.mjs` (?lang and
   Latvian diacritics by pixel comparison), `screens.mjs` (every screen at 360/390/1280/1920),
   `keyboard-operator.mjs` (operator posts with the keyboard only), `table-rows.mjs`, `shots.mjs`,
   `desk-shots.mjs`, `scene-shots.mjs` (frames of the hero animation at several moments plus the
   still phone frame). Pass `BASE=https://.../pacelam/` to run them against the published site.
+- `scripts/stamp.mjs` — cache-busting: every local js/css reference carries `?v=<hash of the code>`, so right after a
+  deploy a browser never mixes a new `app.js` with an old `i18n.js`. Run `node scripts/stamp.mjs` before each commit
+  that touches `js/` or `css/`; `node scripts/stamp.mjs --check` fails if something is not stamped.
 - `assets/` — share image `og.png` (1200×630) and app icons, built by `node scripts/gen-assets.mjs`
   from the site's own fonts and the hero map (re-run after changing the map or the headline).
   `manifest.webmanifest` (root and `app/`) makes the board installable; `404.html` is served by

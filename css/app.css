@@ -119,7 +119,7 @@ img { max-width: 100%; display: block; }
 .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--line2); border-radius: 999px; background: var(--card); color: var(--ink); font-size: 15px; font-weight: 600; cursor: pointer; transition: background-color 120ms var(--ease), border-color 120ms var(--ease), transform 120ms var(--ease); }
 .chip:active { transform: scale(.96); }
 .chip.is-on { background: var(--acc); border-color: var(--acc); color: #17110A; font-weight: 800; }
-.chip--urgent.is-on { background: var(--acc); }
+.chip--urgent.is-on { background: #C62F35; border-color: #C62F35; color: #fff; }
 .chip--planned.is-on { background: var(--green); border-color: var(--green); }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: 14px; background: var(--card2); }
 .seg button { min-height: 44px; border: 0; border-radius: 11px; background: transparent; color: var(--mut); font-size: 15px; font-weight: 700; cursor: pointer; transition: background-color 120ms var(--ease), color 120ms var(--ease); }
@@ -128,20 +128,23 @@ img { max-width: 100%; display: block; }
 .check { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 4px 0; cursor: pointer; }
 .check input { width: 24px; height: 24px; margin: 0; accent-color: var(--acc); flex: none; }
 .tag { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 2px 9px; border-radius: 8px; font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-.tag--cargo { background: rgba(91, 147, 204, .18); color: var(--blue-text); }
-.tag--truck { background: rgba(245, 166, 35, .16); color: var(--acc-text); }
-.tag--urgent { background: var(--acc); color: #17110A; }
+/* the kind is the first thing to read: filled blue for cargo, filled yellow for transport (client, 23.09.2026) */
+.tag--cargo { background: #5B93CC; color: #0B0D11; }
+.tag--truck { background: #F5A623; color: #17110A; }
+.tag--urgent { background: #C62F35; color: #fff; }
 .tag--planned { background: rgba(63, 191, 127, .18); color: var(--green-text); }
-.tag--today { background: rgba(245, 166, 35, .18); color: var(--acc-text); box-shadow: inset 0 0 0 1px rgba(245, 166, 35, .55); }
+.tag--today { background: rgba(63, 191, 127, .16); color: var(--green-text); box-shadow: inset 0 0 0 1px rgba(63, 191, 127, .5); }
+.tag--mine { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line2); }
 /* countdown of an urgent cargo: ticks every second, tabular digits so it does not jump */
 .tag--wait { gap: 5px; background: var(--card2); color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: .02em; text-transform: none; }
 .tag--wait .ic { width: 14px; height: 14px; }
 .tag--wait.is-over { color: var(--mut); }
 .tag--op { background: var(--card2); color: var(--mut); }
 .tag--status { background: var(--card2); color: var(--mut); }
-:root[data-theme="light"] .tag--cargo { background: rgba(61, 123, 184, .14); }
-:root[data-theme="light"] .tag--truck { background: rgba(245, 166, 35, .22); }
+:root[data-theme="light"] .tag--cargo { background: #5B93CC; }
+:root[data-theme="light"] .tag--truck { background: #F5A623; }
 :root[data-theme="light"] .tag--planned { background: rgba(46, 158, 100, .16); }
+:root[data-theme="light"] .tag--today { background: rgba(46, 158, 100, .14); box-shadow: inset 0 0 0 1px rgba(46, 158, 100, .5); }
 
 /* ---------- offer: two big doors, cargo and transport ---------- */
 .offer { margin-bottom: 14px; }
@@ -209,9 +212,13 @@ img { max-width: 100%; display: block; }
 .pcard__price b { font-size: 18px; color: var(--ink); }
 .pcard__actions { display: flex; gap: 8px; padding: 0 12px 12px; }
 .pcard__actions .btn { flex: 1; }
-.pcard.is-urgent { border-color: rgba(245, 166, 35, .45); box-shadow: 0 0 0 1px rgba(245, 166, 35, .12), 0 14px 40px rgba(245, 166, 35, .08), inset 0 1px 0 rgba(255, 255, 255, .04); }
+.pcard.is-urgent { border-color: rgba(229, 72, 77, .5); box-shadow: 0 0 0 1px rgba(229, 72, 77, .14), 0 14px 40px rgba(229, 72, 77, .08), inset 0 1px 0 rgba(255, 255, 255, .04); }
 @media (hover: hover) and (pointer: fine) { .pcard { transition: transform 180ms var(--ease), border-color 180ms var(--ease); } .pcard:hover { transform: translateY(-2px); border-color: var(--line2); } }
-.pcard.is-mine::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--blue); }
+/* the kind in colour, tag and stripe alike (client's edit, 23.09.2026): transport — yellow, cargo — blue;
+   "mine" is a tag now, not a stripe */
+.pcard::after, .detail__hero::after, .wcheck::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--line2); }
+.pcard--cargo::after, .detail__hero--cargo::after, .wcheck--cargo::after { background: var(--blue); }
+.pcard--truck::after, .detail__hero--truck::after, .wcheck--truck::after { background: var(--acc); }
 .empty { padding: 34px 18px; text-align: center; border: 1px dashed var(--line2); border-radius: var(--r); }
 .empty__title { font-size: 18px; font-weight: 800; }
 .empty__text { margin-top: 6px; color: var(--mut); font-size: 14px; }
@@ -219,7 +226,7 @@ img { max-width: 100%; display: block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- detail ---------- */
-.detail__hero { padding: 18px 16px; }
+.detail__hero { position: relative; overflow: hidden; padding: 18px 16px 18px 20px; }
 .detail__route { min-width: 0; overflow-wrap: anywhere; font-family: var(--display); font-size: 22px; font-weight: 700; letter-spacing: -.01em; line-height: 1.15; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .detail__route .ic { width: 24px; height: 24px; color: var(--mut); }
 .detail__metric { margin-top: 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--acc-text); }
@@ -253,6 +260,7 @@ img { max-width: 100%; display: block; }
 /* what the exchange found: vehicles / cargo on the way */
 .pairrow__route { display: flex; align-items: center; min-height: 44px; color: var(--ink); font-family: var(--display); font-size: 16px; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
 .pairrow__km { color: var(--acc-text); }
+.pairrow__tag { justify-self: start; margin: 2px 0 4px; }
 .pairrow__km.is-good { color: var(--green-text); }
 .price-note { display: flex; align-items: center; gap: 10px; padding: 12px 14px; color: var(--ink); font-size: 15px; font-weight: 600; }
 .price-note .ic { color: var(--acc-text); }
@@ -315,8 +323,8 @@ img { max-width: 100%; display: block; }
 @media (min-width: 1024px) { .wiz__foot { bottom: 12px; } }
 /* step 2 (cargo): urgent — today, with a waiting time */
 .wurgent { display: grid; gap: 12px; }
-.wurgent__toggle { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 8px 14px; border: 2px solid var(--acc); border-radius: 16px; background: transparent; color: var(--acc-text); font: inherit; font-size: 18px; font-weight: 800; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.wurgent__toggle.is-on { background: var(--acc); color: #17110A; }
+.wurgent__toggle { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 8px 14px; border: 2px solid #C62F35; border-radius: 16px; background: transparent; color: var(--red-text); font: inherit; font-size: 18px; font-weight: 800; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.wurgent__toggle.is-on { background: #C62F35; color: #fff; }
 /* step 1: route on a map */
 .wroute { display: grid; gap: 10px; min-width: 0; }
 .wroute__pts { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 6px; align-items: stretch; }
@@ -359,7 +367,7 @@ img { max-width: 100%; display: block; }
 .cal__day.is-in { background: rgba(245, 166, 35, .24); }
 .cal__day.is-edge { background: var(--acc); color: #17110A; }
 /* step 4: check */
-.wcheck { display: grid; gap: 10px; padding: 16px; }
+.wcheck { position: relative; overflow: hidden; display: grid; gap: 10px; padding: 16px 16px 16px 20px; }
 .wcheck .tag { justify-self: start; }
 .wcheck__route { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; overflow-wrap: anywhere; font-family: var(--display); font-size: 22px; font-weight: 700; }
 .wcheck__route .ic { color: var(--mut); }
@@ -439,8 +447,9 @@ img { max-width: 100%; display: block; }
   .tbl__row:hover, .tbl__row:focus-visible { background: var(--card2); }
   .tbl__row:focus-visible { outline: 3px solid var(--acc); outline-offset: -3px; }
   .tbl__row.is-selected { background: var(--card2); box-shadow: inset 4px 0 0 var(--acc); }
-  .tbl__row.is-urgent td:first-child { box-shadow: inset 3px 0 0 var(--acc); }
-  .tbl__row.is-mine td:first-child { box-shadow: inset 3px 0 0 var(--blue); }
+  .tbl__row td:first-child { box-shadow: inset 4px 0 0 var(--line2); }
+  .tbl__row.is-cargo td:first-child { box-shadow: inset 4px 0 0 var(--blue); }
+  .tbl__row.is-truck td:first-child { box-shadow: inset 4px 0 0 var(--acc); }
   .tbl__route b { font-family: var(--display); font-size: 13px; font-weight: 700; }
   .tbl__num .dg { width: 36px; height: 14px; vertical-align: middle; margin-right: 6px; }
   .tbl__num { font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -458,3 +467,22 @@ img { max-width: 100%; display: block; }
 @media (max-width: 1023px) {
   .board__detail { display: none !important; }
 }
+
+/* ---------- 23.09.2026 evening: client's edits ---------- */
+/* vehicle types by group, a small silhouette per group (22:50) */
+.vtgroups { display: grid; gap: 12px; }
+.vtgroup { display: grid; gap: 6px; }
+.vtgroup__h { display: flex; align-items: center; gap: 8px; color: var(--mut); font-size: 13px; font-weight: 800; }
+.vtgroup__h .ic { width: 22px; height: 22px; color: var(--ink); }
+/* "add another vehicle" inside the wizard (22:47) */
+.wvadd { padding: 14px; border: 1px dashed var(--line2); border-radius: 14px; }
+/* where distances are counted from, one tap to change (22:57) */
+.strip--here { margin-top: -6px; }
+.here .picker__v { font-size: 16px; }
+.board__filters .here { min-height: 56px; }
+/* demo: who you are now, on every screen, with a switch (22:49) */
+.demobar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 0 8px 0 16px; border-bottom: 1px dashed var(--line2); background: var(--bg); color: var(--mut); font-size: 13px; line-height: 1.3; }
+.demobar__t { min-width: 0; overflow-wrap: anywhere; }
+.demobar__t b { color: var(--ink); }
+.demobar__btn { flex: none; min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; background: transparent; color: var(--acc-text); font: inherit; font-weight: 800; cursor: pointer; }
+@media (min-width: 1024px) { .demobar { padding-left: 24px; padding-right: 16px; } }

@@ -1,5 +1,5 @@
 // Small DOM helpers: no framework, the board must open instantly on a cheap phone.
-import { t, locale } from './i18n.js';
+import { t, locale } from './i18n.js?v=806ca22a';
 
 export function h(tag, props, ...children) {
   const [name, ...classes] = tag.split('.');
@@ -55,6 +55,11 @@ export const icons = {
   down: '<path d="M12 4v15M6 13l6 6 6-6"/>',
   back: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
   swap: '<path d="M7 4v16M3 8l4-4 4 4M17 20V4M21 16l-4 4-4-4"/>',
+  // small vehicle silhouettes for the type groups (client's edit, 23.09.2026)
+  car: '<path d="M5 16H3v-3.5L6 11.5 8 8h7l3.5 3.5H21V16h-1.5"/><path d="M9.5 16h5"/><circle cx="7.5" cy="16.5" r="1.8"/><circle cx="16.5" cy="16.5" r="1.8"/>',
+  van: '<path d="M4.5 17H2V7h12l4 4.5h3.5V17H19"/><path d="M14 7v4.5h4"/><path d="M8.5 17h6.5"/><circle cx="6.5" cy="17" r="1.8"/><circle cx="17" cy="17" r="1.8"/>',
+  tow: '<path d="M2 12.5 13 9.5"/><path d="M4.5 17H2v-2.5h11.5V10h3.5l3.5 4v3H19"/><path d="M8.5 17h6.5"/><circle cx="6.5" cy="17" r="1.8"/><circle cx="17" cy="17" r="1.8"/>',
+  semi: '<path d="M1.5 15V6h12.5v9"/><path d="M14 9h4l3.5 4V15"/><path d="M1.5 15h20"/><circle cx="5" cy="17.5" r="1.6"/><circle cx="9" cy="17.5" r="1.6"/><circle cx="18" cy="17.5" r="1.6"/>',
 };
 export function icon(name, cls = '') {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

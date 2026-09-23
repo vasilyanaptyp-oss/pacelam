@@ -1,6 +1,5 @@
--- 0007: urgent cargo with a waiting time and a countdown (client's answer, 23.09.2026 19:15:
--- "Срочно думаю можно тоже оставить. И где срочно, тогда это текущий день, и отметить сколько времени
--- клиент может подождать. И пусть идет обратный отсчет от его заявки").
+-- 0007: urgent cargo with a waiting time and a countdown (client's answer, 23.09.2026: urgent stays, it means today,
+-- the customer says how long he can wait and the card counts down from his posting).
 -- One nullable column: until when the customer waits. Only urgent cargo keeps it, clamped to a sane
 -- window (5 minutes .. 24 hours from now), and it cannot be moved later. Nothing is removed.
 

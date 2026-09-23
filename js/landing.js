@@ -13,7 +13,7 @@
       offer_h: 'Предложить', offer_cargo: 'Груз', offer_truck: 'Транспорт', offer_cargo_aria: 'Предложить груз', offer_truck_aria: 'Предложить транспорт',
       demo_p: 'Попробуй за 20 секунд — без регистрации, на примерных данных:', demo_carrier: 'Попробовать как перевозчик', demo_customer: 'Попробовать как заказчик',
       m_cargo: 'Груз', m_cargo2: 'Груз', m_urgent: 'Срочно', m_urgent2: 'Срочно', m_planned: 'Планово', m_planned2: 'Планово', m_age1: '3 мин назад', m_age2: '1 ч назад',
-      m_metric1: 'по пути<small>41 км пути</small>', m_meta1: 'Автомобиль · VT08 Эвакуатор до 5 т · сегодня', m_take: 'Предложить цену',
+      m_metric1: 'по пути<small>41 км пути</small>', m_meta1: 'Автомобиль · Эвакуатор < 5 т · сегодня', m_take: 'Предложить цену',
       m_metric2: '+38 км крюка<small>202 км пути</small>', m_meta2: 'предложений: 2 · лучшее 170 €',
       how_k: 'Как это работает', how_h: 'Пять шагов от звонка до груза в кузове.',
       s1_h: 'Заявка', s1_p: 'Перевозчик предлагает транспорт или заказчик выкладывает груз: откуда, куда, когда.',
@@ -26,7 +26,7 @@
       mode_p_h: 'Выигрывает меньшая цена', mode_p_p: 'Перевозчики ставят цену, выигрывает меньшая. Заказчик может указать цену, по которой отдаёт сразу. Если цена занижена и никто не берёт — перевозчики ставят выше, и заказчику приходит уведомление.', mode_p_ex: '<b>Пример:</b> груз на следующей неделе.',
       who_k: 'Кто что получает', who_h: 'Перевозчику — крюк. Заказчику — цена.',
       carrier_h: 'Перевозчику',
-      c1: '<b>Транспорт регистрируешь один раз</b> — тип, тоннаж, габариты, номер. Дальше объявление — три касания: откуда, куда, когда.',
+      c1: '<b>Транспорт регистрируешь один раз</b> — тип, тоннаж, габариты, номер. Дальше объявление — три вопроса: откуда, куда, когда.',
       c2: '<b>Крюк, а не радиус.</b> На каждой карточке видно, сколько километров груз добавляет к твоему пути.',
       c3: '<b>Сохранённый поиск звонит тебе сам:</b> появился подходящий груз — приходит уведомление.',
       c4: '<b>Несколько единиц транспорта</b> в одном профиле — диспетчер подаёт и раздаёт с одного экрана.',
@@ -44,7 +44,7 @@
       foot_app: 'Открыть биржу',
       hud_load: 'В кузове', hud_detour: 'Крюк', hud_empty: 'Порожняком',
       m_cargo3: 'Груз', m_planned3: 'Планово', m_age3: '20 мин назад', m3_metric: '+12 км крюка<small>96 км пути</small>', m4_metric: '+25 км крюка<small>153 км пути</small>', m4_meta: '11 000 кг · 8 м³',
-      f1: 'на объявление — три касания: откуда, куда, когда', f2: 'крюк, а не радиус — сколько километров груз добавляет к твоему пути', f3: 'телефонов до сделки — контакты открываются только после подтверждения',
+      f1: 'на объявление — три вопроса: откуда, куда, когда', f2: 'крюк, а не радиус — сколько километров груз добавляет к твоему пути', f3: 'телефонов до сделки — контакты открываются только после подтверждения',
       title: 'Paceļam — биржа обратной загрузки для Латвии и Балтии',
       description: 'Paceļam: перевозчик едет обратно пустым, заказчику надо отправить груз — биржа сводит обоих. Объявление за 20 секунд, крюк в километрах, контакты только после сделки.',
     },
@@ -57,7 +57,7 @@
       offer_h: 'Offer', offer_cargo: 'Cargo', offer_truck: 'Transport', offer_cargo_aria: 'Offer cargo', offer_truck_aria: 'Offer transport',
       demo_p: 'Try it in 20 seconds — no sign-up, sample data:', demo_carrier: 'Try as a carrier', demo_customer: 'Try as a customer',
       m_cargo: 'Cargo', m_cargo2: 'Cargo', m_urgent: 'Urgent', m_urgent2: 'Urgent', m_planned: 'Planned', m_planned2: 'Planned', m_age1: '3 min ago', m_age2: '1 h ago',
-      m_metric1: 'on the way<small>41 km trip</small>', m_meta1: 'Vehicle · VT08 Tow truck up to 5 t · today', m_take: 'Offer a price',
+      m_metric1: 'on the way<small>41 km trip</small>', m_meta1: 'Vehicle · Tow truck < 5 t · today', m_take: 'Offer a price',
       m_metric2: '+38 km detour<small>202 km trip</small>', m_meta2: 'offers: 2 · best 170 €',
       how_k: 'How it works', how_h: 'Five steps from a phone call to cargo on board.',
       s1_h: 'Posting', s1_p: 'A carrier offers transport or a customer posts cargo: from, to, when.',
@@ -70,7 +70,7 @@
       mode_p_h: 'Lowest price wins', mode_p_p: 'Carriers make offers, the lowest wins. The customer may set a price at which they give it away at once. If the price is too low and nobody takes it, carriers offer higher and the customer gets notified.', mode_p_ex: '<b>Example:</b> cargo next week.',
       who_k: 'Who gets what', who_h: 'The carrier gets the detour. The customer gets the price.',
       carrier_h: 'For carriers',
-      c1: '<b>Register your transport once</b> — type, payload, dimensions, plate. From then on a posting is three taps: from, to, when.',
+      c1: '<b>Register your transport once</b> — type, payload, dimensions, plate. From then on a posting is three questions: from, to, when.',
       c2: '<b>Detour, not radius.</b> Every card shows how many kilometres the cargo adds to your route.',
       c3: '<b>A saved search calls you:</b> a matching cargo appears — you get notified.',
       c4: '<b>Several vehicles</b> in one profile — a dispatcher posts and assigns from one screen.',
@@ -88,7 +88,7 @@
       foot_app: 'Open the exchange',
       hud_load: 'On board', hud_detour: 'Detour', hud_empty: 'Empty run',
       m_cargo3: 'Cargo', m_planned3: 'Planned', m_age3: '20 min ago', m3_metric: '+12 km detour<small>96 km trip</small>', m4_metric: '+25 km detour<small>153 km trip</small>', m4_meta: '11 000 kg · 8 m³',
-      f1: 'to post — three taps: from, to, when', f2: 'detour, not radius — how many kilometres the cargo adds to your route', f3: 'phone numbers before a deal — contacts open only after confirmation',
+      f1: 'to post — three questions: from, to, when', f2: 'detour, not radius — how many kilometres the cargo adds to your route', f3: 'phone numbers before a deal — contacts open only after confirmation',
       title: 'Paceļam — backload exchange for Latvia and the Baltics',
       description: 'Paceļam: a carrier drives back empty, a customer needs cargo sent that way — the exchange brings them together. A posting in 20 seconds, detour in kilometres, contacts only after a deal.',
     },
@@ -125,7 +125,7 @@
   if (!weak) {
     // capable desktop: load GSAP (self-hosted) and the scene script, in order
     const load = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.append(el); });
-    load('vendor/gsap.min.js').then(() => Promise.all([load('vendor/MotionPathPlugin.min.js'), load('vendor/DrawSVGPlugin.min.js')])).then(() => load('js/scene.js')).catch(() => {});
+    load('vendor/gsap.min.js').then(() => Promise.all([load('vendor/MotionPathPlugin.min.js'), load('vendor/DrawSVGPlugin.min.js')])).then(() => load('js/scene.js?v=806ca22a')).catch(() => {});
   }
   document.querySelectorAll('[data-lang]').forEach((a) => { const on = a.dataset.lang === lang; a.classList.toggle('is-on', on); if (on) a.setAttribute('aria-current', 'true'); });
   // carry the language into the app links

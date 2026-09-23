@@ -1,6 +1,9 @@
 // Reference data shared by the front-end (demo mode) and the SQL seed (scripts/gen-seed.mjs).
 // Vehicle types come from docs/vehicle-types.json — codes VT are the ones carriers already know
 // from the exchange they use today. Gaps in numbering (VT03, VT07, VT13, VT14) are in the source.
+// Codes stay as keys only; the screens show names (client's edit, 23.09.2026), and limits are written with
+// < and > instead of words;
+// 0010_vehicle_names.sql brings the same names into the database.
 
 export const VEHICLE_GROUPS = [
   { id: 'light', sort: 1, name: { lv: 'Vieglie auto', ru: 'Легковые автомобили', en: 'Cars' } },
@@ -18,25 +21,25 @@ export const VEHICLE_TYPES = [
   { code: 'VT05', group: 'van', sort: 4, name: { lv: 'Tentēts mikroautobuss', ru: 'Тентованный микроавтобус', en: 'Curtain-side van' } },
   { code: 'VT06', group: 'van', sort: 5, name: { lv: 'Mikroautobuss ar platformu', ru: 'Грузовой микроавтобус с платформой', en: 'Flatbed van' } },
   { code: 'VT061', group: 'van', sort: 6, name: { lv: 'Mikroautobuss ar platformu un manipulatoru', ru: 'Грузовой микроавтобус с платформой и манипулятором', en: 'Flatbed van with crane' } },
-  { code: 'VT08', group: 'tow', sort: 7, tonnage_to: 5, name: { lv: 'Evakuators līdz 5 t', ru: 'Эвакуатор до 5 т', en: 'Tow truck up to 5 t' } },
-  { code: 'VT09', group: 'tow', sort: 8, tonnage_from: 5, name: { lv: 'Evakuators no 5 t', ru: 'Эвакуатор от 5 т', en: 'Tow truck over 5 t' } },
-  { code: 'VT10', group: 'truck', sort: 9, tonnage_to: 10, name: { lv: 'Slēgts kravas auto līdz 10 t', ru: 'Закрытый грузовик до 10 т', en: 'Box truck up to 10 t' } },
-  { code: 'VT11', group: 'truck', sort: 10, length_m: 6, tonnage_to: 13, name: { lv: 'Kravas auto līdz 6 m ar manipulatoru, līdz 13 t', ru: 'Грузовик до 6 м с манипулятором, до 13 т', en: 'Truck up to 6 m with crane, up to 13 t' } },
-  { code: 'VT12', group: 'truck', sort: 11, length_m: 8, tonnage_to: 15, name: { lv: 'Kravas auto līdz 8 m ar manipulatoru, līdz 15 t', ru: 'Грузовик до 8 м с манипулятором, до 15 т', en: 'Truck up to 8 m with crane, up to 15 t' } },
+  { code: 'VT08', group: 'tow', sort: 7, tonnage_to: 5, name: { lv: 'Evakuators < 5 t', ru: 'Эвакуатор < 5 т', en: 'Tow truck < 5 t' } },
+  { code: 'VT09', group: 'tow', sort: 8, tonnage_from: 5, name: { lv: 'Evakuators > 5 t', ru: 'Эвакуатор > 5 т', en: 'Tow truck > 5 t' } },
+  { code: 'VT10', group: 'truck', sort: 9, tonnage_to: 10, name: { lv: 'Slēgts kravas auto < 10 t', ru: 'Закрытый грузовик < 10 т', en: 'Box truck < 10 t' } },
+  { code: 'VT11', group: 'truck', sort: 10, length_m: 6, tonnage_to: 13, name: { lv: 'Kravas auto ar manipulatoru < 6 m, < 13 t', ru: 'Грузовик с манипулятором < 6 м, < 13 т', en: 'Truck with crane < 6 m, < 13 t' } },
+  { code: 'VT12', group: 'truck', sort: 11, length_m: 8, tonnage_to: 15, name: { lv: 'Kravas auto ar manipulatoru < 8 m, < 15 t', ru: 'Грузовик с манипулятором < 8 м, < 15 т', en: 'Truck with crane < 8 m, < 15 t' } },
   { code: 'VT15', group: 'truck', sort: 12, name: { lv: 'Vilcējs ar platformas puspiekabi', ru: 'Грузовик с полуприцепом-платформой', en: 'Truck with flatbed semi-trailer' } },
   { code: 'VT22', group: 'truck', sort: 13, refrigerated: true, name: { lv: 'Kravas auto ar temperatūras kontroli', ru: 'Грузовик с контролем температуры', en: 'Temperature-controlled truck' } },
   { code: 'VT16', group: 'truck', sort: 14, name: { lv: 'Vilcējs ar tentētu puspiekabi', ru: 'Грузовик с тентованным полуприцепом', en: 'Truck with curtain-side semi-trailer' } },
   { code: 'VT17', group: 'truck', sort: 15, name: { lv: 'Vilcējs ar puspiekabi un nolaižamu rampu', ru: 'Грузовик с полуприцепом и откидной рампой', en: 'Truck with semi-trailer and tail ramp' } },
   { code: 'VT151', group: 'truck', sort: 16, name: { lv: 'Konteineru vedējs', ru: 'Грузовик для контейнеров', en: 'Container truck' } },
   { code: 'VT18', group: 'truck', sort: 17, oversize: true, name: { lv: 'Negabarīta kravu vedējs', ru: 'Грузовик для негабаритных грузов', en: 'Oversize cargo truck' } },
-  { code: 'VT20', group: 'truck', sort: 18, volume_m3: 12, tonnage_to: 11, bulk: true, name: { lv: 'Beramkravu vedējs, līdz 12 m³ un 11 t', ru: 'Перевозчик сыпучих грузов, до 12 м³ и 11 т', en: 'Bulk tipper, up to 12 m³ and 11 t' } },
-  { code: 'VT21', group: 'truck', sort: 19, volume_m3: 48, tonnage_to: 25, bulk: true, name: { lv: 'Beramkravu vedējs, līdz 48 m³ un 25 t', ru: 'Перевозчик сыпучих грузов, до 48 м³ и 25 т', en: 'Bulk tipper, up to 48 m³ and 25 t' } },
+  { code: 'VT20', group: 'truck', sort: 18, volume_m3: 12, tonnage_to: 11, bulk: true, name: { lv: 'Beramkravu vedējs < 12 m³, < 11 t', ru: 'Перевозчик сыпучих грузов < 12 м³, < 11 т', en: 'Bulk tipper < 12 m³, < 11 t' } },
+  { code: 'VT21', group: 'truck', sort: 19, volume_m3: 48, tonnage_to: 25, bulk: true, name: { lv: 'Beramkravu vedējs < 48 m³, < 25 t', ru: 'Перевозчик сыпучих грузов < 48 м³, < 25 т', en: 'Bulk tipper < 48 m³, < 25 t' } },
   { code: 'VT19', group: 'other', sort: 20, name: { lv: 'Autovedējs', ru: 'Автовоз', en: 'Car carrier' } },
   // Top-level item without subtypes: part cargo that does not fill a truck — the key case for a backload exchange.
   { code: 'LTL', group: 'ltl', sort: 21, ltl: true, name: { lv: 'Daļēja krava (piekrava)', ru: 'Догруз (LTL)', en: 'Part load (LTL)' } },
 ];
 
-// Cargo categories are PROVISIONAL (approved by the client: "пока взять что даёт приложение").
+// Cargo categories are PROVISIONAL (the client agreed to start with these and replace them later).
 // Each category carries its own extra fields as data; the code never depends on concrete values.
 // Field types: bool | choice | number | text
 export const CARGO_TYPES = [

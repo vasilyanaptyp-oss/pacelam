@@ -481,5 +481,19 @@ await asAnon(async () => {
   check('0009: a visitor gets no facts', !!err, err);
 });
 
+// --- 0010 (23.09.2026 evening): vehicle names without codes, limits with < and > --------------------------
+await db.exec(read('supabase/migrations/0010_vehicle_names.sql'));
+{
+  const v = await rows(`select code, name_lv, name_ru, name_en from vehicle_types order by sort`);
+  const by = Object.fromEntries(v.map((x) => [x.code, x]));
+  const wordy = (x) => /VT\d|до \d|līdz \d|up to/.test(x.name_ru + x.name_lv + x.name_en);
+  check('0010: tow trucks read "< 5 t" / "> 5 t" in all three languages', by.VT08?.name_ru === 'Эвакуатор < 5 т' && by.VT09?.name_lv === 'Evakuators > 5 t' && by.VT08?.name_en === 'Tow truck < 5 t', JSON.stringify(by.VT08));
+  check('0010: no name carries a code or the words "up to"', !v.some(wordy), JSON.stringify(v.filter(wordy)));
+  check('0010: the codes stay as keys — all 21 types are there', v.length === 21, String(v.length));
+  const { VEHICLE_TYPES } = await import('../js/data.js');
+  const diff = VEHICLE_TYPES.filter((t) => { const r = by[t.code]; return !r || r.name_lv !== t.name.lv || r.name_ru !== t.name.ru || r.name_en !== t.name.en; }).map((t) => t.code);
+  check('0010: the database names equal the site ones (js/data.js)', diff.length === 0, diff.join(','));
+}
+
 console.log(`\n${results.length} checks, ${failures} failed`);
 process.exit(failures ? 1 : 0);

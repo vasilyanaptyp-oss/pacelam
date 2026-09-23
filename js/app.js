@@ -1,11 +1,11 @@
 // Paceļam — application shell and screens. Hash routing, no framework.
 // One adaptive layout: cards below 1024 px, a sortable table with a filter sidebar from 1024 px,
 // plus an inline details panel from 1440 px. Data and logic are shared; only rendering switches.
-import { api } from './api.js';
-import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js';
-import { h, $, $$, clear, append, icon, toast, sheet, confirmSheet, field, input, chips, spinner, emptyState, fmtMoney, fmtInt, fmtNum, fmtDate, fmtDateRange, relTime, isoDate, addDays } from './ui.js';
-import { CITIES, searchCities, findCity, nearestCity, haversineKm, detourKm } from './geo.js';
-import { compressPhoto } from './photos.js';
+import { api } from './api.js?v=806ca22a';
+import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=806ca22a';
+import { h, $, $$, clear, append, icon, toast, sheet, confirmSheet, field, input, chips, spinner, emptyState, fmtMoney, fmtInt, fmtNum, fmtDate, fmtDateRange, relTime, isoDate, addDays } from './ui.js?v=806ca22a';
+import { CITIES, searchCities, findCity, nearestCity, haversineKm, detourKm } from './geo.js?v=806ca22a';
+import { compressPhoto } from './photos.js?v=806ca22a';
 
 const store = {
   get(k, d = null) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
@@ -49,6 +49,32 @@ const topActions = $('#top-actions');
 const go = (hash) => { location.hash = hash; };
 const myId = () => api.userId();
 const vtype = (code) => state.ref.vehicleTypes.find((v) => v.code === code) || null;
+// A vehicle type is shown by its name only (client's edit, 23.09.2026: no codes on screen); the code stays a key.
+const vtName = (code) => { const v = vtype(code); return v ? nameOf(v) : (code || ''); };
+const vehicleLabel = (v) => `${vtName(v.type_code)}${v.plate ? ' · ' + v.plate : ''}`;
+// Vehicle types grouped the way carriers think of them, a small silhouette per group
+// (client's edit, 23.09.2026: names instead of codes, small silhouettes welcome).
+const GROUP_ICON = { light: 'car', van: 'van', tow: 'tow', truck: 'truck', other: 'semi', ltl: 'box' };
+function vehicleTypeChips(value, onChange, name) {
+  const selected = new Set(value || []);
+  const wrap = h('div.vtgroups', { role: 'group', 'aria-label': name || '' });
+  for (const g of state.ref.groups) {
+    const types = state.ref.vehicleTypes.filter((v) => v.group_id === g.id);
+    if (!types.length) continue;
+    const codes = types.map((v) => v.code);
+    wrap.append(h('div.vtgroup', null,
+      h('div.vtgroup__h', null, icon(GROUP_ICON[g.id] || 'truck'), h('span', null, nameOf(g))),
+      chips(types.map((v) => ({ value: v.code, label: nameOf(v) })), {
+        value: codes.filter((c) => selected.has(c)), multi: true, name: nameOf(g),
+        onChange: (vals) => { for (const c of codes) selected.delete(c); for (const c of vals) selected.add(c); onChange([...selected]); },
+      })));
+  }
+  return wrap;
+}
+// Where "from you" is counted from (client's edit, 23.09.2026: the town was fixed and could not be changed):
+// the profile town, or for a guest the town picked here. One tap changes it.
+const hereCity = () => myCity() || store.get('pacelam.here');
+const profileFields = () => { const p = state.me?.profile || {}; return { role: p.role, display_name: p.display_name, city_name: p.city_name ?? null, city_lat: p.city_lat ?? null, city_lng: p.city_lng ?? null, max_detour_km: p.max_detour_km ?? 60, lang: p.lang || getLang() }; };
 const ctype = (id) => state.ref.cargoTypes.find((c) => c.id === id) || null;
 const myCity = () => (state.me?.profile?.city_lat != null ? { lat: state.me.profile.city_lat, lng: state.me.profile.city_lng, name: state.me.profile.city_name } : null);
 const isCustomer = () => state.me?.profile?.role === 'customer';
@@ -137,6 +163,42 @@ function renderChrome() {
     nav.append(a);
   }
   document.title = 'Paceļam — ' + t('brand_tag');
+  const skip = $('.skip'); if (skip) skip.textContent = t('skip');
+  renderDemoBar();
+}
+// Demo: who you are right now, on every screen, and a switch (client's edit, 23.09.2026: he did not know whose name he posted under).
+let demobar = null;
+function renderDemoBar() {
+  if (api.mode !== 'demo') return;
+  if (!demobar) { demobar = h('div.demobar'); $('#top')?.after(demobar); }
+  clear(demobar);
+  const u = state.session ? api.demoUsers.find((x) => x.id === myId()) : null;
+  demobar.append(h('span.demobar__t', null, h('b', null, t('demo_word')), ' · ', u ? t('demo_you', { who: t(u.key) }) : t('demo_guest')),
+    h('button.demobar__btn', { type: 'button', onclick: demoSwitchSheet }, t('demo_switch')));
+}
+function demoSwitchSheet() {
+  const s = sheet({
+    title: t('demo_login'),
+    body: h('div.stack.stack--tight', null, api.demoUsers.map((u) => h('button.btn.btn--big.btn--wide', {
+      type: 'button', class: u.id === myId() ? 'btn--primary' : '', 'aria-pressed': u.id === myId() ? 'true' : 'false',
+      onclick: async () => { await api.signInDemo(u.id); await loadMe(); s.close(); state.selected = null; renderChrome(); render(); },
+    }, t(u.key))), h('p.muted.small', null, t('demo_banner'))),
+  });
+}
+// The town distances are counted from, one tap to change it.
+async function changeHere() {
+  const place = await pickPlace({ title: t('here_title'), current: hereCity() });
+  if (!place) return;
+  const c = { name: place.name, lat: place.lat, lng: place.lng };
+  if (state.me?.profile) {
+    try { const profile = await api.saveProfile({ ...profileFields(), city_name: c.name, city_lat: c.lat, city_lng: c.lng }); state.me = { ...state.me, profile }; } catch (e) { fail(e); return; }
+  } else store.set('pacelam.here', c);
+  render();
+}
+function hereButton() {
+  const c = hereCity();
+  return h('button.picker.here', { type: 'button', onclick: changeHere },
+    h('span', null, h('span.picker__k', null, t('here_k')), h('span.picker__v', { class: c ? '' : 'is-empty' }, c ? c.name : t('here_set'))), icon('pin'));
 }
 
 // ---------------------------------------------------------------------------------------
@@ -212,9 +274,10 @@ function whenTag(p) {
   if (p.kind === 'cargo' && (p.mode === 'urgent' || URGENT_CHOICE)) return h('span.tag', { class: p.mode === 'urgent' ? 'tag--urgent' : 'tag--planned' }, p.mode === 'urgent' ? t('mode_urgent') : t('mode_planned'));
   return isToday(p) && p.status !== 'deal' && p.status !== 'closed' ? h('span.tag.tag--today', null, t('today')) : null;
 }
-function tagRow(p, extra = []) {
+function tagRow(p, extra = [], { mine = false } = {}) {
   return h('div.pcard__top', null,
     h('span.tag', { class: p.kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, p.kind === 'cargo' ? t('kind_cargo') : t('kind_truck')),
+    mine ? h('span.tag.tag--mine', null, t('tag_mine')) : null,
     whenTag(p), waitBadge(p),
     p.is_operator_posting ? h('span.tag.tag--op', { title: t('operator_hint') }, t('operator')) : null,
     p.status && p.status !== 'open' ? h('span.tag.tag--status', null, t('status_' + p.status)) : null,
@@ -225,27 +288,32 @@ function metricFor(p) {
   const from = { lat: p.from_lat, lng: p.from_lng };
   const to = { lat: p.to_lat, lng: p.to_lng };
   const trip = haversineKm(from.lat, from.lng, to.lat, to.lng);
+  // one's own posting: its own length, not a detour from itself (client's 22:53 screenshot of "Mine")
+  if (myId() && p.owner_id === myId()) return { detour: null, dist: null, trip, big: t('direct', { km: fmtInt(trip) }), good: false, sub: '', sortKey: trip };
   if (state.route?.from && state.route?.to && !isCustomer()) {
     const d = detourKm(state.route, from, to);
     const base = haversineKm(state.route.from.lat, state.route.from.lng, state.route.to.lat, state.route.to.lng);
     return { detour: d, base, dist: null, trip, big: d <= 5 ? t('on_the_way') : t('detour', { km: fmtInt(d) }), good: d <= 5, sub: t('direct', { km: fmtInt(trip) }), sortKey: d };
   }
-  const c = myCity();
+  const c = hereCity();
   if (c) {
     const d = haversineKm(c.lat, c.lng, from.lat, from.lng);
     return { detour: null, dist: d, trip, big: d < 3 ? t('in_your_town') : t('from_you', { km: fmtInt(d) }), good: d <= 20, sub: t('direct', { km: fmtInt(trip) }), sortKey: d };
   }
   return { detour: null, dist: null, trip, big: t('direct', { km: fmtInt(trip) }), good: false, sub: '', sortKey: trip };
 }
-// The detour in big figures next to the carrier's own route (client, 18.09.2026: «+25 km / līkums и рядом
-// 153 km pamatmaršruts — чтобы перевозчик сразу видел: я еду 153 км и груз добавит мне всего 25 км»).
+// The detour in big figures next to the carrier's own route (client's edit, 18.09.2026): the carrier sees at once
+// that he drives 153 km anyway and the cargo adds only 25.
 function metricBlock(p, m, cls) {
   const cell = (num, label, good) => h('span.km', { class: good ? 'is-good' : '' }, h('b.km__n', null, num), label ? h('span.km__l', null, label) : null);
   const km = (n) => `${fmtInt(n)} ${t('km_unit')}`;
-  const tripLabel = p.kind === 'truck' ? t('m_trip_truck') : t('m_trip');
+  // client's edit, 23.09.2026: "cargo trip" read unclear to a carrier — on a cargo he reads the run to the pickup
+  // and the run with the cargo
+  const cargo = p.kind === 'cargo';
+  const tripLabel = cargo ? t('m_loaded') : t('m_trip_truck');
   const box = h('div', { class: `${cls} metric2${m.good ? ' is-good' : ''}` }, detourGlyph(m));
   if (m.detour != null) box.append(cell(m.detour <= 5 ? t('on_the_way') : `+${km(m.detour)}`, m.detour <= 5 ? t('m_detour_none') : t('m_detour'), m.good), cell(km(m.base), t('m_route')));
-  else if (m.dist != null) box.append(cell(m.dist < 3 ? t('in_your_town') : km(m.dist), m.dist < 3 ? '' : t('m_from_you'), m.good), cell(km(m.trip), tripLabel));
+  else if (m.dist != null) box.append(cell(m.dist < 3 ? t('in_your_town') : km(m.dist), m.dist < 3 ? '' : (cargo ? t('m_to_pickup') : t('m_from_you')), m.good), cell(km(m.trip), tripLabel));
   else box.append(cell(km(m.trip), tripLabel));
   return box;
 }
@@ -273,7 +341,7 @@ function factsLine(p) {
 function typeLine(p) {
   const bits = [];
   if (p.kind === 'cargo' && p.cargo_type_id) bits.push(nameOf(ctype(p.cargo_type_id)));
-  if (p.vehicle_type_code) { const v = vtype(p.vehicle_type_code); if (v) bits.push(`${v.code} ${nameOf(v)}`); } else if (p.kind === 'cargo') bits.push(t('any_vehicle'));
+  if (p.vehicle_type_code) { if (vtype(p.vehicle_type_code)) bits.push(vtName(p.vehicle_type_code)); } else if (p.kind === 'cargo') bits.push(t('any_vehicle'));
   bits.push(fmtDateRange(p.date_from, p.date_to));
   return bits.join(' · ');
 }
@@ -311,6 +379,8 @@ function actionButtons(p, opts = {}) {
     row.append(h('button.btn', { type: 'button', class: [cls, p.price == null ? 'btn--primary' : 'btn--ghost'].join(' '), onclick: () => offerCargoFor(p) }, t('offer_my_cargo')));
     return row;
   }
+  // only the carrier names a price (decision of 23.09.2026; audit 23.09, A-017): no price button for a customer
+  if (p.kind === 'cargo' && isCustomer()) return null;
   if (p.kind === 'cargo' && p.mode === 'urgent') {
     // urgent: price decides here too — agreeing to the customer's price is a bid at that price, the customer picks
     if (p.price != null && !opts.myBid) row.append(h('button.btn.btn--primary', { type: 'button', class: cls, onclick: () => doAgree(p) }, icon('bolt'), t('take_for', { p: fmtInt(p.price) })));
@@ -324,9 +394,10 @@ function actionButtons(p, opts = {}) {
 function postingCard(p, opts = {}) {
   const m = metricFor(p);
   const me = myId();
-  const card = h('article.pcard.card', { class: [p.mode === 'urgent' && p.status === 'open' ? 'is-urgent' : '', p.owner_id === me ? 'is-mine' : ''].join(' ').trim() });
+  // colour by kind (client's edit, 23.09.2026): transport — yellow tag and stripe, cargo — blue tag and stripe
+  const card = h('article.pcard.card', { class: [`pcard--${p.kind}`, p.mode === 'urgent' && p.status === 'open' ? 'is-urgent' : '', p.owner_id === me ? 'is-mine' : ''].join(' ').trim() });
   const link = h('a.pcard__link', { href: `#/p/${p.id}`, 'aria-label': `${p.from_name} → ${p.to_name}` },
-    tagRow(p),
+    tagRow(p, [], { mine: !opts.noActions && !!me && p.owner_id === me }),
     h('div.pcard__route', null, h('span', null, p.from_name), icon('arrow'), h('span', null, p.to_name)),
     ownCargo(p) ? h('div.pcard__metric', null, h('b', { class: p.bid_count ? 'is-good' : '' }, offersSummary(p)), h('span', null, t('direct', { km: fmtInt(m.trip) })))
       : metricBlock(p, m, 'pcard__metric'),
@@ -461,7 +532,7 @@ function cityField(labelKey, opts = {}) {
 
 // Route and filters ------------------------------------------------------------------------
 function routeSheet(after) {
-  const draft = state.route ? { ...state.route } : { from: myCity() ? { ...myCity() } : null, to: null, maxDetour: state.me?.profile?.max_detour_km || 60 };
+  const draft = state.route ? { ...state.route } : { from: hereCity() ? { ...hereCity() } : null, to: null, maxDetour: state.me?.profile?.max_detour_km || 60 };
   const fromBtn = placeButton('from', () => draft.from, (p) => { draft.from = p; });
   const toBtn = placeButton('to', () => draft.to, (p) => { draft.to = p; });
   const rangeLabel = h('span', null, t('feed_detour_upto', { km: draft.maxDetour }));
@@ -488,7 +559,7 @@ function filterControls(onChange) {
   const f = state.filter;
   const kindSeg = chips([{ value: 'all', label: t('feed_all') }, { value: 'cargo', label: t('kind_cargo') }, { value: 'truck', label: t('kind_truck') }], { value: f.kind, name: t('kind_cargo'), onChange: (v) => { f.kind = v; onChange(); } });
   const modeSeg = chips([{ value: 'all', label: t('feed_all') }, { value: 'urgent', label: t('mode_urgent') }, { value: 'planned', label: t('mode_planned') }], { value: f.mode, name: t('mode'), onChange: (v) => { f.mode = v; onChange(); } });
-  const vt = chips(state.ref.vehicleTypes.map((v) => ({ value: v.code, label: v.code })), { value: f.vehicleTypes, multi: true, name: t('search_vehicles'), onChange: (v) => { f.vehicleTypes = v; onChange(); } });
+  const vt = vehicleTypeChips(f.vehicleTypes, (v) => { f.vehicleTypes = v; onChange(); }, t('search_vehicles'));
   const ct = chips(state.ref.cargoTypes.map((c) => ({ value: c.id, label: nameOf(c) })), { value: f.cargoTypes, multi: true, name: t('search_cargo'), onChange: (v) => { f.cargoTypes = v; onChange(); } });
   return [field(`${t('kind_cargo')} / ${t('kind_truck')}`, kindSeg), field(t('mode'), modeSeg), field(t('search_vehicles'), vt), field(t('search_cargo'), ct)];
 }
@@ -504,7 +575,7 @@ function filterSheet() {
 
 // ---------------------------------------------------------------------------------------
 // "Offer" — two big doors: cargo and transport. The client's wording (23.09.2026): the first thing
-// on the site is "Предложить ⬇ Груз / Транспорт", understood from the pictures, not from the words.
+// on the site is "Offer ⬇ Cargo / Transport", understood from the pictures, not from the words.
 // ---------------------------------------------------------------------------------------
 function offerBlock({ page = false } = {}) {
   const door = (kind) => h('button.offer__btn', {
@@ -515,13 +586,28 @@ function offerBlock({ page = false } = {}) {
     h(page ? 'h1.offer__title' : 'h2.offer__title', null, t('offer_title'), icon('down')),
     h('div.offer__row', null, door('cargo'), door('truck')));
 }
-// A visitor in the demo becomes the matching sample user at once: cargo — the customer, transport — the carrier.
-async function startOffer(kind) {
-  if (!state.session && api.mode === 'demo') {
-    const u = api.demoUsers.find((x) => x.key === (kind === 'truck' ? 'demo_carrier' : 'demo_customer'));
-    if (u) { await api.signInDemo(u.id); await loadMe(); }
+// A door means a role: cargo — the customer, transport — the carrier. In the demo the visitor becomes that sample
+// user, also when he is signed in as the other one (client's edit, 23.09.2026: his truck went out under the
+// sample customer). A real customer who opens "Transport" is asked to switch his role.
+async function roleFor(kind) {
+  const want = kind === 'truck' ? 'carrier' : 'customer';
+  if (api.mode === 'demo') {
+    const cur = state.me?.profile;
+    if (!state.session || (cur && cur.role !== want && !(kind === 'cargo' && cur.is_operator))) {
+      const u = api.demoUsers.find((x) => x.key === (kind === 'truck' ? 'demo_carrier' : 'demo_customer'));
+      if (u) { await api.signInDemo(u.id); await loadMe(); renderChrome(); if (cur) toast(t('demo_now', { who: t(u.key) })); }
+    }
+    return true;
   }
-  if (!state.session) state.roleHint = kind === 'truck' ? 'carrier' : 'customer';
+  if (!state.session) { state.roleHint = want; return true; }
+  if (kind === 'truck' && state.me?.profile && state.me.profile.role !== 'carrier') {
+    if (!(await confirmSheet(t('role_switch_title'), t('role_switch_truck'), t('role_switch_ok')))) return false;
+    try { await api.saveProfile({ ...profileFields(), role: 'carrier' }); await loadMe(); renderChrome(); } catch (e) { fail(e); return false; }
+  }
+  return true;
+}
+async function startOffer(kind) {
+  if (!(await roleFor(kind))) return;
   state.postKind = kind;
   go(`#/post/${kind}`);
 }
@@ -581,6 +667,7 @@ async function screenFeed() {
     h('span', null, h('span.picker__k', null, state.route ? `${t('feed_route')} · ${t('feed_detour_upto', { km: state.route.maxDetour })}` : t('feed_route')), h('span.picker__v', { class: state.route ? '' : 'is-empty' }, state.route ? `${state.route.from.name} → ${state.route.to.name}` : t('feed_route_set'))), icon('route'));
   const aside = h('aside.board__filters.card', { 'aria-label': t('filters') },
     routeUi ? h('h2.board__h', null, t('feed_route')) : null, routeUi ? routeBtn() : null, routeUi && !state.route ? h('p.field__hint', null, t('feed_route_none')) : null,
+    !(routeUi && state.route) ? hereButton() : null,
     h('h2.board__h', null, t('filters')),
     ...filterControls(() => refresh()),
     h('button.btn.btn--ghost.btn--sm', { type: 'button', onclick: () => { state.filter = emptyFilter(); state.showAll = false; render(); } }, t('reset')));
@@ -589,10 +676,11 @@ async function screenFeed() {
   const pendingPost = store.get('pacelam.pendingPost');
   if (pendingPost && state.me?.profile) main.append(h('div.card.cta', null, h('p', null, `${t('pending_post')}: ${pendingPost.draft?.from?.name || ''} → ${pendingPost.draft?.to?.name || ''}`), h('a.btn.btn--primary', { href: `#/post/${pendingPost.kind}` }, t('wiz_publish'))));
   main.append(offerBlock());
-  if (api.mode === 'demo') main.append(h('div.banner', null, t('demo_banner')));
+  if (api.mode === 'demo' && !demobar) main.append(h('div.banner', null, t('demo_banner')));   // the demo bar on top says it now
   if (!state.session) main.append(h('div.card.cta', null, h('p', null, t('feed_visitors_cta')), h('a.btn.btn--primary', { href: '#/auth' }, t('sign_in'))));
-  const strip = h('div.strip', null, routeUi ? routeBtn() : h('div.picker', { style: { cursor: 'default' } }, h('span', null, h('span.picker__k', null, t('feed_title')), h('span.picker__v', null, myCity()?.name || ''))), h('button.icon-btn', { type: 'button', 'aria-label': t('feed_filter'), 'aria-pressed': filterActive() ? 'true' : 'false', class: filterActive() ? 'is-on' : '', onclick: filterSheet }, icon('list')));
+  const strip = h('div.strip', null, routeUi ? routeBtn() : hereButton(), h('button.icon-btn', { type: 'button', 'aria-label': t('feed_filter'), 'aria-pressed': filterActive() ? 'true' : 'false', class: filterActive() ? 'is-on' : '', onclick: filterSheet }, icon('list')));
   main.append(strip);
+  if (routeUi && !state.route) main.append(h('div.strip.strip--here', null, hereButton()));
   if (routeUi && !state.route && state.session) main.append(h('p.lead.board__hint', null, t('feed_route_none')));
   const toolbar = h('div.board__toolbar');
   main.append(toolbar, listWrap, h('p.feed__about', null, h('a', { href: `../?lang=${getLang()}` }, t('about'))));
@@ -629,14 +717,14 @@ async function screenFeed() {
       const selected = state.selected === p.id;
       tbody.append(h('tr.tbl__row', {
         tabindex: 0, role: 'button', 'aria-label': `${p.from_name} → ${p.to_name}`, 'aria-pressed': selected ? 'true' : 'false',
-        class: [selected ? 'is-selected' : '', p.mode === 'urgent' && p.status === 'open' ? 'is-urgent' : '', p.owner_id === myId() ? 'is-mine' : ''].join(' ').trim(),
+        class: [`is-${p.kind}`, selected ? 'is-selected' : '', p.mode === 'urgent' && p.status === 'open' ? 'is-urgent' : '', p.owner_id === myId() ? 'is-mine' : ''].join(' ').trim(),
         onclick: () => select(p.id), onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(p.id); } },
       },
-      h('td', null, h('span.tag', { class: p.kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, p.kind === 'cargo' ? t('kind_cargo') : t('kind_truck')), whenTag(p), waitBadge(p), p.is_operator_posting ? h('span.tag.tag--op', null, t('operator')) : null),
+      h('td', null, h('span.tag', { class: p.kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, p.kind === 'cargo' ? t('kind_cargo') : t('kind_truck')), p.owner_id === myId() ? h('span.tag.tag--mine', null, t('tag_mine')) : null, whenTag(p), waitBadge(p), p.is_operator_posting ? h('span.tag.tag--op', null, t('operator')) : null),
       h('td.tbl__route', null, h('b', null, p.from_name), h('span.muted', null, ' → '), h('b', null, p.to_name)),
-      h('td.tbl__num', null, detourGlyph(x.m), h('b', { class: x.m.good ? 'is-good' : 'is-acc' }, x.m.detour != null ? (x.m.detour <= 5 ? t('on_the_way') : `+${fmtInt(x.m.detour)} km`) : `${fmtInt(x.m.dist ?? x.m.trip)} km`), h('small.muted', null, ` · ${fmtInt(x.m.trip)} km`)),
+      h('td.tbl__num', null, detourGlyph(x.m), h('b', { class: x.m.good ? 'is-good' : 'is-acc' }, x.m.detour != null ? (x.m.detour <= 5 ? t('on_the_way') : `+${fmtInt(x.m.detour)} ${t('km_unit')}`) : `${fmtInt(x.m.dist ?? x.m.trip)} ${t('km_unit')}`), h('small.muted', null, ` · ${fmtInt(x.m.trip)} ${t('km_unit')}`)),
       h('td', null, fmtDateRange(p.date_from, p.date_to)),
-      h('td.tbl__vehicle', { title: p.vehicle_type_code ? nameOf(vtype(p.vehicle_type_code)) || '' : '' }, p.vehicle_type_code ? `${p.vehicle_type_code} ${nameOf(vtype(p.vehicle_type_code)) || ''}` : (p.kind === 'cargo' ? t('any_vehicle') : '')),
+      h('td.tbl__vehicle', { title: p.vehicle_type_code ? vtName(p.vehicle_type_code) : '' }, p.vehicle_type_code ? vtName(p.vehicle_type_code) : (p.kind === 'cargo' ? t('any_vehicle') : '')),
       h('td.tbl__cargo', null, p.kind === 'cargo' && p.cargo_type_id ? nameOf(ctype(p.cargo_type_id)) : ''),
       h('td.tbl__num', null, factsLine(p)),
       h('td.tbl__num', null, priceCell(p)),
@@ -688,13 +776,13 @@ async function buildDetail(id, { inline = false } = {}) {
   const board = isOwner && p.status === 'open' ? ((await api.listPostings().catch(() => [])) || []) : [];
   const m = metricFor(p);
   const el = h('div.detail.stack', { class: inline ? 'detail--inline' : '' });
-  el.append(h('div.card.detail__hero', null,
+  el.append(h('div.card.detail__hero', { class: `detail__hero--${p.kind}` },
     tagRow(p),
     h(inline ? 'h2.detail__route' : 'h1.detail__route', null, h('span', null, p.from_name + (p.from_radius_km ? ` ${t('km_plus', { km: p.from_radius_km })}` : '')), icon('arrow'), h('span', null, p.to_name + (p.to_radius_km ? ` ${t('km_plus', { km: p.to_radius_km })}` : ''))),
     ownCargo(p) ? h('div.detail__metric', { class: p.bid_count ? 'is-good' : '' }, h('span', null, offersSummary(p)), h('span.muted.small', null, ' · ' + t('direct', { km: fmtInt(m.trip) })))
       : metricBlock(p, m, 'detail__metric'),
     h('p.muted', { style: { marginTop: '8px' } }, `${t('when')}: ${fmtDateRange(p.date_from, p.date_to)}`),
-    h('p.muted.small', { style: { marginTop: '4px' } }, `${t('posted_by')}: ${p.owner?.display_name || ''}${p.owner?.city_name ? ', ' + p.owner.city_name : ''}`)));
+    h('p.muted.small', { style: { marginTop: '4px' } }, isOwner ? t('posted_by_you') : `${t('posted_by')}: ${p.owner?.display_name || ''}${p.owner?.city_name ? ', ' + p.owner.city_name : ''}`)));
   // what the person came for goes right under the route: contacts after a deal, offers for the owner
   const slot = h('div.stack');
   el.append(slot);
@@ -708,7 +796,7 @@ async function buildDetail(id, { inline = false } = {}) {
   }
   const kv = h('dl.kv');
   if (p.kind === 'cargo' && p.cargo_type_id) kv.append(h('dt', null, t('cargo_type')), h('dd', null, nameOf(ctype(p.cargo_type_id))));
-  kv.append(h('dt', null, p.kind === 'cargo' ? t('vehicle_needed') : t('vehicle')), h('dd', null, p.vehicle_type_code && vtype(p.vehicle_type_code) ? `${p.vehicle_type_code} ${nameOf(vtype(p.vehicle_type_code))}` : t('any_vehicle')));
+  kv.append(h('dt', null, p.kind === 'cargo' ? t('vehicle_needed') : t('vehicle')), h('dd', null, p.vehicle_type_code && vtype(p.vehicle_type_code) ? vtName(p.vehicle_type_code) : t('any_vehicle')));
   const ct = p.cargo_type_id ? ctype(p.cargo_type_id) : null;
   for (const f of (ct?.fields || [])) {
     const v = p.cargo_fields?.[f.key];
@@ -748,8 +836,10 @@ async function buildDetail(id, { inline = false } = {}) {
   }
 
   if (isOwner) {
-    if (['open', 'pending'].includes(p.status)) {
-      const active = bids.filter((b) => b.status === 'active' || b.status === 'accepted');
+    const activeBids = bids.filter((b) => b.status === 'active' || b.status === 'accepted');
+    // carriers' offers belong to a cargo; a truck gets "cargo on the way" instead (client's edit, 23.09.2026)
+    if (['open', 'pending'].includes(p.status) && (p.kind === 'cargo' || activeBids.length)) {
+      const active = activeBids;
       const sorted = [...active].sort((a, b) => (state.bidSort === 'time' ? (a.created_at < b.created_at ? 1 : -1) : (p.kind === 'truck' ? b.amount - a.amount : a.amount - b.amount)));
       const sortCtl = h('div.seg.seg--sm', { role: 'group', 'aria-label': t('sort_by') },
         h('button', { type: 'button', class: state.bidSort === 'price' ? 'is-on' : '', 'aria-pressed': state.bidSort === 'price' ? 'true' : 'false', onclick: () => { state.bidSort = 'price'; rerender(); } }, t('sort_price')),
@@ -796,27 +886,31 @@ async function buildDetail(id, { inline = false } = {}) {
     }
     const actions = actionButtons(p, { big: !inline, myBid });
     if (actions) { actions.classList.remove('pcard__actions'); el.append(h('div.actionbar', null, ...[...actions.childNodes].map((b, i) => { b.classList.add('btn--wide'); if (i > 0) b.classList.remove('btn--big'); return b; }))); }
+    else if (p.kind === 'cargo' && isCustomer() && p.status === 'open') el.append(h('p.card.price-note', null, icon('bolt'), h('span', null, t('bid_only_carriers'))));
     if (p.status === 'open' && !deal) el.append(h('p.muted.small', null, t('contacts_locked')));
   }
   if (!me && p.status === 'open') el.append(h('div.actionbar', null, h('a.btn.btn--primary.btn--big', { href: '#/auth' }, t('sign_in')), h('p.muted.small', { style: { textAlign: 'center' } }, t('feed_visitors_cta'))));
   if (!slot.childNodes.length) slot.remove();
   return el;
 }
-// What the exchange found for the owner's posting (client, 18.09.2026: «создать груз → получить подходящие
-// машины … перевозчик → указал свой маршрут → увидел грузы по пути → сразу предложил цену»). A cargo fits a truck
+// What the exchange found for the owner's posting (client's edit, 18.09.2026: cargo → fitting vehicles right away;
+// a carrier's route → cargo on the way → offer a price at once). A cargo fits a truck
 // when the detour it adds is within the carrier's limit (60 km here, his own limit in 0008) and the days overlap.
 function pairsSection(p, board) {
   const overlap = (a, b) => a.date_from <= b.date_to && b.date_from <= a.date_to;
   const route = (x) => ({ from: { lat: x.from_lat, lng: x.from_lng }, to: { lat: x.to_lat, lng: x.to_lng } });
   const limit = p.kind === 'truck' ? (state.me?.profile?.max_detour_km || 60) : 60;
-  const found = board.filter((x) => x.kind !== p.kind && x.owner_id !== p.owner_id && x.status === 'open' && overlap(x, p))
-    .map((x) => { const truck = p.kind === 'truck' ? p : x, cargo = p.kind === 'cargo' ? p : x; return { x, d: detourKm(route(truck), route(cargo).from, route(cargo).to) }; })
-    .filter((r) => r.d <= limit).sort((a, b) => a.d - b.d).slice(0, 5);
+  const dOf = (x) => { const truck = p.kind === 'truck' ? p : x, cargo = p.kind === 'cargo' ? p : x; return detourKm(route(truck), route(cargo).from, route(cargo).to); };
+  // cargo offered for this very truck ("offer my cargo", 0006) comes first, whatever its detour
+  const linked = p.kind === 'truck' ? board.filter((x) => x.kind === 'cargo' && x.for_posting_id === p.id && x.status === 'open').map((x) => ({ x, d: dOf(x), forYou: true })) : [];
+  const found = [...linked, ...board.filter((x) => x.kind !== p.kind && x.owner_id !== p.owner_id && x.status === 'open' && overlap(x, p) && !linked.some((l) => l.x.id === x.id))
+    .map((x) => ({ x, d: dOf(x) }))
+    .filter((r) => r.d <= limit).sort((a, b) => a.d - b.d).slice(0, 5)];
   const nudged = new Set(store.get('pacelam.nudged', []));
   const section = h('div.section', null, h('div.section__title', null, h('h2', null, `${p.kind === 'cargo' ? t('pairs_trucks') : t('pairs_cargo')}${found.length ? ` · ${found.length}` : ''}`)));
   if (!found.length) section.append(h('p.lead', null, p.kind === 'cargo' ? t('pairs_none_trucks') : t('pairs_none_cargo')));
   const list = h('div.bids');
-  for (const { x, d } of found) {
+  for (const { x, d, forYou } of found) {
     const actions = h('div.bidrow__actions');
     if (p.kind === 'cargo') {
       if (x.price != null) actions.append(h('button.btn.btn--primary', { type: 'button', onclick: () => doTake(x) }, icon('check'), t('agree_for', { p: fmtInt(x.price) })));
@@ -826,9 +920,9 @@ function pairsSection(p, board) {
       } }, nudged.has(key) ? t('nudged') : t('nudge'));
       actions.append(btn);
     } else actions.append(h('button.btn.btn--primary', { type: 'button', onclick: () => bidSheet(x) }, t('bid')));
-    const facts = [fmtDateRange(x.date_from, x.date_to), p.kind === 'cargo' ? (x.vehicle_type_code ? `${x.vehicle_type_code} ${nameOf(vtype(x.vehicle_type_code)) || ''}` : '') : factsLine(x), p.kind === 'cargo' ? (x.price != null ? fmtMoney(x.price) : `${t('price_word')}: ${t('negotiable')}`) : ''].filter(Boolean).join(' · ');
+    const facts = [fmtDateRange(x.date_from, x.date_to), p.kind === 'cargo' ? (x.vehicle_type_code ? vtName(x.vehicle_type_code) : '') : factsLine(x), p.kind === 'cargo' ? (x.price != null ? fmtMoney(x.price) : `${t('price_word')}: ${t('negotiable')}`) : ''].filter(Boolean).join(' · ');
     list.append(h('div.card.bidrow.pairrow', null,
-      h('div.bidrow__who', null, h('a.pairrow__route', { href: `#/p/${x.id}` }, `${x.from_name} → ${x.to_name}`), h('small', null, [x.owner?.display_name, facts].filter(Boolean).join(' · '))),
+      h('div.bidrow__who', null, h('a.pairrow__route', { href: `#/p/${x.id}` }, `${x.from_name} → ${x.to_name}`), forYou ? h('span.tag.tag--mine.pairrow__tag', null, t('pairs_for_you')) : null, h('small', null, [x.owner?.display_name, facts].filter(Boolean).join(' · '))),
       h('div.bidrow__amt.pairrow__km', { class: d <= 5 ? 'is-good' : '' }, d <= 5 ? t('on_the_way') : `+${fmtInt(d)} ${t('km_unit')}`),
       actions));
   }
@@ -854,7 +948,7 @@ async function screenPost(param) {
   const [kindParam, variant] = String(param || '').split('/');
   if (kindParam !== 'cargo' && kindParam !== 'truck') return h('section.screen.narrow', null, offerBlock({ page: true }));
   state.postKind = kindParam;
-  // client, 18.09.2026 22:36: «человек реально проходит создание объявления без регистрации до последнего шага»
+  // client's edit, 18.09.2026: a visitor fills in the whole posting without an account, up to the last step
   if (variant !== 'full' && kindParam === 'cargo') return wizard('cargo');
   if (!requireAuth()) return h('div');
   if (variant !== 'full') return wizard(kindParam);
@@ -919,7 +1013,7 @@ function afterPost(p) {
   go(`#/p/${p.id}`);
 }
 function vehicleChips(vehicles, draft) {
-  return chips(vehicles.map((v) => ({ value: v.id, label: `${v.type_code} ${nameOf(vtype(v.type_code)) || ''}${v.plate ? ' · ' + v.plate : ''}` })), {
+  return chips(vehicles.map((v) => ({ value: v.id, label: vehicleLabel(v) })), {
     value: draft.vehicle?.id, name: t('my_vehicle'), onChange: (id) => { const v = vehicles.find((x) => x.id === id); draft.vehicle = v; if (v?.tonnage_t != null) draft.weight_kg = Math.round(v.tonnage_t * 1000); if (v?.volume_m3 != null) draft.volume_m3 = v.volume_m3; },
   });
 }
@@ -985,7 +1079,7 @@ function vehicleSelect(draft, key = 'vehicle_type_code') {
     const types = state.ref.vehicleTypes.filter((v) => v.group_id === g.id);
     if (!types.length) continue;
     const og = h('optgroup', { label: nameOf(g) });
-    for (const v of types) og.append(h('option', { value: v.code, selected: draft[key] === v.code }, `${v.code} · ${nameOf(v)}`));
+    for (const v of types) og.append(h('option', { value: v.code, selected: draft[key] === v.code }, nameOf(v)));
     sel.append(og);
   }
   return sel;
@@ -1039,8 +1133,8 @@ function cargoForm() {
 
 // ---------------------------------------------------------------------------------------
 // Posting wizard: one question per screen — map (from → to), calendar, what, publish.
-// Client's wording (23.09.2026): "открывается карта, там отмечаешь на карте откуда и куда нужно,
-// и после этого открывается календарь, там помечаешь дни, когда еду или когда можно забрать груз".
+// Client's edit (23.09.2026): a map to mark from and to, then a calendar to mark the days of the trip
+// or when the cargo can be picked up.
 // A tap on the map snaps to the nearest town: the exchange works with towns, exact GPS is never kept.
 // The map library (Leaflet, vendor/) loads only here, so the board stays light.
 // ---------------------------------------------------------------------------------------
@@ -1294,38 +1388,44 @@ function cargoWhatStep(draft) {
     h('p.card.price-note', null, icon('bolt'), h('span', null, t('cargo_price_hint'))));
 }
 
-// Step 3, transport: the vehicle from the profile. No vehicle yet — it is added right here, once.
+// Step 3, transport: the vehicle from the profile. No vehicle yet — it is added right here, once; the next one is
+// added the same way (client's edit, 23.09.2026: carriers with several vehicles add them right here).
 function truckWhatStep(draft, fromVehicle, repaint) {
   const vehicles = state.me.vehicles || [];
   const box = h('div.stack');
-  if (vehicles.length) {
-    box.append(h('div.form__section', null, h('div.form__title', null, t('my_vehicle')), chips(vehicles.map((v) => ({ value: v.id, label: `${v.type_code} ${nameOf(vtype(v.type_code)) || ''}${v.plate ? ' · ' + v.plate : ''}` })), {
-      value: draft.vehicle?.id, name: t('my_vehicle'), onChange: (id) => { draft.vehicle = vehicles.find((x) => x.id === id) || null; Object.assign(draft, fromVehicle(draft.vehicle)); },
-    })));
-  } else {
+  const addForm = (first) => {
     const nv = { type_code: 'VT10', tonnage_t: '', plate: '' };
     const sel = h('select.select', { onchange: (e) => { nv.type_code = e.target.value; } });
     for (const g of state.ref.groups) {
       const types = state.ref.vehicleTypes.filter((v) => v.group_id === g.id);
       if (!types.length) continue;
       const og = h('optgroup', { label: nameOf(g) });
-      for (const v of types) og.append(h('option', { value: v.code, selected: v.code === nv.type_code }, `${v.code} · ${nameOf(v)}`));
+      for (const v of types) og.append(h('option', { value: v.code, selected: v.code === nv.type_code }, nameOf(v)));
       sel.append(og);
     }
     const save = h('button.btn.btn--primary.btn--wide', { type: 'button', onclick: async () => {
       save.disabled = true;
       try {
-        await api.addVehicle({ type_code: nv.type_code, plate: nv.plate.trim() || null, tonnage_t: num(nv.tonnage_t), volume_m3: null, length_m: null, width_m: null, height_m: null, is_default: true });
+        const added = await api.addVehicle({ type_code: nv.type_code, plate: nv.plate.trim() || null, tonnage_t: num(nv.tonnage_t), volume_m3: null, length_m: null, width_m: null, height_m: null, is_default: first });
         await loadMe();
-        const v = (state.me.vehicles || []).find((x) => x.is_default) || state.me.vehicles?.[0] || null;
+        const list = state.me.vehicles || [];
+        const v = list.find((x) => x.id === added?.id) || list.find((x) => x.is_default) || list[list.length - 1] || null;
         draft.vehicle = v; Object.assign(draft, fromVehicle(v));
         toast(t('saved')); repaint();
       } catch (e) { fail(e); save.disabled = false; }
     } }, icon('check'), t('wiz_vehicle_save'));
-    box.append(h('p.lead', null, t('wiz_vehicle_once')), field(t('vehicle_type'), sel),
+    return h('div.stack.wvadd', null, first ? h('p.lead', null, t('wiz_vehicle_once')) : null, field(t('vehicle_type'), sel),
       h('div.grid2', null, field(t('tonnage'), input({ inputmode: 'decimal', class: 'input--num', placeholder: '8', oninput: (e) => { nv.tonnage_t = e.target.value; } })), field(t('plate'), input({ placeholder: 'AB-1234', maxlength: 16, oninput: (e) => { nv.plate = e.target.value; } }))),
       save);
-  }
+  };
+  if (vehicles.length) {
+    box.append(h('div.form__section', null, h('div.form__title', null, t('my_vehicle')), chips(vehicles.map((v) => ({ value: v.id, label: vehicleLabel(v) })), {
+      value: draft.vehicle?.id, name: t('my_vehicle'), onChange: (id) => { draft.vehicle = vehicles.find((x) => x.id === id) || null; Object.assign(draft, fromVehicle(draft.vehicle)); },
+    })));
+    const more = h('div');
+    const addBtn = h('button.btn.btn--ghost.btn--wide.wvadd__open', { type: 'button', onclick: () => { addBtn.hidden = true; const f = addForm(false); more.append(f); f.querySelector('select')?.focus({ preventScroll: true }); } }, icon('plus'), t('wiz_vehicle_add'));
+    box.append(addBtn, more);
+  } else box.append(addForm(true));
   const mk = (key, label, ph) => field(label, input({ inputmode: 'decimal', value: draft[key] ?? '', placeholder: ph, class: 'input--num', oninput: (e) => { draft[key] = e.target.value; } }));
   box.append(field(t('price_truck_label'), input({ inputmode: 'decimal', class: 'input--num', value: draft.price || '', oninput: (e) => { draft.price = e.target.value; } }), t('wiz_truck_price_hint')));
   box.append(h('details.wiz__more', null, h('summary', null, t('wiz_more_truck')),
@@ -1342,7 +1442,7 @@ function checkStep(draft, kind) {
   add(t('when'), draft.urgent && kind === 'cargo' ? t('wiz_urgent_sel') : fmtDateRange(draft.date_from, draft.date_to));
   if (draft.urgent && kind === 'cargo') add(t('wait_label'), waitLabel(draft.wait_minutes));
   if (kind === 'truck') {
-    add(t('vehicle'), draft.vehicle ? `${draft.vehicle.type_code} ${nameOf(vtype(draft.vehicle.type_code)) || ''}` : '');
+    add(t('vehicle'), draft.vehicle ? vehicleLabel(draft.vehicle) : '');
     if (num(draft.price) != null) add(t('kv_asking'), fmtMoney(num(draft.price))); else add(t('price_word'), t('negotiable'));
   } else {
     add(t('cargo_type'), nameOf(ctype(draft.cargo_type_id)));
@@ -1350,7 +1450,7 @@ function checkStep(draft, kind) {
   }
   const facts = factsLine({ weight_kg: num(draft.weight_kg), length_m: num(draft.length_m), width_m: num(draft.width_m), height_m: num(draft.height_m), volume_m3: num(draft.volume_m3) });
   add(kind === 'truck' ? t('capacity') : `${t('weight')} · ${t('dims')}`, facts);
-  const card = h('div.card.wcheck', null,
+  const card = h('div.card.wcheck', { class: `wcheck--${kind}` },
     h('span.tag', { class: kind === 'cargo' ? 'tag--cargo' : 'tag--truck' }, kind === 'cargo' ? t('kind_cargo') : t('kind_truck')),
     h('div.wcheck__route', null, h('span', null, draft.from?.name || ''), icon('arrow'), h('span', null, draft.to?.name || '')),
     rows);
@@ -1474,7 +1574,7 @@ async function screenSearch() {
   for (const s of searches) {
     const parts = [s.kind === 'cargo' ? t('kind_cargo') : t('kind_truck'), `${s.center_name} ${t('km_plus', { km: s.radius_km })}`];
     if (s.dest_name) parts.push(`→ ${s.dest_name}${s.dest_radius_km ? ' ' + t('km_plus', { km: s.dest_radius_km }) : ''}`);
-    if (s.vehicle_type_codes?.length) parts.push(s.vehicle_type_codes.join(', '));
+    if (s.vehicle_type_codes?.length) parts.push(s.vehicle_type_codes.map(vtName).join(', '));
     if (s.cargo_type_ids?.length) parts.push(s.cargo_type_ids.map((id) => nameOf(ctype(id))).join(', '));
     list.append(h('div.card.vehicle-row', null,
       h('div.vehicle-row__main', null, h('b', null, parts.slice(0, 2).join(' · ')), h('small', null, parts.slice(2).join(' · ') || (s.modes || []).map((m) => t('mode_' + m)).join(', '))),
@@ -1488,7 +1588,7 @@ function searchSheet() {
   const kindSeg = chips([{ value: 'cargo', label: t('kind_cargo') }, { value: 'truck', label: t('kind_truck') }], { value: draft.kind, name: t('search_kind'), onChange: (v) => { draft.kind = v; } });
   const centerBtn = placeButton('search_center', () => draft.center, (p) => { draft.center = p; }, true);
   const destBtn = placeButton('search_dest', () => draft.dest, (p) => { draft.dest = p; }, true);
-  const vt = chips(state.ref.vehicleTypes.map((v) => ({ value: v.code, label: `${v.code} ${nameOf(v)}` })), { value: draft.vehicleTypes, multi: true, name: t('search_vehicles'), onChange: (v) => { draft.vehicleTypes = v; } });
+  const vt = vehicleTypeChips(draft.vehicleTypes, (v) => { draft.vehicleTypes = v; }, t('search_vehicles'));
   const ct = chips(state.ref.cargoTypes.map((c) => ({ value: c.id, label: nameOf(c) })), { value: draft.cargoTypes, multi: true, name: t('search_cargo'), onChange: (v) => { draft.cargoTypes = v; } });
   const modes = chips([{ value: 'urgent', label: t('mode_urgent') }, { value: 'planned', label: t('mode_planned') }], { value: draft.modes, multi: true, name: t('search_modes'), onChange: (v) => { draft.modes = v; } });
   const s = sheet({
@@ -1524,8 +1624,8 @@ async function screenProfile() {
   form.append(field(t('phone'), input({ type: 'tel', inputmode: 'tel', value: draft.phone, autocomplete: 'tel', placeholder: '+371 20000000', oninput: (e) => { draft.phone = e.target.value; } }), t('phone_hint')));
   form.append(field(t('email'), input({ type: 'email', inputmode: 'email', value: draft.email, autocomplete: 'email', oninput: (e) => { draft.email = e.target.value; } })));
   form.append(field(t('company'), input({ value: draft.company, maxlength: 120, autocomplete: 'organization', oninput: (e) => { draft.company = e.target.value; } })));
-  const dl = h('span', null, `${t('max_detour')} ${draft.max_detour_km} km`);
-  form.append(h('div.field', null, h('div.field__label', null, dl), h('input.range', { type: 'range', min: 10, max: 300, step: 10, value: draft.max_detour_km, 'aria-label': t('max_detour'), oninput: (e) => { draft.max_detour_km = Number(e.target.value); dl.textContent = `${t('max_detour')} ${draft.max_detour_km} km`; } })));
+  const dl = h('span', null, `${t('max_detour')} ${draft.max_detour_km} ${t('km_unit')}`);
+  form.append(h('div.field', null, h('div.field__label', null, dl), h('input.range', { type: 'range', min: 10, max: 300, step: 10, value: draft.max_detour_km, 'aria-label': t('max_detour'), oninput: (e) => { draft.max_detour_km = Number(e.target.value); dl.textContent = `${t('max_detour')} ${draft.max_detour_km} ${t('km_unit')}`; } })));
   form.append(h('label.check', null, h('input', { type: 'checkbox', checked: document.documentElement.dataset.theme === 'light', onchange: (e) => applyTheme(e.target.checked ? 'light' : 'dark') }), h('span', null, t('theme'))));
   form.append(h('button.btn.btn--primary.btn--wide', { type: 'submit' }, t('save')));
   form.addEventListener('submit', async (e) => {
@@ -1543,15 +1643,15 @@ async function screenProfile() {
   for (const v of me.vehicles || []) {
     const ty = vtype(v.type_code);
     list.append(h('div.card.vehicle-row', null,
-      h('div.vehicle-row__main', null, h('b', null, `${v.type_code} ${ty ? nameOf(ty) : ''}`), h('small', null, [v.plate, v.tonnage_t != null ? `${fmtNum(v.tonnage_t, 1)} ${t('t')}` : null, v.volume_m3 != null ? `${fmtNum(v.volume_m3, 0)} ${t('m3')}` : null, v.is_default ? t('default_vehicle') : null].filter(Boolean).join(' · '))),
+      h('div.vehicle-row__main', null, h('b', null, ty ? nameOf(ty) : v.type_code), h('small', null, [v.plate, v.tonnage_t != null ? `${fmtNum(v.tonnage_t, 1)} ${t('t')}` : null, v.volume_m3 != null ? `${fmtNum(v.volume_m3, 0)} ${t('m3')}` : null, v.is_default ? t('default_vehicle') : null].filter(Boolean).join(' · '))),
       !v.is_default ? h('button.btn.btn--ghost.btn--sm', { type: 'button', onclick: async () => { try { await api.setDefaultVehicle(v.id); await loadMe(); render(); } catch (e) { fail(e); } } }, t('default_vehicle')) : null,
-      h('button.btn.btn--ghost.btn--sm', { type: 'button', 'aria-label': t('delete'), onclick: async () => { if (!(await confirmSheet(t('delete'), `${v.type_code} ${v.plate || ''}`, t('delete'), true))) return; try { await api.deleteVehicle(v.id); await loadMe(); render(); } catch (e) { fail(e); } } }, icon('x'))));
+      h('button.btn.btn--ghost.btn--sm', { type: 'button', 'aria-label': t('delete'), onclick: async () => { if (!(await confirmSheet(t('delete'), vehicleLabel(v), t('delete'), true))) return; try { await api.deleteVehicle(v.id); await loadMe(); render(); } catch (e) { fail(e); } } }, icon('x'))));
   }
   if (!(me.vehicles || []).length) list.append(h('p.lead', null, me.profile.role === 'carrier' ? t('add_vehicle_first') : ''));
   vs.append(list);
   el.append(vs);
   const foot = h('div.row', { style: { marginTop: '10px' } }, h('button.btn.btn--ghost', { type: 'button', onclick: async () => { await api.signOut(); state.me = null; go('#/'); } }, t('sign_out')));
-  if (api.mode === 'demo') foot.append(h('button.btn.btn--ghost', { type: 'button', onclick: () => { api.resetDemo(); state.me = null; state.route = null; state.selected = null; store.set(routeKey(), null); store.set('pacelam.lastRoute', null); store.set(lastRouteKey(), null); go('#/'); } }, 'Reset demo'));
+  if (api.mode === 'demo') foot.append(h('button.btn.btn--ghost', { type: 'button', onclick: () => { api.resetDemo(); state.me = null; state.route = null; state.selected = null; store.set(routeKey(), null); store.set('pacelam.lastRoute', null); store.set(lastRouteKey(), null); go('#/'); } }, t('demo_reset')));
   el.append(foot);
   return el;
 }
@@ -1562,7 +1662,7 @@ function vehicleSheet() {
     const types = state.ref.vehicleTypes.filter((v) => v.group_id === g.id);
     if (!types.length) continue;
     const og = h('optgroup', { label: nameOf(g) });
-    for (const v of types) og.append(h('option', { value: v.code, selected: v.code === draft.type_code }, `${v.code} · ${nameOf(v)}`));
+    for (const v of types) og.append(h('option', { value: v.code, selected: v.code === draft.type_code }, nameOf(v)));
     sel.append(og);
   }
   const mk = (key, label, ph, mode = 'decimal') => field(label, input({ inputmode: mode, placeholder: ph, class: 'input--num', oninput: (e) => { draft[key] = e.target.value; } }));
@@ -1741,6 +1841,7 @@ async function boot() {
     history.replaceState(null, '', url.pathname + url.search + (post ? `#/post/${post}` : (location.hash || '#/')));
   }
   await loadMe();
+  if (post && api.mode === 'demo') await roleFor(post);
   api.onAuth(async () => { await loadMe(); renderChrome(); });
   window.addEventListener('hashchange', () => { if (route().name !== 'feed') state.selected = null; render(); });
   mqTable.addEventListener('change', () => render());

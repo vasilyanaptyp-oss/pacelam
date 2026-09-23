@@ -111,7 +111,7 @@ a { color: var(--acc-text); }
   .map__cargo .pulse, .eyebrow i { animation: none; }
   .grain { display: none; }
 }
-.mock { position: absolute; width: min(262px, 66%); padding: 14px 16px; background: rgba(21, 25, 33, .92); border: 1px solid var(--line2); border-radius: 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06); opacity: 0; animation: rise .9s var(--ease) forwards; }
+.mock { position: absolute; overflow: hidden; width: min(262px, 66%); padding: 14px 16px 14px 20px; background: rgba(21, 25, 33, .92); border: 1px solid var(--line2); border-radius: 18px; box-shadow: 0 24px 60px rgba(0, 0, 0, .55), inset 0 1px 0 rgba(255, 255, 255, .06); opacity: 0; animation: rise .9s var(--ease) forwards; }
 .mock--a { left: 12px; bottom: 34px; animation-delay: 1.4s; }
 .mock--b { right: 12px; top: 92px; animation-delay: 1.7s; }
 .mock--c { right: 12px; bottom: 34px; display: none; }
@@ -142,9 +142,9 @@ a { color: var(--acc-text); }
 @keyframes rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 .mock__top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 8px; }
 .tag { display: inline-flex; align-items: center; min-height: 22px; padding: 2px 8px; border-radius: 7px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
-.tag--cargo { background: rgba(91, 147, 204, .18); color: var(--blue-text); }
-.tag--truck { background: rgba(245, 166, 35, .16); color: var(--acc-text); }
-.tag--urgent { background: var(--acc); color: #17110A; }
+.tag--cargo { background: #5B93CC; color: #0B0D11; }
+.tag--truck { background: #F5A623; color: #17110A; }
+.tag--urgent { background: #C62F35; color: #fff; }   /* urgent is red: yellow means transport (client, 23.09.2026) */
 .tag--planned { background: rgba(63, 191, 127, .18); color: var(--green-text); }
 .mock__age { margin-left: auto; color: var(--mut); font-size: 12px; }
 .mock__route { font-family: var(--display); font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
@@ -234,3 +234,8 @@ a { color: var(--acc-text); }
   .rv, .mock, .map .draw, .map .city, .map__cargo { opacity: 1; transform: none; stroke-dashoffset: 0; }
   .truck { opacity: 1; }
 }
+
+/* the hidden attribute wins over any display rule (audit 23.09, A-025: a hidden "Planned" tag was visible) */
+[hidden] { display: none !important; }
+/* the sample cards carry the kind's stripe like the board: cargo — blue, transport — yellow */
+.mock::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--blue-text); }

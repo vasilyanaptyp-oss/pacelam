@@ -1,6 +1,5 @@
--- 0009: trust at a glance next to an offer (client, 18.09.2026 22:35: «Нужно очень хорошо продумать доверие …
--- кто перевозчик; какой автомобиль; грузоподъёмность; … сколько выполнено перевозок; … когда зарегистрирован.
--- Особенно я бы добавил возле предложения что-то вроде: ✓ Verificēts pārvadātājs — если действительно будет проверка»).
+-- 0009: trust at a glance next to an offer (client's edit, 18.09.2026: who the carrier is, which vehicle, payload,
+-- how many deals, since when; a "verified" mark only if there is a real check).
 -- Facts only, nothing the carrier did not show anyway: his vehicle type and payload, deals closed on Paceļam,
 -- since when he is here. No contacts, no plates. There is no verification yet, so there is no "verified" mark.
 

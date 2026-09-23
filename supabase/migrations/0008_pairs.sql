@@ -1,9 +1,6 @@
--- 0008: the exchange finds pairs by itself and tells both sides (client, 18.09.2026):
---   22:37 «создать груз → получить подходящие машины → сравнить предложения → выбрать перевозчика.
---          И отдельно: перевозчик → указал свой маршрут → увидел грузы по пути → сразу предложил цену»;
---   22:41 «пусть система находит что рядом и объединяет, и приходят уведомления и заказчику и перевозчику …
---          или заказчик … может просто отправить ещё раз уведомление перевозчику, чтобы он ещё раз мог
---          обратить внимание».
+-- 0008: the exchange finds pairs by itself and tells both sides (client's edits, 18.09.2026): a cargo gets fitting
+-- vehicles right away, a carrier's route gets the cargo on the way; both sides are notified, and the customer can
+-- remind a carrier on the way once more.
 -- A cargo fits a truck when the detour it adds to the truck's route is within that carrier's max_detour_km
 -- and their days overlap. Nothing is removed: two functions, one trigger and one call are added.
 
