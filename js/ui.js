@@ -1,5 +1,5 @@
 // Small DOM helpers: no framework, the board must open instantly on a cheap phone.
-import { t, locale } from './i18n.js?v=806ca22a';
+import { t, locale } from './i18n.js?v=7f588610';
 
 export function h(tag, props, ...children) {
   const [name, ...classes] = tag.split('.');
@@ -109,7 +109,26 @@ export function toast(message, kind = 'ok') {
 }
 
 // ---------- bottom sheet (stackable: a city picker may open on top of a form sheet) ----------
+// The phone's "back" closes the top sheet instead of leaving the screen with the sheet hanging over it
+// (audit 23.09, A-003): every sheet adds one history entry with the same address; a sheet closed by hand takes
+// its entry back, and a navigation asked for meanwhile waits for that step so it is never undone.
 const openSheets = [];
+let backPending = 0;
+let queuedHash = null;
+let backTimer = null;
+const flushQueued = () => { backPending = 0; clearTimeout(backTimer); if (queuedHash != null) { const q = queuedHash; queuedHash = null; location.hash = q; } };
+export function navigate(hash) {
+  if (backPending) { queuedHash = hash; return; }
+  location.hash = hash;
+}
+window.addEventListener('popstate', (e) => {
+  if (backPending) { backPending--; if (!backPending) flushQueued(); return; }
+  const top = openSheets[openSheets.length - 1];
+  if (top) { top.close(undefined, { fromHistory: true }); return; }
+  // an entry left by a sheet that is no longer open (the page was reloaded meanwhile): step over it
+  if (e.state && e.state.pacelamSheet) history.back();
+});
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 export function sheet({ title, body, onClose, label }) {
   const previous = document.activeElement;
   const panel = h('div.sheet__panel', { role: 'dialog', 'aria-modal': 'true', 'aria-label': label || title || '' });
@@ -119,17 +138,35 @@ export function sheet({ title, body, onClose, label }) {
   append(content, [body]);
   panel.append(head, content);
   const root = h('div.sheet', { onclick: (e) => { if (e.target === root) api.close(); } }, panel);
-  const onKey = (e) => { if (e.key === 'Escape' && openSheets[openSheets.length - 1] === api) api.close(); };
+  const onKey = (e) => {
+    if (openSheets[openSheets.length - 1] !== api) return;
+    if (e.key === 'Escape') { api.close(); return; }
+    // Tab stays inside the open sheet (audit 23.09, A-005: it is a modal dialog)
+    if (e.key === 'Tab') {
+      const list = [...panel.querySelectorAll(FOCUSABLE)].filter((el) => el.getClientRects().length);
+      if (!list.length) return;
+      const first = list[0], last = list[list.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+    }
+  };
   document.addEventListener('keydown', onKey);
   document.body.append(root);
   document.body.classList.add('has-sheet');
   requestAnimationFrame(() => root.classList.add('is-open'));
   const focusable = content.querySelector('input,button,select,textarea,[tabindex="0"]');
   (focusable || closeBtn).focus({ preventScroll: true });
+  history.pushState({ pacelamSheet: true }, '');
   const api = {
     root, content,
-    close(result) {
+    close(result, { fromHistory = false } = {}) {
       if (!root.isConnected) return;
+      if (!fromHistory && history.state && history.state.pacelamSheet) {
+        backPending++;
+        clearTimeout(backTimer);
+        backTimer = setTimeout(flushQueued, 700);   // never keep a navigation waiting if the step does not come
+        history.back();
+      }
       document.removeEventListener('keydown', onKey);
       root.classList.remove('is-open');
       const i = openSheets.indexOf(api);

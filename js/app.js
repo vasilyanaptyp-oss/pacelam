@@ -1,18 +1,25 @@
 // Paceļam — application shell and screens. Hash routing, no framework.
 // One adaptive layout: cards below 1024 px, a sortable table with a filter sidebar from 1024 px,
 // plus an inline details panel from 1440 px. Data and logic are shared; only rendering switches.
-import { api } from './api.js?v=806ca22a';
-import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=806ca22a';
-import { h, $, $$, clear, append, icon, toast, sheet, confirmSheet, field, input, chips, spinner, emptyState, fmtMoney, fmtInt, fmtNum, fmtDate, fmtDateRange, relTime, isoDate, addDays } from './ui.js?v=806ca22a';
-import { CITIES, searchCities, findCity, nearestCity, haversineKm, detourKm } from './geo.js?v=806ca22a';
-import { compressPhoto } from './photos.js?v=806ca22a';
+import { api } from './api.js?v=7f588610';
+import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=7f588610';
+import { h, $, $$, clear, append, icon, toast, sheet, confirmSheet, field, input, chips, spinner, emptyState, fmtMoney, fmtInt, fmtNum, fmtDate, fmtDateRange, relTime, isoDate, addDays, navigate } from './ui.js?v=7f588610';
+import { CITIES, searchCities, findCity, nearestCity, haversineKm, detourKm } from './geo.js?v=7f588610';
+import { compressPhoto } from './photos.js?v=7f588610';
 
 const store = {
   get(k, d = null) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch { /* quota */ } },
 };
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); }));
-const num = (v) => { const s = String(v ?? '').trim().replace(',', '.'); if (s === '') return null; const n = Number(s); return Number.isFinite(n) ? n : null; };
+// "1 200" and "1,5" are numbers too: spaces between thousands and a decimal comma are how people type here
+const num = (v) => { const s = String(v ?? '').trim().replace(/[\s\u00A0\u202F]/g, '').replace(',', '.'); if (s === '') return null; const n = Number(s); return Number.isFinite(n) ? n : null; };
+// Zero, minus and nonsense are not published (audit 23.09, A-007); the database checks the same (0011).
+const LIMITS = { weight_kg: [1, 60000], volume_m3: [0.01, 500], length_m: [0.01, 60], width_m: [0.01, 10], height_m: [0.01, 10], price: [1, 100000], tonnage_t: [0.1, 60], amount: [1, 100000] };
+const badNumber = (obj, keys) => keys.find((k) => { const raw = obj[k]; if (raw == null || String(raw).trim() === '') return false; const n = num(raw); const [lo, hi] = LIMITS[k]; return n == null || n < lo || n > hi; }) || null;
+const SIZE_KEYS = ['weight_kg', 'volume_m3', 'length_m', 'width_m', 'height_m'];
+// "By e-mail" waits for a server that sends mail; until then the tick is not offered (audit 23.09, A-028).
+const EMAIL_ALERTS = false;
 
 // Decision of 23.09.2026: only the carrier names a price; the customer waits for offers and taps
 // "Agree" or "Let me think". The customer's price field and the urgent/planned choice are switched
@@ -46,7 +53,7 @@ const state = {
 const view = $('#view');
 const nav = $('#nav');
 const topActions = $('#top-actions');
-const go = (hash) => { location.hash = hash; };
+const go = (hash) => navigate(hash);   // waits for a closing sheet's history step (ui.js)
 const myId = () => api.userId();
 const vtype = (code) => state.ref.vehicleTypes.find((v) => v.code === code) || null;
 // A vehicle type is shown by its name only (client's edit, 23.09.2026: no codes on screen); the code stays a key.
@@ -95,8 +102,15 @@ function errorText(e) {
   if (/instant price/i.test(m)) return t('err_no_instant');
   if (/rate limit|429|too many/i.test(m)) return t('err_rate');
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return t('err_network');
+  if (/from and to must differ/i.test(m)) return t('wiz_same_city');
+  if (/sizes must be positive|price must be positive|amount must be positive/i.test(m)) return t('validation_numbers');
+  if (/dates are in the past/i.test(m)) return t('validation_date_past');
+  if (/only carriers offer a price/i.test(m)) return t('bid_only_carriers');
+  if (/storage full/i.test(m)) return t('err_storage_full');
   return m ? `${t('error_generic')} (${m})` : t('error_generic');
 }
+// On a screen that failed to open: a known reason in words, never a raw technical text (audit 23.09, A-048)
+function errorHint(e) { const s = errorText(e); return s.startsWith(t('error_generic')) ? '' : s; }
 const fail = (e) => { console.error(e); toast(errorText(e), 'error'); };
 
 // ---------------------------------------------------------------------------------------
@@ -115,6 +129,7 @@ function langSwitch() {
     onclick: () => { if (l === getLang()) return; setLang(l); renderChrome(); render(); },
   }, l.toUpperCase())));
 }
+// Not used since 23.09.2026 (the LV | RU | EN switch replaced it); kept by the rule "nothing is deleted".
 function langSheet() {
   const s = sheet({
     title: t('lang_pick'),
@@ -158,8 +173,8 @@ function renderChrome() {
   for (const [href, ic, label, name] of navItems().filter((i) => i[3] !== 'operator')) {
     const active = current === name;
     const a = h('a', { href, class: [name === 'post' ? 'nav__post' : '', active ? 'is-active' : ''].join(' ').trim(), 'aria-current': active ? 'page' : null });
-    if (name === 'post') a.append(h('span.nav__plus', null, icon('plus')), label);
-    else a.append(icon(ic), label);
+    if (name === 'post') a.append(h('span.nav__plus', null, icon('plus')), h('span.nav__t', null, label));
+    else a.append(icon(ic), h('span.nav__t', null, label));
     nav.append(a);
   }
   document.title = 'Paceļam — ' + t('brand_tag');
@@ -228,11 +243,12 @@ async function render() {
     clear(view);
     view.append(el);
     currentScreen = el;
+    announce(r);
     if (!(r.name === 'feed' && state.selected)) window.scrollTo(0, 0);
   } catch (e) {
     if (id !== renderId) return;
     clear(view);
-    view.append(emptyState(t('error_generic'), e?.message || ''));
+    view.append(emptyState(t('error_generic'), errorHint(e)));
     console.error(e);
   }
 }
@@ -242,6 +258,17 @@ function requireAuth() {
   return true;
 }
 const rerender = () => render();
+// A screen reader hears the new screen's title once — the whole view is no longer a live region that re-reads
+// every change, a ticking countdown included (audit 23.09, A-004).
+let announcer = null;
+let announcedRoute = '';
+function announce(r) {
+  const key = `${r.name}/${r.param}`;
+  if (key === announcedRoute) return;
+  announcedRoute = key;
+  if (!announcer) { announcer = h('div.sr-only', { 'aria-live': 'polite', role: 'status' }); document.body.append(announcer); }
+  announcer.textContent = (view.querySelector('h1') || view.querySelector('h2'))?.textContent || document.title;
+}
 
 // ---------------------------------------------------------------------------------------
 // Shared pieces
@@ -261,7 +288,9 @@ function waitText(until) {
 }
 function waitBadge(p) {
   if (!(p.kind === 'cargo' && p.mode === 'urgent' && p.wait_until && p.status === 'open')) return null;
-  return h('span.tag.tag--wait', { 'data-until': p.wait_until, class: new Date(p.wait_until) <= new Date() ? 'is-over' : '' }, icon('clock'), h('span', null, waitText(p.wait_until)));
+  const until = new Intl.DateTimeFormat(locale(), { hour: '2-digit', minute: '2-digit' }).format(new Date(p.wait_until));
+  return [h('span.tag.tag--wait', { 'data-until': p.wait_until, 'aria-hidden': 'true', class: new Date(p.wait_until) <= new Date() ? 'is-over' : '' }, icon('clock'), h('span', null, waitText(p.wait_until))),
+    h('span.sr-only', null, t('wait_until_sr', { t: until }))];
 }
 // one ticker for every countdown on the screen
 setInterval(() => {
@@ -411,7 +440,10 @@ function postingCard(p, opts = {}) {
   }
   return card;
 }
-async function doAgree(p) {
+// A double tap opens one confirmation, not two stacked ones (audit 23.09, A-042).
+let busy = false;
+const once = (fn) => async (...args) => { if (busy) return; busy = true; try { return await fn(...args); } finally { busy = false; } };
+const doAgree = once(async (p) => {
   if (!requireAuth()) return;
   const ok = await confirmSheet(t('take_for', { p: fmtInt(p.price) }), `${p.from_name} → ${p.to_name} · ${fmtMoney(p.price)}\n${t('agree_hint')}`, t('take_for', { p: fmtInt(p.price) }));
   if (!ok) return;
@@ -420,8 +452,8 @@ async function doAgree(p) {
     toast(t('agree_sent'));
     if (route().name === 'p' || (route().name === 'feed' && layout() === 'table')) { state.selected = p.id; rerender(); } else go(`#/p/${p.id}`);
   } catch (e) { fail(e); }
-}
-async function doTake(p) {
+});
+const doTake = once(async (p) => {
   if (!requireAuth()) return;
   const text = `${p.from_name} → ${p.to_name}` + (p.price != null ? ` · ${fmtMoney(p.price)}` : '') + '\n' + (p.mode === 'urgent' ? t('mode_urgent_hint') : t('deal_done'));
   const truck = p.kind === 'truck' && p.price != null;
@@ -432,7 +464,7 @@ async function doTake(p) {
     toast(t('deal_done'));
     if (route().name === 'p' || (route().name === 'feed' && layout() === 'table')) { state.selected = p.id; rerender(); } else go(`#/p/${p.id}`);
   } catch (e) { fail(e); }
-}
+});
 // The customer never names a price: "offer my cargo" on a truck opens the cargo posting with that
 // route and date filled in; carriers, this one included, then send their offers.
 function offerCargoFor(p) {
@@ -445,20 +477,23 @@ function bidSheet(p, existing) {
   if (!requireAuth()) return;
   const amount = input({ inputmode: 'decimal', autocomplete: 'off', value: existing ? String(existing.amount) : '', class: 'input--num', placeholder: p.best_bid != null ? String(p.best_bid) : (p.price != null ? String(p.price) : '') });
   const note = input({ value: existing?.note || '', maxlength: 300 });
+  const send = h('button.btn.btn--primary.btn--wide.btn--big', { type: 'submit' }, t('bid_send'));
   const s = sheet({
     title: p.kind === 'truck' ? t('offer_cargo') : t('bid'),
     body: h('form.form', {
       onsubmit: async (e) => {
         e.preventDefault();
+        if (send.disabled) return;   // a double tap sends one price (audit 23.09, A-009)
         const a = num(amount.value);
-        if (!(a > 0)) { amount.focus(); return; }
-        try { await api.placeBid(p.id, a, note.value.trim()); s.close(); toast(t('bid_placed')); rerender(); } catch (err) { fail(err); }
+        if (!(a > 0) || badNumber({ amount: amount.value }, ['amount'])) { toast(t('validation_numbers'), 'error'); amount.focus(); return; }
+        send.disabled = true;
+        try { await api.placeBid(p.id, a, note.value.trim()); s.close(); toast(t('bid_placed')); rerender(); } catch (err) { fail(err); send.disabled = false; }
       },
     },
     h('p.lead', null, p.kind === 'truck' ? t('bid_hint_truck') : (p.mode === 'urgent' ? t('bid_hint_urgent') : t('bid_hint_cargo'))),
     field(t('bid_amount'), amount),
     field(t('bid_note'), note),
-    h('button.btn.btn--primary.btn--wide.btn--big', { type: 'submit' }, t('bid_send'))),
+    send),
   });
 }
 
@@ -542,7 +577,12 @@ function routeSheet(after) {
     body: h('div.stack', null, fromBtn, toBtn, h('div.field', null, h('div.field__label', null, rangeLabel), range),
       h('div.row', null,
         h('button.btn.btn--ghost', { type: 'button', onclick: () => { state.route = null; store.set(routeKey(), null); s.close(); (after || render)(); } }, t('delete')),
-        h('button.btn.btn--primary', { type: 'button', style: { flex: '1' }, onclick: () => { if (!draft.from || !draft.to) { toast(t('validation_route'), 'error'); return; } state.route = draft; store.set(routeKey(), draft); s.close(); (after || render)(); } }, t('save')))),
+        h('button.btn.btn--primary', { type: 'button', style: { flex: '1' }, onclick: () => {
+          if (!draft.from || !draft.to) { toast(t('validation_route'), 'error'); return; }
+          state.route = draft; store.set(routeKey(), draft); s.close(); (after || render)();
+          // one detour limit for the feed, the pairs and the profile (audit 23.09, A-029)
+          if (state.me?.profile && state.me.profile.max_detour_km !== draft.maxDetour) api.saveProfile({ ...profileFields(), max_detour_km: draft.maxDetour }).then((profile) => { if (profile) state.me = { ...state.me, profile }; }).catch(() => {});
+        } }, t('save')))),
   });
 }
 const emptyFilter = () => ({ kind: 'all', mode: 'all', vehicleTypes: [], cargoTypes: [] });
@@ -683,7 +723,7 @@ async function screenFeed() {
   if (routeUi && !state.route) main.append(h('div.strip.strip--here', null, hereButton()));
   if (routeUi && !state.route && state.session) main.append(h('p.lead.board__hint', null, t('feed_route_none')));
   const toolbar = h('div.board__toolbar');
-  main.append(toolbar, listWrap, h('p.feed__about', null, h('a', { href: `../?lang=${getLang()}` }, t('about'))));
+  main.append(toolbar, listWrap, api.mode !== 'demo' && postings.length >= 150 ? h('p.muted.small', null, t('feed_limit', { n: 150 })) : null, h('p.feed__about', null, h('a', { href: `../?lang=${getLang()}` }, t('about'))));
   el.append(main, detail);
 
   const compute = () => {
@@ -855,10 +895,10 @@ async function buildDetail(id, { inline = false } = {}) {
       const ordered = [...sorted.filter((b) => !later.has(b.id)), ...sorted.filter((b) => later.has(b.id))];
       ordered.forEach((b, i) => {
         const isLater = later.has(b.id);
-        const agree = async () => {
+        const agree = once(async () => {
           if (!(await confirmSheet(`${t('agree')} · ${fmtMoney(b.amount)}`, t('agree_confirm', { p: fmtInt(b.amount), name: b.bidder?.display_name || '' }), t('agree')))) return;
           try { await api.acceptBid(b.id); toast(p.kind === 'cargo' || p.mode === 'urgent' ? t('deal_done') : t('deal_pending_other')); rerender(); } catch (e) { fail(e); }
-        };
+        });
         const think = () => { later.add(b.id); store.set('pacelam.later', [...later].slice(-200)); toast(t('think_ok')); rerender(); };
         list.append(h('div.card.bidrow', { class: [i === 0 && state.bidSort === 'price' && !isLater && b.status === 'active' && sorted.length > 1 ? 'is-best' : '', isLater ? 'is-later' : ''].join(' ').trim() },
           h('div.bidrow__who', null, h('b', null, b.bidder?.display_name || '—'), h('small', null, [isLater ? t('later_tag') : null, b.bidder?.city_name, relTime(b.created_at), b.note].filter(Boolean).join(' · ')), factsLineFor(facts.get(b.bidder_id))),
@@ -1039,7 +1079,10 @@ function truckForm() {
     e.preventDefault();
     if (!draft.vehicle) { toast(t('validation_vehicle'), 'error'); return; }
     if (!draft.from || !draft.to) { toast(t('validation_route'), 'error'); return; }
+    if (draft.from.name === draft.to.name) { toast(t('wiz_same_city'), 'error'); return; }   // audit 23.09, A-008
     if (!draft.date_from) { toast(t('validation_date'), 'error'); return; }
+    if (draft.date_from < isoDate()) { toast(t('validation_date_past'), 'error'); return; }   // A-014
+    if (badNumber(draft, [...SIZE_KEYS, 'price'])) { toast(t('validation_numbers'), 'error'); return; }   // A-007
     submit.disabled = true;
     try {
       const id = uuid();
@@ -1119,7 +1162,10 @@ function cargoForm() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!draft.from || !draft.to) { toast(t('validation_route'), 'error'); return; }
+    if (draft.from.name === draft.to.name) { toast(t('wiz_same_city'), 'error'); return; }   // audit 23.09, A-008
     if (!draft.date_from) { toast(t('validation_date'), 'error'); return; }
+    if (draft.date_from < isoDate()) { toast(t('validation_date_past'), 'error'); return; }   // A-014
+    if (badNumber(draft, [...SIZE_KEYS, ...(CUSTOMER_PRICE ? ['price'] : [])])) { toast(t('validation_numbers'), 'error'); return; }   // A-007
     submit.disabled = true;
     try {
       const id = uuid();
@@ -1139,6 +1185,8 @@ function cargoForm() {
 // The map library (Leaflet, vendor/) loads only here, so the board stays light.
 // ---------------------------------------------------------------------------------------
 let leafletReady = null;
+const wizKey = (kind) => `pacelam.wiz.${kind}.${myId() || 'guest'}`;
+const wizPhotos = { cargo: [], truck: [] };   // photos stay in memory: a reload drops them and says so
 function loadLeaflet() {
   if (window.L) return Promise.resolve(window.L);
   if (!leafletReady) {
@@ -1177,10 +1225,27 @@ function wizard(kind) {
   // a guest filled everything and went to sign up: his posting waits here, on the last step
   const pending = store.get('pacelam.pendingPost');
   const resumed = !!(pending && pending.kind === kind && state.session && state.me?.profile);
-  if (resumed) { Object.assign(draft, pending.draft, { photos: [] }); store.set('pacelam.pendingPost', null); }
+  if (resumed) {
+    Object.assign(draft, pending.draft, { photos: wizPhotos[kind] });
+    store.set('pacelam.pendingPost', null);
+    if (pending.photoCount && !wizPhotos[kind].length) setTimeout(() => toast(t('photos_again')), 400);   // A-011
+  }
   const fromLast = !pre && !!last?.from && !!last?.to;
   const STEPS = ['route', 'when', 'what', 'check'];
   let step = 0;
+  // an unfinished posting is kept on this phone for a day: a refresh or "back" loses nothing (audit 23.09, A-010)
+  const saved = !pre && !resumed ? store.get(wizKey(kind)) : null;
+  const restored = !!(saved && saved.draft && Date.now() - (saved.at || 0) < 86400000);
+  if (restored) {
+    Object.assign(draft, saved.draft, { photos: wizPhotos[kind] });
+    if (kind === 'truck') draft.vehicle = vehicles.find((v) => v.id === saved.draft.vehicle?.id) || defVehicle;
+    if (!draft.date_from || draft.date_from < isoDate()) { draft.date_from = firstDay; draft.date_to = firstDay; }
+    if (!draft.date_to || draft.date_to < draft.date_from) draft.date_to = draft.date_from;
+    // back on the same step after a refresh; a posting left long ago starts from the map, already filled in
+    if (Date.now() - saved.at < 30 * 60000) step = Math.min(Math.max(0, saved.step | 0), STEPS.length - 1);
+  } else if (!resumed) draft.photos = wizPhotos[kind];
+  let alive = true;   // false once published or started over: nothing is kept after that
+  const keep = () => { if (alive) store.set(wizKey(kind), { step, at: Date.now(), draft: { ...draft, photos: [] } }); };
   const resumeStep = () => { if (resumed) step = STEPS.length - 1; };
   let cleanup = null;
   const el = h('section.screen.narrow.wiz');
@@ -1193,11 +1258,12 @@ function wizard(kind) {
     if (STEPS[step] === 'route') { if (!draft.from || !draft.to) return t('validation_route'); if (draft.from.name === draft.to.name) return t('wiz_same_city'); }
     if (STEPS[step] === 'when' && !draft.date_from) return t('validation_date');
     if (STEPS[step] === 'what' && kind === 'truck' && !draft.vehicle) return t('validation_vehicle');
+    if (STEPS[step] === 'what' && badNumber(draft, kind === 'truck' ? [...SIZE_KEYS, 'price'] : SIZE_KEYS)) return t('validation_numbers');   // A-007
     return null;
   };
   const publish = async (btn) => {
     if (!state.session || !state.me?.profile) {
-      store.set('pacelam.pendingPost', { kind, draft: { ...draft, photos: [] } });
+      store.set('pacelam.pendingPost', { kind, draft: { ...draft, photos: [] }, photoCount: draft.photos.length });
       state.roleHint = state.roleHint || 'customer';
       toast(t('signup_to_publish'));
       requireAuth();
@@ -1209,18 +1275,29 @@ function wizard(kind) {
       let p;
       if (kind === 'truck') p = await api.createPosting(truckPayload(draft, id));
       else { draft.mode = draft.urgent ? 'urgent' : 'planned'; if (draft.urgent) { draft.date_from = isoDate(); draft.date_to = isoDate(); } p = await api.createPosting(cargoPayload(draft, id, await uploadPhotos(draft, id))); }
+      alive = false; store.set(wizKey(kind), null); wizPhotos[kind] = [];
       afterPost(p);
     } catch (e) { fail(e); btn.disabled = false; }
   };
+  let showRestored = restored;
+  // what is typed or tapped inside a step is kept at once, not only when the step changes
+  el.addEventListener('input', () => keep());
+  el.addEventListener('click', () => setTimeout(keep, 0));
   const paint = () => {
     cleanup?.(); cleanup = null;
     clear(head); clear(body); clear(foot);
+    keep();
     const name = STEPS[step];
     head.append(
       h('button.icon-btn.wiz__back', { type: 'button', 'aria-label': t('back'), onclick: () => { if (step === 0) go('#/post'); else { step--; paint(); } } }, icon('back')),
       h('div.wiz__titles', null, h('p.wiz__step', null, t('wiz_step', { n: step + 1, total: STEPS.length })), h('h1.wiz__title', null, titles[name])),
       h('div.wiz__dots', { 'aria-hidden': 'true' }, STEPS.map((s, i) => h('i', { class: i === step ? 'is-on' : (i < step ? 'is-done' : '') }))));
-    if (name === 'route') { const r = routeStep(draft, { fromLast, onPick: () => refreshNext() }); body.append(r); cleanup = r.cleanup; }
+    if (showRestored) {
+      showRestored = false;
+      body.append(h('p.card.wiz__restored', null, h('span', null, t('wiz_restored')),
+        h('button.btn.btn--ghost.btn--sm', { type: 'button', onclick: () => { alive = false; store.set(wizKey(kind), null); wizPhotos[kind] = []; render(); } }, t('wiz_start_over'))));
+    }
+    if (name === 'route') { const r = routeStep(draft, { fromLast, onPick: () => { refreshNext(); keep(); } }); body.append(r); cleanup = r.cleanup; }
     if (name === 'when') body.append(calendarStep(draft, kind));
     if (name === 'what') body.append(kind === 'truck' ? truckWhatStep(draft, fromVehicle, paint) : cargoWhatStep(draft));
     if (name === 'check') body.append(checkStep(draft, kind));
@@ -1276,7 +1353,7 @@ function routeStep(draft, { fromLast, onPick }) {
     navigator.geolocation.getCurrentPosition((pos) => { set(active || 'from', nearestCity(pos.coords.latitude, pos.coords.longitude).city); }, () => toast(t('error_generic'), 'error'), { timeout: 8000, maximumAge: 60000 });
   } }, icon('target'));
   const mapBox = h('div.wmap', null, h('div.wmap__canvas'), geoBtn);
-  const mapNote = h('p.wmap__attr', null, '© ', h('a', { href: 'https://www.openstreetmap.org/copyright', target: '_blank', rel: 'noopener' }, 'OpenStreetMap'));
+  const mapNote = h('p.wmap__attr', null, '© ', h('a', { href: 'https://www.openstreetmap.org/copyright', target: '_blank', rel: 'noopener' }, 'OpenStreetMap'), ' contributors');   // as the tile policy asks (audit 23.09, A-044)
   const paintPts = () => {
     for (const [key, btn] of [['from', fromBtn], ['to', toBtn]]) {
       const v = btn.querySelector('.wpt__v');
@@ -1404,6 +1481,7 @@ function truckWhatStep(draft, fromVehicle, repaint) {
       sel.append(og);
     }
     const save = h('button.btn.btn--primary.btn--wide', { type: 'button', onclick: async () => {
+      if (badNumber(nv, ['tonnage_t'])) { toast(t('validation_numbers'), 'error'); return; }   // A-007
       save.disabled = true;
       try {
         const added = await api.addVehicle({ type_code: nv.type_code, plate: nv.plate.trim() || null, tonnage_t: num(nv.tonnage_t), volume_m3: null, length_m: null, width_m: null, height_m: null, is_default: first });
@@ -1500,7 +1578,9 @@ async function screenOperator() {
     if (!to) { toast(t('city_unknown'), 'error'); toIn.focus(); return; }
     draft.from = { name: from.name, lat: from.lat, lng: from.lng, radius: 0 };
     draft.to = { name: to.name, lat: to.lat, lng: to.lng, radius: 0 };
+    if (draft.from.name === draft.to.name) { toast(t('wiz_same_city'), 'error'); toIn.focus(); return; }   // audit 23.09, A-008
     if (!draft.date_from) { toast(t('validation_date'), 'error'); dateIn.focus(); return; }
+    if (badNumber(draft, SIZE_KEYS)) { toast(t('validation_numbers'), 'error'); return; }   // A-007
     submit.disabled = true;
     try {
       await api.createPosting(cargoPayload(draft, uuid(), []));
@@ -1605,7 +1685,7 @@ function searchSheet() {
     },
     field(t('search_kind'), kindSeg), centerBtn, destBtn, field(t('search_vehicles'), vt), field(t('search_cargo'), ct), field(t('search_modes'), modes),
     h('label.check', null, h('input', { type: 'checkbox', checked: true, onchange: (e) => { draft.browser = e.target.checked; } }), h('span', null, t('notify_browser'))),
-    h('label.check', null, h('input', { type: 'checkbox', onchange: (e) => { draft.email = e.target.checked; } }), h('span', null, t('notify_email'))),
+    EMAIL_ALERTS ? h('label.check', null, h('input', { type: 'checkbox', onchange: (e) => { draft.email = e.target.checked; } }), h('span', null, t('notify_email'))) : null,
     h('button.btn.btn--primary.btn--big.btn--wide', { type: 'submit' }, t('search_save'))),
   });
 }
@@ -1634,6 +1714,7 @@ async function screenProfile() {
       const profile = await api.saveProfile({ role: draft.role, display_name: draft.display_name.trim() || me.profile.display_name, city_name: draft.city?.name || null, city_lat: draft.city?.lat ?? null, city_lng: draft.city?.lng ?? null, max_detour_km: draft.max_detour_km, lang: getLang() });
       const contacts = draft.phone.trim() ? await api.saveContacts({ phone: draft.phone.trim(), email: draft.email.trim() || null, company: draft.company.trim() || null }) : me.contacts;
       state.me = { ...me, profile, contacts };
+      if (state.route && state.route.maxDetour !== draft.max_detour_km) { state.route = { ...state.route, maxDetour: draft.max_detour_km }; store.set(routeKey(), state.route); }   // A-029
       toast(t('saved'));
     } catch (err) { fail(err); }
   });
@@ -1671,6 +1752,7 @@ function vehicleSheet() {
     body: h('form.form', {
       onsubmit: async (e) => {
         e.preventDefault();
+        if (badNumber(draft, ['tonnage_t', 'volume_m3', 'length_m', 'width_m', 'height_m'])) { toast(t('validation_numbers'), 'error'); return; }   // A-007
         try {
           const added = await api.addVehicle({ type_code: draft.type_code, plate: draft.plate.trim() || null, tonnage_t: num(draft.tonnage_t), volume_m3: num(draft.volume_m3), length_m: num(draft.length_m), width_m: num(draft.width_m), height_m: num(draft.height_m), is_default: draft.is_default });
           if (draft.is_default && added?.id && (state.me.vehicles || []).length) await api.setDefaultVehicle(added.id);
@@ -1842,7 +1924,10 @@ async function boot() {
   }
   await loadMe();
   if (post && api.mode === 'demo') await roleFor(post);
-  api.onAuth(async () => { await loadMe(); renderChrome(); });
+  api.onAuth(async (s, why) => {
+    await loadMe(); renderChrome();
+    if (why === 'expired') { toast(t('login_required')); state.after = location.hash || '#/'; go('#/auth'); }   // audit 23.09, A-049
+  });
   window.addEventListener('hashchange', () => { if (route().name !== 'feed') state.selected = null; render(); });
   mqTable.addEventListener('change', () => render());
   mqWide.addEventListener('change', () => render());

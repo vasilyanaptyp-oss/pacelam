@@ -29,7 +29,7 @@ async function run(label, { who, lastRoute, swap, cargo, urgent }) {
   await page.goto(APP + `?demo=${who}&lang=ru#/`, { waitUntil: 'load' });
   await page.evaluate(({ key, route }) => {
     localStorage.removeItem('pacelam.demo');
-    Object.keys(localStorage).filter((k) => k.startsWith('pacelam.lastRoute')).forEach((k) => localStorage.removeItem(k));
+    Object.keys(localStorage).filter((k) => k.startsWith('pacelam.lastRoute') || k.startsWith('pacelam.wiz.')).forEach((k) => localStorage.removeItem(k));
     if (route) localStorage.setItem(key, JSON.stringify(route));
   }, { key: `pacelam.lastRoute.${BORIS}`, route: lastRoute || null });
   await page.goto(APP + `?demo=${who}&lang=ru#/`, { waitUntil: 'load' });

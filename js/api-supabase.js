@@ -12,10 +12,11 @@ export function createSupabaseApi(cfg) {
   function readSession() {
     try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; }
   }
-  function writeSession(next) {
+  // why: 'expired' when the database refused the sign-in — the app then asks to sign in again (audit 23.09, A-049)
+  function writeSession(next, why) {
     session = next;
-    if (next) localStorage.setItem(SESSION_KEY, JSON.stringify(next)); else localStorage.removeItem(SESSION_KEY);
-    listeners.forEach((fn) => fn(session));
+    try { if (next) localStorage.setItem(SESSION_KEY, JSON.stringify(next)); else localStorage.removeItem(SESSION_KEY); } catch { /* blocked storage: the session lives in memory */ }
+    listeners.forEach((fn) => fn(session, why));
   }
   function apiError(data, status) {
     const msg = data?.message || data?.msg || data?.error_description || data?.error || data?.hint || `HTTP ${status}`;
@@ -54,7 +55,7 @@ export function createSupabaseApi(cfg) {
         const data = await authRequest('token?grant_type=refresh_token', { refresh_token: session.refresh_token });
         storeTokens(data);
       } catch (e) {
-        if (e.status === 400 || e.status === 401) writeSession(null);
+        if (e.status === 400 || e.status === 401) writeSession(null, 'expired');
         throw e;
       } finally { refreshing = null; }
     })();
@@ -74,13 +75,16 @@ export function createSupabaseApi(cfg) {
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-    if (res.status === 401 && session) { writeSession(null); }
+    if (res.status === 401 && session) { writeSession(null, 'expired'); }
     if (res.status === 204) return null;
     const data = await res.json().catch(() => null);
     if (!res.ok) throw apiError(data, res.status);
     return data;
   }
   const rpc = (fn, args) => rest(`rpc/${fn}`, { method: 'POST', body: args || {} });
+  // an id from the address bar goes into a filter only as a real uuid (audit 23.09, A-046)
+  const isId = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));
+  const q = (v) => encodeURIComponent(String(v));
   const one = (rows) => (Array.isArray(rows) ? rows[0] || null : rows);
   const uid = () => session?.user?.id || null;
   const today = () => new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -127,28 +131,29 @@ export function createSupabaseApi(cfg) {
     saveProfile: (p) => rest('profiles', { method: 'POST', body: { ...p, id: uid() }, prefer: 'resolution=merge-duplicates,return=representation' }).then(one),
     saveContacts: (c) => rest('profile_contacts', { method: 'POST', body: { ...c, profile_id: uid() }, prefer: 'resolution=merge-duplicates,return=representation' }).then(one),
     addVehicle: (v) => rest('vehicles', { method: 'POST', body: { ...v, owner_id: uid() }, prefer: 'return=representation' }).then(one),
-    updateVehicle: (id, v) => rest(`vehicles?id=eq.${id}`, { method: 'PATCH', body: v, prefer: 'return=representation' }).then(one),
-    deleteVehicle: (id) => rest(`vehicles?id=eq.${id}`, { method: 'DELETE' }),
+    updateVehicle: (id, v) => rest(`vehicles?id=eq.${q(id)}`, { method: 'PATCH', body: v, prefer: 'return=representation' }).then(one),
+    deleteVehicle: (id) => rest(`vehicles?id=eq.${q(id)}`, { method: 'DELETE' }),
     setDefaultVehicle: async (id) => {
       await rest(`vehicles?owner_id=eq.${uid()}`, { method: 'PATCH', body: { is_default: false } });
-      await rest(`vehicles?id=eq.${id}`, { method: 'PATCH', body: { is_default: true } });
+      await rest(`vehicles?id=eq.${q(id)}`, { method: 'PATCH', body: { is_default: true } });
     },
-    getContacts: (ownerId) => rest(`profile_contacts?profile_id=eq.${ownerId}&select=*`).then(one),
+    getContacts: (ownerId) => (isId(ownerId) ? rest(`profile_contacts?profile_id=eq.${q(ownerId)}&select=*`).then(one) : Promise.resolve(null)),
 
     // ---- postings ----
     listPostings: () => rest(`postings?select=*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name)&status=in.(open,pending)&date_to=gte.${today()}&order=created_at.desc&limit=150`),
     getPosting: async (id) => {
-      const posting = await rest(`postings?id=eq.${id}&select=*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name)`).then(one);
+      if (!isId(id)) return null;
+      const posting = await rest(`postings?id=eq.${q(id)}&select=*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name)`).then(one);
       if (!posting) return null;
       const me = uid();
       const [bids, deal] = me ? await Promise.all([
-        rest(`bids?posting_id=eq.${id}&select=*,bidder:profiles!bids_bidder_id_fkey(id,display_name,city_name)&order=amount.asc`),
-        rest(`deals?posting_id=eq.${id}&select=*`).then(one),
+        rest(`bids?posting_id=eq.${q(id)}&select=*,bidder:profiles!bids_bidder_id_fkey(id,display_name,city_name)&order=amount.asc`),
+        rest(`deals?posting_id=eq.${q(id)}&select=*`).then(one),
       ]) : [[], null];
       return { posting, bids: bids || [], deal };
     },
     createPosting: (p) => rest('postings', { method: 'POST', body: { ...p, owner_id: uid() }, prefer: 'return=representation' }).then(one),
-    updatePosting: (id, p) => rest(`postings?id=eq.${id}`, { method: 'PATCH', body: p, prefer: 'return=representation' }).then(one),
+    updatePosting: (id, p) => rest(`postings?id=eq.${q(id)}`, { method: 'PATCH', body: p, prefer: 'return=representation' }).then(one),
     myPostings: () => rest(`postings?owner_id=eq.${uid()}&select=*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name)&order=created_at.desc`),
     myBids: () => rest(`bids?bidder_id=eq.${uid()}&select=*,posting:postings!bids_posting_id_fkey(*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name))&order=created_at.desc`),
     myDeals: () => rest(`deals?or=(customer_id.eq.${uid()},carrier_id.eq.${uid()})&select=*,posting:postings!deals_posting_id_fkey(*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name))&order=created_at.desc`),
@@ -167,7 +172,7 @@ export function createSupabaseApi(cfg) {
     // ---- saved searches ----
     listSearches: () => rest(`saved_searches?owner_id=eq.${uid()}&select=*&order=created_at.desc`),
     saveSearch: (s) => rest('saved_searches', { method: 'POST', body: { ...s, owner_id: uid() }, prefer: 'return=representation' }).then(one),
-    deleteSearch: (id) => rest(`saved_searches?id=eq.${id}`, { method: 'DELETE' }),
+    deleteSearch: (id) => rest(`saved_searches?id=eq.${q(id)}`, { method: 'DELETE' }),
 
     // ---- notifications ----
     listNotifications: () => rest(`notifications?user_id=eq.${uid()}&select=*&order=created_at.desc&limit=50`),

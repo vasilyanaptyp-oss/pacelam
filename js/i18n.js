@@ -76,6 +76,8 @@ const D = {
     demo_word: 'Demo, dati ir piemērs', demo_you: 'tu: {who}', demo_guest: 'tu esi viesis', demo_switch: 'Mainīt', demo_now: 'Demo: tagad tu esi {who}', demo_reset: 'Atiestatīt demo',
     role_switch_title: 'Transportu izliek pārvadātājs', role_switch_truck: 'Tavs profils tagad ir «Pasūtītājs». Pārslēgt uz «Pārvadātājs»? Lomu vēlāk var mainīt profilā.', role_switch_ok: 'Pārslēgt',
     bid_only_carriers: 'Cenu šai kravai piedāvā pārvadātāji.', skip: 'Uz saturu',
+    validation_numbers: 'Pārbaudi skaitļus: svars, izmēri un cena — lielāki par nulli.', validation_date_past: 'Datums jau pagājis — izvēlies šodienu vai vēlāku.', err_storage_full: 'Pārlūkā beigusies vieta demo datiem. Profilā nospied «Atiestatīt demo».',
+    wait_until_sr: 'gaida līdz {t}', feed_limit: 'Rādīti pēdējie {n} sludinājumi.', wiz_restored: 'Atjaunots nepabeigtais sludinājums.', wiz_start_over: 'Sākt no jauna', photos_again: 'Foto pēc ieejas jāpievieno vēlreiz.',
   },
   ru: {
     brand_tag: 'Биржа обратной загрузки',
@@ -149,6 +151,8 @@ const D = {
     demo_word: 'Демо, данные примерные', demo_you: 'ты: {who}', demo_guest: 'ты гость', demo_switch: 'Сменить', demo_now: 'Демо: ты теперь {who}', demo_reset: 'Сбросить демо',
     role_switch_title: 'Транспорт выкладывает перевозчик', role_switch_truck: 'Сейчас в профиле роль «Заказчик». Переключить на «Перевозчик»? Роль потом можно поменять в профиле.', role_switch_ok: 'Переключить',
     bid_only_carriers: 'Цену за этот груз предлагают перевозчики.', skip: 'К содержимому',
+    validation_numbers: 'Проверь числа: вес, размеры и цена — больше нуля.', validation_date_past: 'Дата уже прошла — выбери сегодня или позже.', err_storage_full: 'В браузере кончилось место для демо. В профиле нажми «Сбросить демо».',
+    wait_until_sr: 'ждёт до {t}', feed_limit: 'Показаны последние {n} объявлений.', wiz_restored: 'Незаконченное объявление восстановлено.', wiz_start_over: 'Начать заново', photos_again: 'Фото после входа нужно добавить ещё раз.',
   },
   en: {
     brand_tag: 'Backload exchange',
@@ -222,15 +226,20 @@ const D = {
     demo_word: 'Demo, sample data', demo_you: 'you: {who}', demo_guest: 'you are a guest', demo_switch: 'Switch', demo_now: 'Demo: you are now {who}', demo_reset: 'Reset demo',
     role_switch_title: 'Transport is posted by carriers', role_switch_truck: 'Your profile says “Customer”. Switch to “Carrier”? You can change it later in the profile.', role_switch_ok: 'Switch',
     bid_only_carriers: 'Carriers offer a price for this cargo.', skip: 'Skip to content',
+    validation_numbers: 'Check the numbers: weight, sizes and price must be above zero.', validation_date_past: 'That date is over — pick today or later.', err_storage_full: 'The browser has no room left for the demo. Tap “Reset demo” in the profile.',
+    wait_until_sr: 'waits until {t}', feed_limit: 'Showing the latest {n} postings.', wiz_restored: 'Your unfinished posting is back.', wiz_start_over: 'Start over', photos_again: 'Add the photos again after signing in.',
   },
 };
 
 let current = 'lv';
 
 export function detectLang() {
-  const fromUrl = new URLSearchParams(location.search).get('lang');
+  // ?lang=RU and ?lang=ru-RU mean Russian too (audit 23.09, A-040)
+  const fromUrl = String(new URLSearchParams(location.search).get('lang') || '').toLowerCase().split('-')[0];
   if (fromUrl && LANGS.includes(fromUrl)) return fromUrl;
-  const saved = localStorage.getItem(KEY);
+  // storage may be blocked (strict privacy settings): the page must still open (audit 23.09, A-013)
+  let saved = null;
+  try { saved = localStorage.getItem(KEY); } catch { /* blocked */ }
   if (saved && LANGS.includes(saved)) return saved;
   const nav = (navigator.languages || [navigator.language || '']).map((l) => String(l).slice(0, 2).toLowerCase());
   return nav.find((l) => LANGS.includes(l)) || fallbackLang(nav);
@@ -247,7 +256,7 @@ export function setLang(lang, { persist = true } = {}) {
   current = lang;
   document.documentElement.lang = lang;
   if (persist) {
-    localStorage.setItem(KEY, lang);
+    try { localStorage.setItem(KEY, lang); } catch { /* blocked: the choice lives in the address */ }
     const url = new URL(location.href);
     url.searchParams.set('lang', lang);
     history.replaceState(null, '', url.pathname + url.search + url.hash);

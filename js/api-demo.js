@@ -1,8 +1,8 @@
 // Demo backend: the same API surface as api-supabase.js, kept in this browser only.
 // Lets the client click through every flow before the database is connected. The rules
 // mirror supabase/migrations/0001_init.sql; the database version is the source of truth.
-import { VEHICLE_GROUPS, VEHICLE_TYPES, CARGO_TYPES } from './data.js?v=806ca22a';
-import { blobToDataUrl } from './photos.js?v=806ca22a';
+import { VEHICLE_GROUPS, VEHICLE_TYPES, CARGO_TYPES } from './data.js?v=7f588610';
+import { blobToDataUrl } from './photos.js?v=7f588610';
 
 const KEY = 'pacelam.demo';
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); }));
@@ -97,7 +97,19 @@ export function createDemoApi() {
       db.seededOn = day(0);
     }
   }
-  const save = () => localStorage.setItem(KEY, JSON.stringify(db));
+  // blocked storage keeps the demo in memory; a full one is said in words (audit 23.09, A-013, A-043)
+  const save = () => {
+    try { localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) {
+      if (e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22)) throw new Error('storage full');
+    }
+  };
+  // two tabs share one demo: when the other tab saves, take its copy before the next change here (audit 23.09, A-012)
+  try {
+    window.addEventListener('storage', (e) => {
+      if (e.key !== KEY || !e.newValue) return;
+      try { const next = JSON.parse(e.newValue); if (next && next.version === db.version) { db = next; emit(); } } catch { /* ignore a broken copy */ }
+    });
+  } catch { /* no window events here */ }
   const listeners = new Set();
   const uid = () => db.session?.user?.id || null;
   const need = () => { if (!uid()) throw new Error('not authenticated'); return uid(); };
@@ -127,6 +139,7 @@ export function createDemoApi() {
       if (s.cargo_type_ids.length && p.cargo_type_id && !s.cargo_type_ids.includes(p.cargo_type_id)) continue;
       if (km(s.center_lat, s.center_lng, p.from_lat, p.from_lng) > s.radius_km + p.from_radius_km) continue;
       if (s.dest_lat != null && km(s.dest_lat, s.dest_lng, p.to_lat, p.to_lng) > (s.dest_radius_km || 0) + p.to_radius_km) continue;
+      if (told(s.owner_id, p.id)) continue;   // several matching searches of one person: one notification (0011)
       notify(s.owner_id, 'match', p, { amount: p.price });
     }
   };
@@ -193,8 +206,15 @@ export function createDemoApi() {
     },
     async createPosting(p) {
       const id = need();
+      // the same checks as 0011_guards.sql: another town, sizes and price above zero, a day that is not over
+      const pos = (v) => v == null || Number(v) > 0;
+      if (String(p.from_name || '').trim().toLowerCase() === String(p.to_name || '').trim().toLowerCase()) throw new Error('from and to must differ');
+      if (![p.weight_kg, p.volume_m3, p.length_m, p.width_m, p.height_m].every(pos)) throw new Error('sizes must be positive');
+      if (!pos(p.price)) throw new Error('price must be positive');
+      if (p.date_to && p.date_to < day(-1)) throw new Error('dates are in the past');
       const row = { id: uuid(), currency: 'EUR', from_radius_km: 0, to_radius_km: 0, cargo_fields: {}, photos: [], note: null, weight_kg: null, length_m: null, width_m: null, height_m: null, volume_m3: null, price: null, vehicle_id: null, vehicle_type_code: null, cargo_type_id: null, ...p, owner_id: id, status: 'open', bid_count: 0, best_bid: null, created_at: iso(Date.now()), updated_at: iso(Date.now()) };
       row.is_operator_posting = !!(p.is_operator_posting && db.profiles[id]?.is_operator);
+      if (row.kind === 'cargo') row.price = null;   // 0005: the customer never names a price (audit 23.09, A-024)
       if (row.kind === 'truck') { row.mode = 'planned'; row.cargo_type_id = null; row.cargo_fields = {}; }
       if (row.kind !== 'cargo' || row.mode !== 'urgent') row.wait_until = null;   // 0007: only urgent cargo waits, 5 min .. 24 h
       else if (row.wait_until) row.wait_until = iso(Math.min(Math.max(new Date(row.wait_until).getTime(), Date.now() + 5 * 60000), Date.now() + 24 * 3600000));
@@ -207,7 +227,7 @@ export function createDemoApi() {
       save();
       return withOwner(row);
     },
-    async updatePosting(id, p) { const row = db.postings.find((x) => x.id === id && x.owner_id === uid()); if (!row) throw new Error('posting not found'); if (row.status !== 'open') throw new Error('posting is not open'); Object.assign(row, p, { updated_at: iso(Date.now()), for_posting_id: row.for_posting_id ?? null, wait_until: row.wait_until ?? null }); save(); return withOwner(row); },
+    async updatePosting(id, p) { const row = db.postings.find((x) => x.id === id && x.owner_id === uid()); if (!row) throw new Error('posting not found'); if (row.status !== 'open') throw new Error('posting is not open'); Object.assign(row, p, { updated_at: iso(Date.now()), for_posting_id: row.for_posting_id ?? null, wait_until: row.wait_until ?? null, is_operator_posting: row.is_operator_posting, ...(row.kind === 'cargo' ? { price: row.price } : {}) }); save(); return withOwner(row); },   // 0005 keeps price and the operator tag (A-024)
     async myPostings() { return db.postings.filter((p) => p.owner_id === uid()).map(withOwner); },
     async myBids() { return db.bids.filter((b) => b.bidder_id === uid()).map((b) => ({ ...clone(b), posting: withOwner(db.postings.find((p) => p.id === b.posting_id)) })); },
     async myDeals() { const me = uid(); return db.deals.filter((d) => d.customer_id === me || d.carrier_id === me).map((d) => ({ ...clone(d), posting: withOwner(db.postings.find((p) => p.id === d.posting_id)) })); },
@@ -227,11 +247,15 @@ export function createDemoApi() {
       if (p.owner_id === me) throw new Error('own posting');
       if (p.status !== 'open') throw new Error('posting is not open');
       if (!(amount > 0)) throw new Error('amount must be positive');
+      if (p.kind === 'cargo' && db.profiles[me]?.role !== 'carrier') throw new Error('only carriers offer a price on cargo');   // 0011
       let b = db.bids.find((x) => x.posting_id === postingId && x.bidder_id === me);
+      const changed = !b || b.status !== 'active' || b.amount !== amount;
       if (b) Object.assign(b, { amount, note: note || null, status: 'active' });
       else { b = { id: uuid(), posting_id: postingId, bidder_id: me, amount, note: note || null, status: 'active', created_at: iso(Date.now()) }; db.bids.push(b); }
       recount(postingId);
-      notify(p.owner_id, 'bid', p, { amount, bid_id: b.id, above_price: p.price != null && amount > p.price });
+      // 0011: a new price is news, the same price again is not; and one notice a minute per offer at most
+      const recent = db.notifications.some((n) => n.user_id === p.owner_id && n.bid_id === b.id && n.type === 'bid' && Date.now() - new Date(n.created_at).getTime() < 60000);
+      if (changed && !recent) notify(p.owner_id, 'bid', p, { amount, bid_id: b.id, above_price: p.price != null && amount > p.price });
       save(); return b.id;
     },
     async withdrawBid(bidId) { const b = db.bids.find((x) => x.id === bidId && x.bidder_id === uid() && x.status === 'active'); if (!b) throw new Error('bid not found or not active'); b.status = 'withdrawn'; recount(b.posting_id); save(); },

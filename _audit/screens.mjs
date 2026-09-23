@@ -80,6 +80,8 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await page.keyboard.press('Escape'); await page.keyboard.press('Escape');
   if (mobile) { await page.locator('.strip .icon-btn').click(); await page.waitForSelector('.sheet.is-open'); await audit(page, `${V} filter sheet`); await page.keyboard.press('Escape'); }
   // "Offer" doors and the posting wizard (23.09): map -> calendar -> what -> check
+  // since 24.09 an unfinished posting is kept on the phone: every run starts the wizard clean
+  await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('pacelam.wiz.')).forEach((k) => localStorage.removeItem(k)));
   await page.goto(APP + '?lang=lv#/post'); await page.waitForSelector('.offer--page');
   await audit(page, `${V} post doors`);
   await page.click('.offer--page .offer__btn--truck'); await page.waitForSelector('.wroute');
@@ -92,6 +94,9 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await audit(page, `${V} wizard truck: calendar`);
   await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.wiz .chips');
   await audit(page, `${V} wizard truck: vehicle`);
+  // 24.09: another vehicle is added right on this step
+  await page.click('.wvadd__open'); await page.waitForSelector('.wvadd select');
+  await audit(page, `${V} wizard truck: add another vehicle`);
   await page.click('.wiz__foot .btn--primary'); await page.waitForSelector('.wcheck');
   await audit(page, `${V} wizard truck: check`);
   // published: the exchange lists cargo on the way at once (0008)

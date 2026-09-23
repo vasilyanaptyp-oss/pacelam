@@ -65,29 +65,30 @@ console.log('\nШаги (только клавиатура):'); steps.forEach((s
 async function focusSweep(url, waitSel, label, maxTabs) {
   await page.goto(url); await page.waitForSelector(waitSel); await page.waitForTimeout(300);
   await page.evaluate(() => { document.activeElement?.blur(); window.scrollTo(0, 0); });
-  const bad = []; let n = 0; const seen = new Set();
+  // every element is counted once by identity, not by its text: two buttons both named "Все" used to end the
+  // sweep after 3 stops (audit 23.09, A-030)
+  const bad = []; let n = 0;
   for (let i = 0; i < maxTabs; i++) {
     await page.keyboard.press('Tab');
     const info = await page.evaluate(() => {
       const el = document.activeElement;
       if (!el || el === document.body) return null;
       const cs = getComputedStyle(el);
-      const key = el.tagName + '|' + (el.textContent || '').trim().slice(0, 30) + '|' + (el.getAttribute('aria-label') || '');
+      const key = el.dataset.sweep ? 'again' : (el.dataset.sweep = '1');
       const outline = cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0;
       const shadow = cs.boxShadow && cs.boxShadow !== 'none';
       const r = el.getBoundingClientRect();
       return { key, tag: el.tagName, text: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30), visible: outline || shadow, w: Math.round(r.width), h: Math.round(r.height), hidden: cs.visibility === 'hidden' || r.width === 0 };
     });
-    if (!info) break;
-    if (seen.has(info.key)) break;
-    seen.add(info.key); n++;
+    if (!info || info.key === 'again') break;   // back to an element already visited: the whole page is done
+    n++;
     if (info.hidden) bad.push(`${info.tag} "${info.text}" focus on hidden element`);
     else if (!info.visible) bad.push(`${info.tag} "${info.text}" no visible focus`);
   }
   check(`${label}: ${n} tab stops, all with visible focus`, bad.length === 0, bad.join(' | '));
 }
-await focusSweep(`${BASE}?lang=ru#/`, '.tbl__row', 'board 1280', 40);
-await focusSweep(`${BASE}?lang=ru#/operator`, 'form.form--operator', 'operator form', 30);
+await focusSweep(`${BASE}?lang=ru#/`, '.tbl__row', 'board 1280', 200);
+await focusSweep(`${BASE}?lang=ru#/operator`, 'form.form--operator', 'operator form', 80);
 // Enter on a table row opens the details drawer without a page change
 await page.goto(`${BASE}?lang=ru#/`); await page.waitForSelector('.tbl__row'); await page.waitForTimeout(200);
 await page.locator('.tbl__row').first().focus();

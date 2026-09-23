@@ -495,5 +495,73 @@ await db.exec(read('supabase/migrations/0010_vehicle_names.sql'));
   check('0010: the database names equal the site ones (js/data.js)', diff.length === 0, diff.join(','));
 }
 
+// --- 0011 (24.09.2026): guards from the audit of 23.09 -------------------------------------------------
+await db.exec(read('supabase/migrations/0011_guards.sql'));
+let g11;
+await as(E.eva, async () => {
+  g11 = (await rows(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, weight_kg)
+    values ('cargo', 'planned', $1, 'Jelgava', 56.65, 23.71, 'Rīga', 56.95, 24.11, current_date + 1, current_date + 2, 900) returning id`, [E.eva]))[0].id;
+  const same = await fails(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to)
+    values ('cargo', 'planned', $1, 'Rīga', 56.95, 24.11, ' rīga ', 56.95, 24.11, current_date, current_date)`, [E.eva]);
+  check('0011: a posting from a town to the same town is refused (A-008)', /from and to must differ/.test(same || ''), same);
+  const zero = await fails(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, weight_kg)
+    values ('cargo', 'planned', $1, 'Jelgava', 56.65, 23.71, 'Rīga', 56.95, 24.11, current_date, current_date, 0)`, [E.eva]);
+  check('0011: zero weight is refused (A-007)', /sizes must be positive/.test(zero || ''), zero);
+  const past = await fails(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to)
+    values ('cargo', 'planned', $1, 'Jelgava', 56.65, 23.71, 'Rīga', 56.95, 24.11, current_date - 3, current_date - 2)`, [E.eva]);
+  check('0011: a new posting with dates already over is refused (A-014)', /dates are in the past/.test(past || ''), past);
+});
+await as(U.anna, async () => {
+  const err = await fails(`select place_bid($1, 150)`, [g11]);
+  check('0011: a customer account cannot bid on cargo through the API (A-017)', /only carriers offer a price on cargo/.test(err || ''), err);
+});
+await as(E.gatis, async () => {
+  const neg = await fails(`insert into postings (kind, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, price)
+    values ('truck', $1, 'Rēzekne', 56.51, 27.33, 'Rīga', 56.95, 24.11, current_date + 1, current_date + 1, -50)`, [E.gatis]);
+  check('0011: a negative asking price is refused (A-007)', /price must be positive/.test(neg || ''), neg);
+  await rows(`select place_bid($1, 180)`, [g11]);
+  await rows(`select place_bid($1, 180)`, [g11]);
+  await rows(`select place_bid($1, 175)`, [g11]);
+});
+{
+  const n = await rows(`select count(*)::int as n from notifications where user_id = $1 and posting_id = $2 and type = 'bid'`, [E.eva, g11]);
+  check('0011: re-sending an offer does not flood the customer — one notice within a minute (A-015)', n[0].n === 1, JSON.stringify(n));
+  const b = await rows(`select amount::float as a from bids where posting_id = $1 and bidder_id = $2`, [g11, E.gatis]);
+  check('0011: the offer itself still carries the latest price', b.length === 1 && b[0].a === 175, JSON.stringify(b));
+}
+await as(E.gatis, async () => {
+  for (let i = 0; i < 3; i++) await db.query(`insert into saved_searches (owner_id, kind, center_name, center_lat, center_lng, radius_km, modes) values ($1, 'cargo', 'Jelgava', 56.65, 23.71, 30, '{urgent,planned}')`, [E.gatis]);
+});
+{
+  let dupId;
+  await as(E.eva, async () => {
+    dupId = (await rows(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to)
+      values ('cargo', 'planned', $1, 'Jelgava', 56.65, 23.71, 'Liepāja', 56.51, 21.01, current_date + 2, current_date + 3) returning id`, [E.eva]))[0].id;
+  });
+  const n = await rows(`select count(*)::int as n from notifications where user_id = $1 and posting_id = $2`, [E.gatis, dupId]);
+  check('0011: three same saved searches bring one notification, not three (A-016)', n[0].n === 1, JSON.stringify(n));
+}
+await asAnon(async () => {
+  const err = await fails(`select is_subscribed($1)`, [U.boris]);
+  check('0011: a visitor cannot ask who pays for a subscription (A-045)', /permission denied/.test(err || ''), err);
+});
+await as(E.eva, async () => {
+  const err = await fails(`select is_subscribed($1)`, [U.boris]);
+  check('0011: nor can a signed-in user', /permission denied/.test(err || ''), err);
+  const board = await rows(`select count(*)::int as n from postings`);
+  check('0011: the board still reads for a signed-in user (functions inside the rules still work)', board[0].n > 0, JSON.stringify(board));
+});
+await asAnon(async () => {
+  const board = await rows(`select count(*)::int as n from postings`);
+  check('0011: and for a visitor', board[0].n >= 0, JSON.stringify(board));
+});
+// audit A-033: the lower clamp of the waiting time (0007) — 1 minute asked, at least 5 minutes kept
+await as(E.eva, async () => {
+  const r = await rows(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, wait_until)
+    values ('cargo', 'urgent', $1, 'Jelgava', 56.65, 23.71, 'Rīga', 56.95, 24.11, current_date, current_date, now() + interval '1 minute')
+    returning extract(epoch from (wait_until - now()))::int as s`, [E.eva]);
+  check('0007: a wait shorter than 5 minutes is raised to 5 (A-033)', r[0].s >= 295 && r[0].s <= 301, JSON.stringify(r));
+});
+
 console.log(`\n${results.length} checks, ${failures} failed`);
 process.exit(failures ? 1 : 0);
