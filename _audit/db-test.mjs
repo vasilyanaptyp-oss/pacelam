@@ -377,5 +377,33 @@ await as(U.dace, async () => {
   check('0005: the carrier whose offer lost sees no contacts', c.length === 0, JSON.stringify(c));
 });
 
+// --- 0006 (23.09.2026): "offer my cargo" on a truck notifies the truck's owner ---------------------
+await db.exec(read('supabase/migrations/0006_cargo_for_truck.sql'));
+let gatisTruckId, linkedId;
+await as(E.gatis, async () => {
+  gatisTruckId = (await rows(`insert into postings (kind, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, vehicle_type_code, price)
+    values ('truck', $1, 'Rīga', 56.95, 24.11, 'Daugavpils', 55.87, 26.52, current_date + 1, current_date + 1, 'VT10', 350) returning id`, [E.gatis]))[0].id;
+});
+await as(E.eva, async () => {
+  const r = await rows(`insert into postings (kind, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, for_posting_id)
+    values ('cargo', $1, 'Rīga', 56.95, 24.11, 'Daugavpils', 55.87, 26.52, current_date + 1, current_date + 1, $2) returning id, for_posting_id`, [E.eva, gatisTruckId]);
+  linkedId = r[0].id;
+  check('0006: cargo offered on a truck keeps the link to it', r[0].for_posting_id === gatisTruckId, JSON.stringify(r[0]));
+  const own = await rows(`insert into postings (kind, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, for_posting_id)
+    values ('cargo', $1, 'Rīga', 56.95, 24.11, 'Jelgava', 56.65, 23.71, current_date + 2, current_date + 2, $2) returning for_posting_id`, [E.eva, plainId]);
+  check('0006: a link to something that is not someone else\'s open truck is dropped', own[0].for_posting_id === null, JSON.stringify(own[0]));
+  await db.query(`update postings set for_posting_id = $2 where id = $1`, [own.length ? (await rows(`select id from postings where owner_id = $1 and to_name = 'Jelgava'`, [E.eva]))[0].id : null, gatisTruckId]);
+  const still = await rows(`select for_posting_id from postings where owner_id = $1 and to_name = 'Jelgava'`, [E.eva]);
+  check('0006: the link cannot be added later by an update', still[0].for_posting_id === null, JSON.stringify(still));
+});
+await as(E.gatis, async () => {
+  const n = await rows(`select type, payload->>'for_truck' as truck from notifications where user_id = $1 and posting_id = $2`, [E.gatis, linkedId]);
+  check('0006: the truck\'s owner is notified once about the cargo offered to him', n.length === 1 && n[0].type === 'match' && n[0].truck === gatisTruckId, JSON.stringify(n));
+});
+await as(U.dace, async () => {
+  const n = await rows(`select id from notifications where posting_id = $1`, [linkedId]);
+  check('0006: nobody else gets that notification', n.length === 0, JSON.stringify(n));
+});
+
 console.log(`\n${results.length} checks, ${failures} failed`);
 process.exit(failures ? 1 : 0);

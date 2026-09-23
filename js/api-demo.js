@@ -176,10 +176,15 @@ export function createDemoApi() {
       const row = { id: uuid(), currency: 'EUR', from_radius_km: 0, to_radius_km: 0, cargo_fields: {}, photos: [], note: null, weight_kg: null, length_m: null, width_m: null, height_m: null, volume_m3: null, price: null, vehicle_id: null, vehicle_type_code: null, cargo_type_id: null, ...p, owner_id: id, status: 'open', bid_count: 0, best_bid: null, created_at: iso(Date.now()), updated_at: iso(Date.now()) };
       row.is_operator_posting = !!(p.is_operator_posting && db.profiles[id]?.is_operator);
       if (row.kind === 'truck') { row.mode = 'planned'; row.cargo_type_id = null; row.cargo_fields = {}; }
-      db.postings.unshift(row); matchSearches(row); save();
+      // "offer my cargo" on a truck: the link counts only for someone else's open truck, and its owner is told (0006)
+      const truck = row.for_posting_id ? db.postings.find((x) => x.id === row.for_posting_id) : null;
+      if (row.for_posting_id && (row.kind !== 'cargo' || !truck || truck.kind !== 'truck' || truck.status !== 'open' || truck.owner_id === id)) row.for_posting_id = null;
+      db.postings.unshift(row); matchSearches(row);
+      if (row.for_posting_id && !db.notifications.some((n) => n.user_id === truck.owner_id && n.posting_id === row.id)) notify(truck.owner_id, 'match', row);
+      save();
       return withOwner(row);
     },
-    async updatePosting(id, p) { const row = db.postings.find((x) => x.id === id && x.owner_id === uid()); if (!row) throw new Error('posting not found'); if (row.status !== 'open') throw new Error('posting is not open'); Object.assign(row, p, { updated_at: iso(Date.now()) }); save(); return withOwner(row); },
+    async updatePosting(id, p) { const row = db.postings.find((x) => x.id === id && x.owner_id === uid()); if (!row) throw new Error('posting not found'); if (row.status !== 'open') throw new Error('posting is not open'); Object.assign(row, p, { updated_at: iso(Date.now()), for_posting_id: row.for_posting_id ?? null }); save(); return withOwner(row); },
     async myPostings() { return db.postings.filter((p) => p.owner_id === uid()).map(withOwner); },
     async myBids() { return db.bids.filter((b) => b.bidder_id === uid()).map((b) => ({ ...clone(b), posting: withOwner(db.postings.find((p) => p.id === b.posting_id)) })); },
     async myDeals() { const me = uid(); return db.deals.filter((d) => d.customer_id === me || d.carrier_id === me).map((d) => ({ ...clone(d), posting: withOwner(db.postings.find((p) => p.id === d.posting_id)) })); },

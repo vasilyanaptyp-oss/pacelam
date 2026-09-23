@@ -321,7 +321,7 @@ async function doTake(p) {
 // route and date filled in; carriers, this one included, then send their offers.
 function offerCargoFor(p) {
   if (!requireAuth()) return;
-  store.set('pacelam.prefill', { from: { name: p.from_name, lat: p.from_lat, lng: p.from_lng, radius: p.from_radius_km || 0 }, to: { name: p.to_name, lat: p.to_lat, lng: p.to_lng, radius: p.to_radius_km || 0 }, date_from: p.date_from, date_to: p.date_to });
+  store.set('pacelam.prefill', { for_posting_id: p.id, from: { name: p.from_name, lat: p.from_lat, lng: p.from_lng, radius: p.from_radius_km || 0 }, to: { name: p.to_name, lat: p.to_lat, lng: p.to_lng, radius: p.to_radius_km || 0 }, date_from: p.date_from, date_to: p.date_to });
   state.postKind = 'cargo';
   go('#/post/cargo');
 }
@@ -896,14 +896,14 @@ function vehicleSelect(draft, key = 'vehicle_type_code') {
   return sel;
 }
 function cargoPayload(draft, id, photos) {
-  return { id, kind: 'cargo', mode: draft.mode, from_name: draft.from.name, from_lat: draft.from.lat, from_lng: draft.from.lng, from_radius_km: draft.from.radius || 0, to_name: draft.to.name, to_lat: draft.to.lat, to_lng: draft.to.lng, to_radius_km: draft.to.radius || 0, date_from: draft.date_from, date_to: draft.mode === 'urgent' ? draft.date_from : (draft.date_to || draft.date_from), vehicle_type_code: draft.vehicle_type_code, cargo_type_id: draft.cargo_type_id, cargo_fields: Object.fromEntries(Object.entries(draft.fields).filter(([, v]) => v !== undefined)), weight_kg: num(draft.weight_kg) != null ? Math.round(num(draft.weight_kg)) : null, volume_m3: num(draft.volume_m3), length_m: num(draft.length_m), width_m: num(draft.width_m), height_m: num(draft.height_m), photos, price: num(draft.price), note: draft.note.trim() || null, is_operator_posting: !!draft.operator };
+  return { id, kind: 'cargo', mode: draft.mode, from_name: draft.from.name, from_lat: draft.from.lat, from_lng: draft.from.lng, from_radius_km: draft.from.radius || 0, to_name: draft.to.name, to_lat: draft.to.lat, to_lng: draft.to.lng, to_radius_km: draft.to.radius || 0, date_from: draft.date_from, date_to: draft.mode === 'urgent' ? draft.date_from : (draft.date_to || draft.date_from), vehicle_type_code: draft.vehicle_type_code, cargo_type_id: draft.cargo_type_id, cargo_fields: Object.fromEntries(Object.entries(draft.fields).filter(([, v]) => v !== undefined)), weight_kg: num(draft.weight_kg) != null ? Math.round(num(draft.weight_kg)) : null, volume_m3: num(draft.volume_m3), length_m: num(draft.length_m), width_m: num(draft.width_m), height_m: num(draft.height_m), photos, price: num(draft.price), note: draft.note.trim() || null, is_operator_posting: !!draft.operator, ...(draft.for_posting_id ? { for_posting_id: draft.for_posting_id } : {}) };
 }
 function cargoForm() {
   const me = state.me;
   const last = store.get(lastRouteKey());
   const pre = store.get('pacelam.prefill');   // "offer my cargo" on a truck card
   if (pre) store.set('pacelam.prefill', null);
-  const draft = { mode: 'planned', from: pre?.from || last?.from || (myCity() ? { ...myCity(), radius: 0 } : null), to: pre?.to || last?.to || null, date_from: pre?.date_from || isoDate(), date_to: pre?.date_to || pre?.date_from || isoDate(), cargo_type_id: state.ref.cargoTypes[0]?.id || null, fields: {}, vehicle_type_code: null, weight_kg: '', volume_m3: '', length_m: '', width_m: '', height_m: '', photos: [], price: '', note: '', operator: false };
+  const draft = { for_posting_id: pre?.for_posting_id || null, mode: 'planned', from: pre?.from || last?.from || (myCity() ? { ...myCity(), radius: 0 } : null), to: pre?.to || last?.to || null, date_from: pre?.date_from || isoDate(), date_to: pre?.date_to || pre?.date_from || isoDate(), cargo_type_id: state.ref.cargoTypes[0]?.id || null, fields: {}, vehicle_type_code: null, weight_kg: '', volume_m3: '', length_m: '', width_m: '', height_m: '', photos: [], price: '', note: '', operator: false };
   const form = h('form.form', { novalidate: true });
   const fromBtn = placeButton('from', () => draft.from, (p) => { draft.from = p; }, true);
   const toBtn = placeButton('to', () => draft.to, (p) => { draft.to = p; }, true);
@@ -978,6 +978,7 @@ function wizard(kind) {
   const fromVehicle = (v) => (kind === 'truck' && v ? { weight_kg: v.tonnage_t != null ? Math.round(v.tonnage_t * 1000) : '', volume_m3: v.volume_m3 ?? '', length_m: v.length_m ?? '', width_m: v.width_m ?? '', height_m: v.height_m ?? '' } : {});
   const firstDay = kind === 'truck' ? addDays(1) : isoDate();
   const draft = {
+    for_posting_id: kind === 'cargo' ? (pre?.for_posting_id || null) : null,
     mode: 'planned', from: pre?.from || last?.from || (myCity() ? { ...myCity(), radius: 0 } : null), to: pre?.to || last?.to || null,
     date_from: pre?.date_from || firstDay, date_to: pre?.date_to || pre?.date_from || firstDay,
     cargo_type_id: state.ref.cargoTypes[0]?.id || null, fields: {}, vehicle_type_code: null, vehicle: defVehicle,
@@ -1238,6 +1239,7 @@ function checkStep(draft, kind) {
     rows);
   const box = h('div.stack', null, card);
   if (kind === 'cargo') box.append(h('p.card.price-note', null, icon('bolt'), h('span', null, t('cargo_price_hint'))));
+  if (kind === 'cargo' && draft.for_posting_id) box.append(h('p.card.price-note', null, icon('bell'), h('span', null, t('wiz_for_truck'))));
   if (kind === 'cargo' && state.me.profile.is_operator) box.append(h('label.check', null, h('input', { type: 'checkbox', checked: draft.operator, onchange: (e) => { draft.operator = e.target.checked; } }), h('span', null, `${t('operator')} — ${t('operator_hint')}`)));
   return box;
 }
