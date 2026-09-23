@@ -11,9 +11,15 @@ Vehicle types: `docs/vehicle-types.json`. Product decisions are kept outside thi
 
 - `index.html` — public page for people coming from search (lv baked in, ru/en swapped by `js/landing.js`).
 - `app/` — the exchange itself. One adaptive layout: cards below 1024 px, a sortable table with a
-  filter sidebar from 1024 px, plus an inline details panel from 1440 px. `#/operator` — keyboard-first
-  form for the dispatcher posting on behalf of callers (profiles with `is_operator`).
+  filter sidebar from 1024 px, plus an inline details panel from 1440 px. On top of the board —
+  "Offer: cargo / transport", two big doors (also on the public page and behind the "+" of the bottom
+  bar, `#/post`). A door opens the posting wizard, one question per screen: map from → to, calendar,
+  what / which vehicle, publish (`#/post/cargo`, `#/post/truck`; every field in one form:
+  `#/post/cargo/full`). Only the carrier names a price; the customer taps "Agree" or "Let me think"
+  on each offer. `#/operator` — keyboard-first form for the dispatcher posting on behalf of callers
+  (profiles with `is_operator`).
 - Links from the public page: `app/?demo=carrier|customer|operator` signs into the demo,
+  `app/?post=cargo|truck` opens posting (in the demo as the sample customer / carrier),
   `app/?role=carrier|customer#/auth` preselects the role for sign-up.
 
 ## Run locally
@@ -67,7 +73,8 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
   from the site's own fonts and the hero map (re-run after changing the map or the headline).
   `manifest.webmanifest` (root and `app/`) makes the board installable; `404.html` is served by
   Pages for any missing path and finds the site root itself.
-- `vendor/` — GSAP 3 core + MotionPath + DrawSVG, self-hosted (no CDN). `js/scene.js` is loaded
+- `vendor/` — GSAP 3 core + MotionPath + DrawSVG and Leaflet 1.9.4 (`vendor/leaflet`, BSD-2), self-hosted
+  (no CDN). Leaflet is loaded only on the map step of the wizard; tiles come from openstreetmap.org, no key. `js/scene.js` is loaded
   by `landing.js` only on capable desktops (≥980 px, no reduced-motion, no save-data); phones get
   a still scene from CSS alone.
 

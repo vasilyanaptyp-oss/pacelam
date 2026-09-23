@@ -312,7 +312,7 @@ img { max-width: 100%; display: block; }
 /* isolation keeps Leaflet's own z-indexes (400–1000) inside the map, under the header and sheets */
 .wmap { position: relative; z-index: 0; isolation: isolate; height: min(46vh, 440px); min-height: 250px; overflow: hidden; border: 1px solid var(--line2); border-radius: 16px; background: var(--card2); }
 .wmap__canvas { position: absolute; inset: 0; }
-.wmap .leaflet-container { background: #D8DEE6; font: inherit; cursor: crosshair; }
+.wmap .leaflet-container { background: #F2EFE9; font: inherit; cursor: crosshair; }   /* OSM land colour: seams between tiles vanish */
 .wmap .leaflet-touch .leaflet-bar a, .wmap .leaflet-bar a { width: 44px; height: 44px; line-height: 44px; font-size: 22px; }
 .wmap__geo { position: absolute; right: 10px; bottom: 10px; z-index: 500; display: grid; place-items: center; width: 48px; height: 48px; border: 0; border-radius: 14px; background: var(--card); color: var(--ink); box-shadow: var(--shadow); cursor: pointer; }
 .wmap__attr { margin-top: -4px; color: var(--mut); font-size: 12px; text-align: right; }
