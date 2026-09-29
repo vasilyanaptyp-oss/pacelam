@@ -23,7 +23,7 @@ const D = {
     kind_cargo: 'Krava', kind_truck: 'Transports', mode_urgent: 'Steidzami', mode_planned: 'Nesteidzami',
     kind_cargo_long: 'Meklēju transportu', kind_truck_long: 'Piedāvāju transportu',
     feed_title: 'Kravas un transports', feed_empty: 'Pagaidām tukšs.', feed_empty_hint: 'Pirmos pieteikumus izliek dispečers — zvani, kurus tāpat nākas atdot.',
-    feed_route: 'Mans ceļš', feed_route_set: 'Norādīt ceļu', feed_route_none: 'Norādi, kur brauc — redzēsi līkumu kilometros katrai kravai.',
+    feed_route: 'Mans ceļš', feed_route_set: 'Norādīt ceļu', feed_route_none: 'Brauc tukšs? Nospied «Transports» un izliec reisu — atnāks kravas pa ceļam, līkums būs kilometros.',
     feed_detour_upto: 'līkums līdz {km} km', feed_show_all: 'Rādīt visus ({n})', feed_show_near: 'Tikai pa ceļam',
     feed_filter: 'Filtrs', feed_all: 'Viss', feed_visitors_cta: 'Ieej, lai pieteiktos vai piedāvātu cenu.',
     detour: '+{km} km līkums', on_the_way: 'pa ceļam', from_you: '{km} km no tevis', in_your_town: 'tavā pilsētā', direct: '{km} km ceļš',
@@ -77,6 +77,10 @@ const D = {
     role_switch_title: 'Transportu izliek pārvadātājs', role_switch_truck: 'Tavs profils tagad ir «Pasūtītājs». Pārslēgt uz «Pārvadātājs»? Lomu vēlāk var mainīt profilā.', role_switch_ok: 'Pārslēgt',
     bid_only_carriers: 'Cenu šai kravai piedāvā pārvadātāji.', skip: 'Uz saturu',
     validation_numbers: 'Pārbaudi skaitļus: svars, izmēri un cena — lielāki par nulli.', validation_date_past: 'Datums jau pagājis — izvēlies šodienu vai vēlāku.', err_storage_full: 'Pārlūkā beigusies vieta demo datiem. Profilā nospied «Atiestatīt demo».',
+    // 29.09.2026: the carrier's zone and the day in an offer
+    zone_k: 'Mana zona', zone_title: 'Kur tu ņem pasūtījumus?', zone_hint: 'Katrs jauns pieteikums, kas sākas vai beidzas šajā zonā, atnāks paziņojumā, ja tev ir piemērots transports.', zone_city: 'Bāzes pilsēta', zone_km: 'Rādiuss', zone_km_carrier: 'Pasūtījumu zona ap tavu pilsētu (pārvadātājam)',
+    feed_zone_only: 'Tikai mana zona', showing_zone: 'tikai mana zona, {km} km', zone_empty: 'Tavā zonā pagaidām nekā nav.',
+    bid_when: 'Kad vari izpildīt?', can_when: 'var {d}', sort_fast: 'Ātrākais', n_zone: 'Jauns pieteikums tavā zonā: {from} → {to}', n_bid_when: 'Jauns piedāvājums {amount} € ({when}): {from} → {to}',
     wait_until_sr: 'gaida līdz {t}', feed_limit: 'Rādīti pēdējie {n} sludinājumi.', wiz_restored: 'Atjaunots nepabeigtais sludinājums.', wiz_start_over: 'Sākt no jauna', photos_again: 'Foto pēc ieejas jāpievieno vēlreiz.',
   },
   ru: {
@@ -98,7 +102,7 @@ const D = {
     kind_cargo: 'Груз', kind_truck: 'Транспорт', mode_urgent: 'Срочно', mode_planned: 'Не срочно',
     kind_cargo_long: 'Ищу транспорт', kind_truck_long: 'Предлагаю транспорт',
     feed_title: 'Грузы и транспорт', feed_empty: 'Пока пусто.', feed_empty_hint: 'Первые заявки выкладывает диспетчер — звонки, которые всё равно приходится отдавать.',
-    feed_route: 'Мой маршрут', feed_route_set: 'Указать маршрут', feed_route_none: 'Укажи, куда едешь — увидишь крюк в километрах для каждого груза.',
+    feed_route: 'Мой маршрут', feed_route_set: 'Указать маршрут', feed_route_none: 'Едешь пустым? Нажми «Транспорт» и выложи рейс — придут грузы по пути, крюк будет в километрах.',
     feed_detour_upto: 'крюк до {km} км', feed_show_all: 'Показать все ({n})', feed_show_near: 'Только по пути',
     feed_filter: 'Фильтр', feed_all: 'Всё', feed_visitors_cta: 'Войди, чтобы взять заявку или предложить цену.',
     detour: '+{km} км крюка', on_the_way: 'по пути', from_you: '{km} км от тебя', in_your_town: 'в твоём городе', direct: '{km} км пути',
@@ -152,6 +156,10 @@ const D = {
     role_switch_title: 'Транспорт выкладывает перевозчик', role_switch_truck: 'Сейчас в профиле роль «Заказчик». Переключить на «Перевозчик»? Роль потом можно поменять в профиле.', role_switch_ok: 'Переключить',
     bid_only_carriers: 'Цену за этот груз предлагают перевозчики.', skip: 'К содержимому',
     validation_numbers: 'Проверь числа: вес, размеры и цена — больше нуля.', validation_date_past: 'Дата уже прошла — выбери сегодня или позже.', err_storage_full: 'В браузере кончилось место для демо. В профиле нажми «Сбросить демо».',
+    // 29.09.2026: зона перевозчика и день в предложении
+    zone_k: 'Моя зона', zone_title: 'Где ты берёшь заказы?', zone_hint: 'Каждая новая заявка, которая начинается или заканчивается в этой зоне, придёт уведомлением — если у тебя есть подходящая машина.', zone_city: 'Город базы', zone_km: 'Радиус', zone_km_carrier: 'Зона заказов вокруг твоего города (для перевозчика)',
+    feed_zone_only: 'Только моя зона', showing_zone: 'только моя зона, {km} км', zone_empty: 'В твоей зоне пока пусто.',
+    bid_when: 'Когда сможешь?', can_when: 'сможет {d}', sort_fast: 'Быстрее', n_zone: 'Новая заявка в твоей зоне: {from} → {to}', n_bid_when: 'Новое предложение {amount} € ({when}): {from} → {to}',
     wait_until_sr: 'ждёт до {t}', feed_limit: 'Показаны последние {n} объявлений.', wiz_restored: 'Незаконченное объявление восстановлено.', wiz_start_over: 'Начать заново', photos_again: 'Фото после входа нужно добавить ещё раз.',
   },
   en: {
@@ -173,7 +181,7 @@ const D = {
     kind_cargo: 'Cargo', kind_truck: 'Transport', mode_urgent: 'Urgent', mode_planned: 'Not urgent',
     kind_cargo_long: 'I need transport', kind_truck_long: 'I offer transport',
     feed_title: 'Cargo and transport', feed_empty: 'Nothing yet.', feed_empty_hint: 'The first postings come from the dispatcher — the calls he has to turn down anyway.',
-    feed_route: 'My route', feed_route_set: 'Set route', feed_route_none: 'Tell us where you are going — every cargo will show its detour in km.',
+    feed_route: 'My route', feed_route_set: 'Set route', feed_route_none: 'Driving empty? Tap “Transport” and post your trip — cargo on the way comes to you, with the detour in km.',
     feed_detour_upto: 'detour up to {km} km', feed_show_all: 'Show all ({n})', feed_show_near: 'On my way only',
     feed_filter: 'Filter', feed_all: 'All', feed_visitors_cta: 'Sign in to take a job or make an offer.',
     detour: '+{km} km detour', on_the_way: 'on the way', from_you: '{km} km from you', in_your_town: 'in your town', direct: '{km} km trip',
@@ -227,6 +235,10 @@ const D = {
     role_switch_title: 'Transport is posted by carriers', role_switch_truck: 'Your profile says “Customer”. Switch to “Carrier”? You can change it later in the profile.', role_switch_ok: 'Switch',
     bid_only_carriers: 'Carriers offer a price for this cargo.', skip: 'Skip to content',
     validation_numbers: 'Check the numbers: weight, sizes and price must be above zero.', validation_date_past: 'That date is over — pick today or later.', err_storage_full: 'The browser has no room left for the demo. Tap “Reset demo” in the profile.',
+    // 29.09.2026: the carrier's zone and the day in an offer
+    zone_k: 'My zone', zone_title: 'Where do you take jobs?', zone_hint: 'Every new job that starts or ends in this zone reaches you as a notification, if you have a fitting vehicle.', zone_city: 'Home base', zone_km: 'Radius', zone_km_carrier: 'Job zone around your town (for carriers)',
+    feed_zone_only: 'My zone only', showing_zone: 'my zone only, {km} km', zone_empty: 'Nothing in your zone yet.',
+    bid_when: 'When can you do it?', can_when: 'can do {d}', sort_fast: 'Soonest', n_zone: 'New job in your zone: {from} → {to}', n_bid_when: 'New offer {amount} € ({when}): {from} → {to}',
     wait_until_sr: 'waits until {t}', feed_limit: 'Showing the latest {n} postings.', wiz_restored: 'Your unfinished posting is back.', wiz_start_over: 'Start over', photos_again: 'Add the photos again after signing in.',
   },
 };

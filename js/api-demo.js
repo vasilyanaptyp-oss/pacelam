@@ -1,8 +1,8 @@
 // Demo backend: the same API surface as api-supabase.js, kept in this browser only.
 // Lets the client click through every flow before the database is connected. The rules
 // mirror supabase/migrations/0001_init.sql; the database version is the source of truth.
-import { VEHICLE_GROUPS, VEHICLE_TYPES, CARGO_TYPES } from './data.js?v=7f588610';
-import { blobToDataUrl } from './photos.js?v=7f588610';
+import { VEHICLE_GROUPS, VEHICLE_TYPES, CARGO_TYPES } from './data.js?v=a668cfa2';
+import { blobToDataUrl } from './photos.js?v=a668cfa2';
 
 const KEY = 'pacelam.demo';
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); }));
@@ -25,12 +25,12 @@ const P = { riga: [56.95, 24.11], dgp: [55.87, 26.52], rez: [56.51, 27.33], jel:
 
 function seed() {
   const profiles = {
-    [U.boris]: { created_at: ago(9000), id: U.boris, role: 'carrier', display_name: 'Boriss', city_name: 'Daugavpils', city_lat: 55.87, city_lng: 26.52, lang: 'ru', max_detour_km: 60, is_operator: false, subscription_until: null },
+    [U.boris]: { created_at: ago(9000), id: U.boris, role: 'carrier', display_name: 'Boriss', city_name: 'Daugavpils', city_lat: 55.87, city_lng: 26.52, lang: 'ru', max_detour_km: 60, zone_km: 50, is_operator: false, subscription_until: null },
     [U.anna]: { created_at: ago(8000), id: U.anna, role: 'customer', display_name: 'Anna', city_name: 'Rīga', city_lat: 56.95, city_lng: 24.11, lang: 'lv', max_detour_km: 60, is_operator: false, subscription_until: null },
     [U.op]: { created_at: ago(12000), id: U.op, role: 'customer', display_name: 'SOS Evakuators', city_name: 'Daugavpils', city_lat: 55.87, city_lng: 26.52, lang: 'lv', max_detour_km: 60, is_operator: true, subscription_until: null },
-    [U.janis]: { created_at: ago(15000), id: U.janis, role: 'carrier', display_name: 'Jānis K.', city_name: 'Rēzekne', city_lat: 56.51, city_lng: 27.33, lang: 'lv', max_detour_km: 80, is_operator: false, subscription_until: null },
+    [U.janis]: { created_at: ago(15000), id: U.janis, role: 'carrier', display_name: 'Jānis K.', city_name: 'Rēzekne', city_lat: 56.51, city_lng: 27.33, lang: 'lv', max_detour_km: 80, zone_km: 80, is_operator: false, subscription_until: null },
     [U.ilze]: { created_at: ago(10000), id: U.ilze, role: 'customer', display_name: 'Ilze SIA Būvnieks', city_name: 'Jelgava', city_lat: 56.65, city_lng: 23.71, lang: 'lv', max_detour_km: 60, is_operator: false, subscription_until: null },
-    [U.tomas]: { created_at: ago(4000), id: U.tomas, role: 'carrier', display_name: 'Tomas', city_name: 'Vilnius', city_lat: 54.69, city_lng: 25.28, lang: 'en', max_detour_km: 100, is_operator: false, subscription_until: null },
+    [U.tomas]: { created_at: ago(4000), id: U.tomas, role: 'carrier', display_name: 'Tomas', city_name: 'Vilnius', city_lat: 54.69, city_lng: 25.28, lang: 'en', max_detour_km: 100, zone_km: 100, is_operator: false, subscription_until: null },
   };
   const contacts = {
     [U.boris]: { profile_id: U.boris, phone: '+371 20000002', email: 'boriss@example.com', company: 'SIA Boriss Trans' },
@@ -157,6 +157,18 @@ export function createDemoApi() {
       notify(other.owner_id, 'match', row, { payload: row.kind === 'cargo' ? { for_truck: truck.id } : { kind: 'truck', for_cargo: cargo.id } });
     }
   };
+  // 0012: a carrier's zone — his town and a radius; a cargo that starts or ends there and fits one of his vehicles
+  const notifyZone = (row) => {
+    if (row.kind !== 'cargo' || row.status !== 'open') return;
+    for (const pr of Object.values(db.profiles)) {
+      const zone = pr.zone_km ?? 50;
+      if (pr.role !== 'carrier' || pr.id === row.owner_id || !(zone > 0) || pr.city_lat == null) continue;
+      const near = km(pr.city_lat, pr.city_lng, row.from_lat, row.from_lng) <= zone + (row.from_radius_km || 0) || km(pr.city_lat, pr.city_lng, row.to_lat, row.to_lng) <= zone + (row.to_radius_km || 0);
+      if (!near || told(pr.id, row.id)) continue;
+      if (row.vehicle_type_code && !db.vehicles.some((v) => v.owner_id === pr.id && v.type_code === row.vehicle_type_code)) continue;
+      notify(pr.id, 'match', row, { payload: { zone: true } });
+    }
+  };
   const emit = () => listeners.forEach((fn) => fn(db.session));
 
   const api = {
@@ -224,6 +236,7 @@ export function createDemoApi() {
       db.postings.unshift(row); matchSearches(row);
       if (row.for_posting_id && !db.notifications.some((n) => n.user_id === truck.owner_id && n.posting_id === row.id)) notify(truck.owner_id, 'match', row);
       notifyPairs(row);
+      notifyZone(row);
       save();
       return withOwner(row);
     },
@@ -240,8 +253,9 @@ export function createDemoApi() {
       recount(id); save();
     },
 
-    async placeBid(postingId, amount, note) {
+    async placeBid(postingId, amount, note, canDate = null) {
       const me = need();
+      if (canDate && (canDate < day(-1) || canDate > day(90))) throw new Error('date out of range');   // 0012
       const p = db.postings.find((x) => x.id === postingId);
       if (!p) throw new Error('posting not found');
       if (p.owner_id === me) throw new Error('own posting');
@@ -250,12 +264,12 @@ export function createDemoApi() {
       if (p.kind === 'cargo' && db.profiles[me]?.role !== 'carrier') throw new Error('only carriers offer a price on cargo');   // 0011
       let b = db.bids.find((x) => x.posting_id === postingId && x.bidder_id === me);
       const changed = !b || b.status !== 'active' || b.amount !== amount;
-      if (b) Object.assign(b, { amount, note: note || null, status: 'active' });
-      else { b = { id: uuid(), posting_id: postingId, bidder_id: me, amount, note: note || null, status: 'active', created_at: iso(Date.now()) }; db.bids.push(b); }
+      if (b) Object.assign(b, { amount, note: note || null, status: 'active', can_date: canDate || null });
+      else { b = { id: uuid(), posting_id: postingId, bidder_id: me, amount, note: note || null, status: 'active', can_date: canDate || null, created_at: iso(Date.now()) }; db.bids.push(b); }
       recount(postingId);
       // 0011: a new price is news, the same price again is not; and one notice a minute per offer at most
       const recent = db.notifications.some((n) => n.user_id === p.owner_id && n.bid_id === b.id && n.type === 'bid' && Date.now() - new Date(n.created_at).getTime() < 60000);
-      if (changed && !recent) notify(p.owner_id, 'bid', p, { amount, bid_id: b.id, above_price: p.price != null && amount > p.price });
+      if (changed && !recent) notify(p.owner_id, 'bid', p, { amount, bid_id: b.id, above_price: p.price != null && amount > p.price, payload: canDate ? { can_date: canDate } : {} });
       save(); return b.id;
     },
     async withdrawBid(bidId) { const b = db.bids.find((x) => x.id === bidId && x.bidder_id === uid() && x.status === 'active'); if (!b) throw new Error('bid not found or not active'); b.status = 'withdrawn'; recount(b.posting_id); save(); },

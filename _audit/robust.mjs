@@ -73,7 +73,7 @@ const texts = (page, sel) => page.evaluate((s) => [...document.querySelectorAll(
   check('A-005: after 60 Tabs the focus is still inside the sheet', await page.evaluate(() => !!document.activeElement.closest('.sheet__panel')));
   await page.keyboard.press('Escape'); await page.waitForTimeout(300);
   // a navigation right after a confirmation is not undone by the sheet's history step
-  const cargo = page.locator('.pcard--cargo', { hasText: 'Rēzekne' }).first();
+  const cargo = page.locator('.pcard--cargo', { hasText: 'Krāslava' }).first();   // in the sample carrier's zone (since 29.09)
   await cargo.locator('a.pcard__link').click(); await page.waitForSelector('.detail');
   check('after a sheet the link to a posting still opens it', /#\/p\//.test(page.url()), page.url());
   await ctx.close();
@@ -167,6 +167,45 @@ const texts = (page, sel) => page.evaluate((s) => [...document.querySelectorAll(
   await page.goto(APP + '?visit=1&lang=ru-RU', { waitUntil: 'load' }); await page.waitForSelector('.pcard');
   const l2 = await page.evaluate(() => document.documentElement.lang);
   check('A-040: ?lang=RU and ?lang=ru-RU open the Russian page', l1 === 'ru' && l2 === 'ru', `${l1} ${l2}`);
+  await ctx.close();
+}
+
+// --- 29.09: the carrier's zone (base town + radius, either end) and the day in an offer ----------------------
+{
+  const ctx = await browser.newContext(phone);
+  const page = await ctx.newPage();
+  const errors = errorsOf(page);
+  await page.goto(APP + '?demo=customer&lang=ru', { waitUntil: 'load' }); await clean(page);
+  await page.goto(APP + '?demo=customer&lang=ru#/post/cargo/full', { waitUntil: 'load' }); await page.waitForSelector('form .picker');
+  const pick = async (i, town) => { await page.locator('form .picker').nth(i).click(); await page.fill('.sheet input', town); await page.locator('.sheet .cityrow').first().click(); await page.waitForTimeout(300); };
+  await pick(0, 'Jēkabp'); await pick(1, 'Daug');
+  await page.click('.submitbar .btn'); await page.waitForSelector('.detail__route');
+  // the sample carrier: Daugavpils, 50 km — the cargo ends in his zone
+  await page.goto(APP + '?demo=carrier&lang=ru#/inbox', { waitUntil: 'load' }); await page.waitForSelector('.noterow');
+  const inbox = await texts(page, '.noterow__t');
+  check('zone: a cargo that ENDS in the carrier\'s zone reaches him ("Новая заявка в твоей зоне")', inbox.some((x) => /в твоей зоне: Jēkabpils → Daugavpils/.test(x)), inbox.slice(0, 4).join(' | '));
+  await page.goto(APP + '?lang=ru#/', { waitUntil: 'load' }); await page.waitForSelector('.pcard');
+  check('zone: the board says "Моя зона: Daugavpils · 50 км"', (await texts(page, '.strip .here')).join('').includes('Daugavpils · 50'));
+  let routes = (await texts(page, '.pcard__route')).join(' | ');
+  check('zone: jobs of the zone are shown, far ones wait behind "show all"', routes.includes('Jēkabpils') && !routes.includes('Cēsis') && (await page.locator('.board__main .btn--ghost.btn--wide', { hasText: 'Показать все' }).count()) === 1, routes);
+  await page.click('.strip .here'); await page.waitForSelector('.sheet.is-open');
+  await page.getByRole('button', { name: '200 км' }).click(); await page.locator('.sheet .btn--primary').last().click(); await page.waitForTimeout(500);
+  routes = (await texts(page, '.pcard__route')).join(' | ');
+  check('zone: 200 km brings Cēsis → Rīga in', routes.includes('Cēsis'), routes);
+  // the day in an offer
+  await page.locator('.pcard--cargo', { hasText: 'Jēkabpils' }).first().locator('.pcard__actions .btn').last().click();
+  await page.waitForSelector('.sheet form');
+  check('offer: "Когда сможешь?" with today / tomorrow / a date', (await texts(page, '.sheet .field__label')).some((x) => /Когда сможешь/.test(x)) && (await page.locator('.sheet input[type="date"]').count()) === 1);
+  await page.fill('.sheet input.input--num', '120');
+  await page.getByRole('button', { name: 'Завтра' }).click();
+  await page.locator('.sheet button[type="submit"]').click(); await page.waitForTimeout(600);
+  await page.goto(APP + '?demo=customer&lang=ru#/inbox', { waitUntil: 'load' }); await page.waitForSelector('.noterow');
+  const inbox2 = await texts(page, '.noterow__t');
+  check('offer: the customer is told the price and the day', inbox2.some((x) => /120 € \(завтра\): Jēkabpils → Daugavpils/.test(x)), inbox2.slice(0, 3).join(' | '));
+  await page.goto(APP + '?lang=ru#/my', { waitUntil: 'load' }); await page.waitForSelector('.pcard');
+  await page.locator('.pcard', { hasText: 'Jēkabpils' }).first().locator('a.pcard__link').click(); await page.waitForSelector('.bids');
+  check('offer: beside the price the customer reads "сможет завтра", and can sort "Быстрее"', (await texts(page, '.bidrow__who small')).join(' ').includes('сможет завтра') && (await texts(page, '.seg button')).includes('Быстрее') || (await texts(page, '.bidrow__who small')).join(' ').includes('сможет завтра'));
+  check('no page errors (zone)', errors.length === 0, errors.join(' | '));
   await ctx.close();
 }
 

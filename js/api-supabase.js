@@ -160,7 +160,8 @@ export function createSupabaseApi(cfg) {
     closePosting: (id) => rpc('close_posting', { p_posting: id }),
 
     // ---- bids and deals (database functions) ----
-    placeBid: (postingId, amount, note) => rpc('place_bid', { p_posting: postingId, p_amount: amount, p_note: note || null }),
+    // 0012: an offer with the day the carrier can do it (place_bid stays for older pages)
+    placeBid: (postingId, amount, note, canDate = null) => rpc('place_offer', { p_posting: postingId, p_amount: amount, p_note: note || null, p_can_date: canDate || null }),
     nudgeTruck: (cargoId, truckId) => rpc('nudge_truck', { p_cargo: cargoId, p_truck: truckId }),
     carrierFacts: (ids) => rpc('carrier_facts', { p_users: ids }),
     withdrawBid: (bidId) => rpc('withdraw_bid', { p_bid: bidId }),

@@ -1,11 +1,11 @@
 // Paceļam — application shell and screens. Hash routing, no framework.
 // One adaptive layout: cards below 1024 px, a sortable table with a filter sidebar from 1024 px,
 // plus an inline details panel from 1440 px. Data and logic are shared; only rendering switches.
-import { api } from './api.js?v=7f588610';
-import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=7f588610';
-import { h, $, $$, clear, append, icon, toast, sheet, confirmSheet, field, input, chips, spinner, emptyState, fmtMoney, fmtInt, fmtNum, fmtDate, fmtDateRange, relTime, isoDate, addDays, navigate } from './ui.js?v=7f588610';
-import { CITIES, searchCities, findCity, nearestCity, haversineKm, detourKm } from './geo.js?v=7f588610';
-import { compressPhoto } from './photos.js?v=7f588610';
+import { api } from './api.js?v=a668cfa2';
+import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=a668cfa2';
+import { h, $, $$, clear, append, icon, toast, sheet, confirmSheet, field, input, chips, spinner, emptyState, fmtMoney, fmtInt, fmtNum, fmtDate, fmtDateRange, relTime, isoDate, addDays, navigate } from './ui.js?v=a668cfa2';
+import { CITIES, searchCities, findCity, nearestCity, haversineKm, detourKm } from './geo.js?v=a668cfa2';
+import { compressPhoto } from './photos.js?v=a668cfa2';
 
 const store = {
   get(k, d = null) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
@@ -81,7 +81,15 @@ function vehicleTypeChips(value, onChange, name) {
 // Where "from you" is counted from (client's edit, 23.09.2026: the town was fixed and could not be changed):
 // the profile town, or for a guest the town picked here. One tap changes it.
 const hereCity = () => myCity() || store.get('pacelam.here');
-const profileFields = () => { const p = state.me?.profile || {}; return { role: p.role, display_name: p.display_name, city_name: p.city_name ?? null, city_lat: p.city_lat ?? null, city_lng: p.city_lng ?? null, max_detour_km: p.max_detour_km ?? 60, lang: p.lang || getLang() }; };
+const profileFields = () => { const p = state.me?.profile || {}; return { role: p.role, display_name: p.display_name, city_name: p.city_name ?? null, city_lat: p.city_lat ?? null, city_lng: p.city_lng ?? null, max_detour_km: p.max_detour_km ?? 60, zone_km: p.zone_km ?? 50, lang: p.lang || getLang() }; };
+// The carrier's zone (client's edit, 29.09.2026): his base town and a radius; a job that starts or ends there
+// reaches him as a notification (0012) and his board shows those jobs first.
+const ZONES = [25, 50, 100, 200];
+const isCarrier = () => state.me?.profile?.role === 'carrier';
+const zoneKm = () => state.me?.profile?.zone_km ?? 50;
+const inZone = (p, c = hereCity(), km = zoneKm()) => !!c && (haversineKm(c.lat, c.lng, p.from_lat, p.from_lng) <= km + (p.from_radius_km || 0) || haversineKm(c.lat, c.lng, p.to_lat, p.to_lng) <= km + (p.to_radius_km || 0));
+// "today", "tomorrow" or a date — the day a carrier can do the job
+const whenLabel = (d) => (!d ? '' : d === isoDate() ? t('today').toLowerCase() : d === addDays(1) ? t('tomorrow').toLowerCase() : fmtDate(d));
 const ctype = (id) => state.ref.cargoTypes.find((c) => c.id === id) || null;
 const myCity = () => (state.me?.profile?.city_lat != null ? { lat: state.me.profile.city_lat, lng: state.me.profile.city_lng, name: state.me.profile.city_name } : null);
 const isCustomer = () => state.me?.profile?.role === 'customer';
@@ -212,8 +220,28 @@ async function changeHere() {
 }
 function hereButton() {
   const c = hereCity();
+  if (isCarrier()) {
+    return h('button.picker.here.here--zone', { type: 'button', onclick: zoneSheet },
+      h('span', null, h('span.picker__k', null, t('zone_k')), h('span.picker__v', { class: c ? '' : 'is-empty' }, c ? `${c.name} · ${zoneKm()} ${t('km_unit')}` : t('here_set'))), icon('pin'));
+  }
   return h('button.picker.here', { type: 'button', onclick: changeHere },
     h('span', null, h('span.picker__k', null, t('here_k')), h('span.picker__v', { class: c ? '' : 'is-empty' }, c ? c.name : t('here_set'))), icon('pin'));
+}
+// Where a carrier takes jobs: base town + radius, one sheet, saved in his profile.
+function zoneSheet() {
+  const draft = { city: hereCity(), km: zoneKm() };
+  const cityBtn = placeButton('zone_city', () => draft.city, (p) => { draft.city = { name: p.name, lat: p.lat, lng: p.lng }; });
+  const kmChips = chips(ZONES.map((k) => ({ value: k, label: `${k} ${t('km_unit')}` })), { value: draft.km, name: t('zone_km'), onChange: (v) => { draft.km = v; } });
+  const save = h('button.btn.btn--primary.btn--wide.btn--big', { type: 'button', onclick: async () => {
+    if (!draft.city) { toast(t('here_set'), 'error'); return; }
+    save.disabled = true;
+    try {
+      const profile = await api.saveProfile({ ...profileFields(), city_name: draft.city.name, city_lat: draft.city.lat, city_lng: draft.city.lng, zone_km: draft.km });
+      if (profile) state.me = { ...state.me, profile };
+      s.close(); state.showAll = false; render();
+    } catch (e) { fail(e); save.disabled = false; }
+  } }, t('save'));
+  const s = sheet({ title: t('zone_title'), body: h('div.stack', null, h('p.lead', null, t('zone_hint')), cityBtn, field(t('zone_km'), kmChips), save) });
 }
 
 // ---------------------------------------------------------------------------------------
@@ -477,6 +505,12 @@ function bidSheet(p, existing) {
   if (!requireAuth()) return;
   const amount = input({ inputmode: 'decimal', autocomplete: 'off', value: existing ? String(existing.amount) : '', class: 'input--num', placeholder: p.best_bid != null ? String(p.best_bid) : (p.price != null ? String(p.price) : '') });
   const note = input({ value: existing?.note || '', maxlength: 300 });
+  // when the carrier can do it (client's edit, 29.09.2026: the customer sees who, for how much and when)
+  const today = isoDate();
+  const when = { d: existing?.can_date || (p.mode === 'urgent' ? today : (p.date_from && p.date_from > today ? p.date_from : today)) };
+  const dateIn = h('input.input', { type: 'date', min: today, value: when.d, 'aria-label': t('bid_when'), onchange: () => { when.d = dateIn.value || null; quick.querySelectorAll('.chip').forEach((c) => c.classList.remove('is-on')); } });
+  const quick = chips([{ value: today, label: t('today') }, { value: addDays(1), label: t('tomorrow') }], { value: [today, addDays(1)].includes(when.d) ? when.d : null, name: t('bid_when'), onChange: (v) => { when.d = v; dateIn.value = v; } });
+  const whenField = p.kind === 'cargo' ? h('div.field', null, h('div.field__label', null, t('bid_when')), h('div.stack.stack--tight', null, quick, dateIn)) : null;
   const send = h('button.btn.btn--primary.btn--wide.btn--big', { type: 'submit' }, t('bid_send'));
   const s = sheet({
     title: p.kind === 'truck' ? t('offer_cargo') : t('bid'),
@@ -487,11 +521,12 @@ function bidSheet(p, existing) {
         const a = num(amount.value);
         if (!(a > 0) || badNumber({ amount: amount.value }, ['amount'])) { toast(t('validation_numbers'), 'error'); amount.focus(); return; }
         send.disabled = true;
-        try { await api.placeBid(p.id, a, note.value.trim()); s.close(); toast(t('bid_placed')); rerender(); } catch (err) { fail(err); send.disabled = false; }
+        try { await api.placeBid(p.id, a, note.value.trim(), p.kind === 'cargo' ? when.d : null); s.close(); toast(t('bid_placed')); rerender(); } catch (err) { fail(err); send.disabled = false; }
       },
     },
     h('p.lead', null, p.kind === 'truck' ? t('bid_hint_truck') : (p.mode === 'urgent' ? t('bid_hint_urgent') : t('bid_hint_cargo'))),
     field(t('bid_amount'), amount),
+    whenField,
     field(t('bid_note'), note),
     send),
   });
@@ -726,19 +761,29 @@ async function screenFeed() {
   main.append(toolbar, listWrap, api.mode !== 'demo' && postings.length >= 150 ? h('p.muted.small', null, t('feed_limit', { n: 150 })) : null, h('p.feed__about', null, h('a', { href: `../?lang=${getLang()}` }, t('about'))));
   el.append(main, detail);
 
+  const zoneMode = !state.route && isCarrier() && !!hereCity() && zoneKm() > 0;
   const compute = () => {
     let list = postings.filter(passesFilter).map((p) => ({ p, m: metricFor(p) }));
     let far = [];
     if (state.route && routeUi) {
+      // a trip when driving empty and the home zone together (client's edit, 29.09.2026 23:10): jobs on the way
+      // of the trip or in the zone stay, the rest waits behind "show all"
       const max = state.route.maxDetour || 60;
-      far = list.filter((x) => x.m.detour > max);
-      if (!state.showAll) list = list.filter((x) => x.m.detour <= max);
+      const zoneOn = isCarrier() && !!hereCity() && zoneKm() > 0;
+      const keep = (x) => x.m.detour <= max || (zoneOn && inZone(x.p)) || x.p.owner_id === myId();
+      far = list.filter((x) => !keep(x));
+      if (!state.showAll) list = list.filter(keep);
+    } else if (zoneMode) {
+      // no trip set: the carrier's zone — jobs that start or end there (client's edit, 29.09.2026)
+      const mine = (x) => x.p.owner_id === myId();
+      far = list.filter((x) => !mine(x) && !inZone(x.p));
+      if (!state.showAll) list = list.filter((x) => mine(x) || inZone(x.p));
     }
     return { list: sortList(list), far, total: postings.length };
   };
   const renderCards = (list) => {
     const cards = h('div.cards');
-    if (!list.length) cards.append(emptyState(t('feed_empty'), postings.length ? '' : t('feed_empty_hint')));
+    if (!list.length) cards.append(emptyState(zoneMode && !state.showAll && postings.length ? t('zone_empty') : t('feed_empty'), postings.length ? '' : t('feed_empty_hint')));
     for (const x of list) cards.append(postingCard(x.p));
     return cards;
   };
@@ -790,9 +835,9 @@ async function screenFeed() {
   const refresh = () => {
     const { list, far, total } = compute();
     clear(toolbar);
-    if (mode === 'table') append(toolbar, [h('span.muted', null, t('rows_shown', { n: list.length, total })), state.route && routeUi ? h('span.tag.tag--planned', null, state.showAll ? t('feed_all') : t('showing_near', { km: state.route.maxDetour })) : null]);
+    if (mode === 'table') append(toolbar, [h('span.muted', null, t('rows_shown', { n: list.length, total })), state.route && routeUi ? h('span.tag.tag--planned', null, state.showAll ? t('feed_all') : t('showing_near', { km: state.route.maxDetour })) : (zoneMode ? h('span.tag.tag--planned', null, state.showAll ? t('feed_all') : t('showing_zone', { km: zoneKm() })) : null)]);
     const next = h('div', null, mode === 'table' ? renderTable(list) : renderCards(list));
-    if (far.length) next.append(h('div', { style: { marginTop: '14px' } }, h('button.btn.btn--ghost.btn--wide', { type: 'button', onclick: () => { state.showAll = !state.showAll; refresh(); } }, state.showAll ? t('feed_show_near') : t('feed_show_all', { n: far.length }))));
+    if (far.length) next.append(h('div', { style: { marginTop: '14px' } }, h('button.btn.btn--ghost.btn--wide', { type: 'button', onclick: () => { state.showAll = !state.showAll; refresh(); } }, state.showAll ? (zoneMode ? t('feed_zone_only') : t('feed_show_near')) : t('feed_show_all', { n: far.length }))));
     listWrap.replaceWith(next);
     listWrap = next;
     renderDetail();
@@ -880,9 +925,13 @@ async function buildDetail(id, { inline = false } = {}) {
     // carriers' offers belong to a cargo; a truck gets "cargo on the way" instead (client's edit, 23.09.2026)
     if (['open', 'pending'].includes(p.status) && (p.kind === 'cargo' || activeBids.length)) {
       const active = activeBids;
-      const sorted = [...active].sort((a, b) => (state.bidSort === 'time' ? (a.created_at < b.created_at ? 1 : -1) : (p.kind === 'truck' ? b.amount - a.amount : a.amount - b.amount)));
+      const byPrice = (a, b) => (p.kind === 'truck' ? b.amount - a.amount : a.amount - b.amount);
+      const sorted = [...active].sort((a, b) => (state.bidSort === 'time' ? (a.created_at < b.created_at ? 1 : -1)
+        : state.bidSort === 'fast' ? ((a.can_date || '9999') < (b.can_date || '9999') ? -1 : (a.can_date || '9999') > (b.can_date || '9999') ? 1 : byPrice(a, b))
+          : byPrice(a, b)));
       const sortCtl = h('div.seg.seg--sm', { role: 'group', 'aria-label': t('sort_by') },
         h('button', { type: 'button', class: state.bidSort === 'price' ? 'is-on' : '', 'aria-pressed': state.bidSort === 'price' ? 'true' : 'false', onclick: () => { state.bidSort = 'price'; rerender(); } }, t('sort_price')),
+        h('button', { type: 'button', class: state.bidSort === 'fast' ? 'is-on' : '', 'aria-pressed': state.bidSort === 'fast' ? 'true' : 'false', onclick: () => { state.bidSort = 'fast'; rerender(); } }, t('sort_fast')),
         h('button', { type: 'button', class: state.bidSort === 'time' ? 'is-on' : '', 'aria-pressed': state.bidSort === 'time' ? 'true' : 'false', onclick: () => { state.bidSort = 'time'; rerender(); } }, t('sort_time')));
       const section = h('div.section', null, h('div.section__title', null, h('h2', null, `${t('owner_bids')}${active.length ? ` · ${active.length}` : ''}`), active.length > 1 ? sortCtl : null));
       if (!active.length) section.append(h('p.lead', null, t('owner_no_bids')));
@@ -901,7 +950,7 @@ async function buildDetail(id, { inline = false } = {}) {
         });
         const think = () => { later.add(b.id); store.set('pacelam.later', [...later].slice(-200)); toast(t('think_ok')); rerender(); };
         list.append(h('div.card.bidrow', { class: [i === 0 && state.bidSort === 'price' && !isLater && b.status === 'active' && sorted.length > 1 ? 'is-best' : '', isLater ? 'is-later' : ''].join(' ').trim() },
-          h('div.bidrow__who', null, h('b', null, b.bidder?.display_name || '—'), h('small', null, [isLater ? t('later_tag') : null, b.bidder?.city_name, relTime(b.created_at), b.note].filter(Boolean).join(' · ')), factsLineFor(facts.get(b.bidder_id))),
+          h('div.bidrow__who', null, h('b', null, b.bidder?.display_name || '—'), h('small', null, [isLater ? t('later_tag') : null, b.can_date ? t('can_when', { d: whenLabel(b.can_date) }) : null, b.bidder?.city_name, relTime(b.created_at), b.note].filter(Boolean).join(' · ')), factsLineFor(facts.get(b.bidder_id))),
           h('div.bidrow__amt', null, fmtMoney(b.amount)),
           b.status === 'active' && p.status === 'open'
             ? h('div.bidrow__actions', null,
@@ -1621,7 +1670,7 @@ async function screenMy() {
     for (const b of list) {
       if (!b.posting) continue;
       const card = postingCard(b.posting, { noActions: true });
-      card.append(h('div.status-line', null, h('span.muted', null, `${t('your_bid')}: `), h('b', null, fmtMoney(b.amount)), h('span.tag', { class: b.status === 'accepted' ? 'tag--planned' : 'tag--status' }, t(b.status === 'active' ? 'status_open' : b.status))));
+      card.append(h('div.status-line', null, h('span.muted', null, `${t('your_bid')}: `), h('b', null, fmtMoney(b.amount)), b.can_date ? h('span.muted', null, ` · ${whenLabel(b.can_date)}`) : null, h('span.tag', { class: b.status === 'accepted' ? 'tag--planned' : 'tag--status' }, t(b.status === 'active' ? 'status_open' : b.status))));
       cards.append(card);
     }
   } else {
@@ -1696,11 +1745,12 @@ async function screenProfile() {
   const me = state.me;
   const el = h('section.screen.stack.narrow');
   el.append(h('h1', null, t('profile_title')));
-  const draft = { role: me.profile.role, display_name: me.profile.display_name, city: myCity(), max_detour_km: me.profile.max_detour_km || 60, phone: me.contacts?.phone || '', email: me.contacts?.email || state.session.user?.email || '', company: me.contacts?.company || '' };
+  const draft = { role: me.profile.role, display_name: me.profile.display_name, city: myCity(), zone_km: me.profile.zone_km ?? 50, max_detour_km: me.profile.max_detour_km || 60, phone: me.contacts?.phone || '', email: me.contacts?.email || state.session.user?.email || '', company: me.contacts?.company || '' };
   const form = h('form.form.card', { style: { padding: '16px' }, novalidate: true });
   form.append(field(t('role'), chips([{ value: 'carrier', label: t('role_carrier') }, { value: 'customer', label: t('role_customer') }], { value: draft.role, name: t('role'), onChange: (v) => { draft.role = v; } })));
   form.append(field(t('name'), input({ value: draft.display_name, maxlength: 80, autocomplete: 'name', oninput: (e) => { draft.display_name = e.target.value; } })));
   form.append(placeButton('city', () => draft.city, (p) => { draft.city = p; }));
+  form.append(field(t('zone_km_carrier'), chips(ZONES.map((k) => ({ value: k, label: `${k} ${t('km_unit')}` })), { value: draft.zone_km, name: t('zone_km_carrier'), onChange: (v) => { draft.zone_km = v; } }), t('zone_hint')));
   form.append(field(t('phone'), input({ type: 'tel', inputmode: 'tel', value: draft.phone, autocomplete: 'tel', placeholder: '+371 20000000', oninput: (e) => { draft.phone = e.target.value; } }), t('phone_hint')));
   form.append(field(t('email'), input({ type: 'email', inputmode: 'email', value: draft.email, autocomplete: 'email', oninput: (e) => { draft.email = e.target.value; } })));
   form.append(field(t('company'), input({ value: draft.company, maxlength: 120, autocomplete: 'organization', oninput: (e) => { draft.company = e.target.value; } })));
@@ -1711,7 +1761,7 @@ async function screenProfile() {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
-      const profile = await api.saveProfile({ role: draft.role, display_name: draft.display_name.trim() || me.profile.display_name, city_name: draft.city?.name || null, city_lat: draft.city?.lat ?? null, city_lng: draft.city?.lng ?? null, max_detour_km: draft.max_detour_km, lang: getLang() });
+      const profile = await api.saveProfile({ role: draft.role, display_name: draft.display_name.trim() || me.profile.display_name, city_name: draft.city?.name || null, city_lat: draft.city?.lat ?? null, city_lng: draft.city?.lng ?? null, max_detour_km: draft.max_detour_km, zone_km: draft.zone_km, lang: getLang() });
       const contacts = draft.phone.trim() ? await api.saveContacts({ phone: draft.phone.trim(), email: draft.email.trim() || null, company: draft.company.trim() || null }) : me.contacts;
       state.me = { ...me, profile, contacts };
       if (state.route && state.route.maxDetour !== draft.max_detour_km) { state.route = { ...state.route, maxDetour: draft.max_detour_km }; store.set(routeKey(), state.route); }   // A-029
@@ -1810,12 +1860,15 @@ async function screenOnboarding() {
   if (state.me?.profile) { go(state.after || '#/'); return h('div'); }
   const el = h('section.screen.auth');
   el.append(h('div.auth__hero', null, h('h1', null, t('onboarding_title')), h('p.lead', null, t('onboarding_lead'))));
-  const draft = { role: state.roleHint || 'carrier', display_name: '', city: null, phone: '', company: '' };
+  const draft = { role: state.roleHint || 'carrier', display_name: '', city: null, phone: '', company: '', zone_km: 50 };
   const form = h('form.form', { novalidate: true });
-  form.append(field(t('role'), chips([{ value: 'carrier', label: t('role_carrier') }, { value: 'customer', label: t('role_customer') }], { value: draft.role, name: t('role'), onChange: (v) => { draft.role = v; } })));
+  const zoneWrap = field(t('zone_km_carrier'), chips(ZONES.map((k) => ({ value: k, label: `${k} ${t('km_unit')}` })), { value: draft.zone_km, name: t('zone_km_carrier'), onChange: (v) => { draft.zone_km = v; } }), t('zone_hint'));
+  zoneWrap.hidden = draft.role !== 'carrier';
+  form.append(field(t('role'), chips([{ value: 'carrier', label: t('role_carrier') }, { value: 'customer', label: t('role_customer') }], { value: draft.role, name: t('role'), onChange: (v) => { draft.role = v; zoneWrap.hidden = v !== 'carrier'; } })));
   const nameIn = input({ maxlength: 80, autocomplete: 'name', required: true, oninput: (e) => { draft.display_name = e.target.value; } });
   form.append(field(t('name'), nameIn));
   form.append(placeButton('city', () => draft.city, (p) => { draft.city = p; }));
+  form.append(zoneWrap);
   const phoneIn = input({ type: 'tel', inputmode: 'tel', autocomplete: 'tel', placeholder: '+371 20000000', required: true, oninput: (e) => { draft.phone = e.target.value; } });
   form.append(field(t('phone'), phoneIn, t('phone_hint')));
   form.append(field(t('company'), input({ maxlength: 120, autocomplete: 'organization', oninput: (e) => { draft.company = e.target.value; } })));
@@ -1827,7 +1880,7 @@ async function screenOnboarding() {
     if (!draft.phone.trim()) { phoneIn.focus(); return; }
     submit.disabled = true;
     try {
-      await api.saveProfile({ role: draft.role, display_name: draft.display_name.trim(), city_name: draft.city?.name || null, city_lat: draft.city?.lat ?? null, city_lng: draft.city?.lng ?? null, lang: getLang() });
+      await api.saveProfile({ role: draft.role, display_name: draft.display_name.trim(), city_name: draft.city?.name || null, city_lat: draft.city?.lat ?? null, city_lng: draft.city?.lng ?? null, zone_km: draft.zone_km, lang: getLang() });
       await api.saveContacts({ phone: draft.phone.trim(), email: state.session.user?.email || null, company: draft.company.trim() || null });
       await loadMe();
       renderChrome();
@@ -1841,8 +1894,8 @@ async function screenOnboarding() {
 
 function notifText(n) {
   const p = n.payload || {};
-  const vars = { from: p.from || '', to: p.to || '', amount: p.amount != null ? fmtInt(p.amount) : '' };
-  const key = { match: p.nudge ? 'n_nudge' : (p.kind === 'truck' ? 'n_truck' : 'n_match'), bid: p.above_price ? 'n_bid_above' : 'n_bid', accepted: 'n_accepted', deal: 'n_deal', taken: 'n_taken', cancelled: 'n_cancelled' }[n.type] || 'n_match';
+  const vars = { from: p.from || '', to: p.to || '', amount: p.amount != null ? fmtInt(p.amount) : '', when: whenLabel(p.can_date) };
+  const key = { match: p.nudge ? 'n_nudge' : (p.kind === 'truck' ? 'n_truck' : (p.zone ? 'n_zone' : 'n_match')), bid: p.above_price ? 'n_bid_above' : (p.can_date ? 'n_bid_when' : 'n_bid'), accepted: 'n_accepted', deal: 'n_deal', taken: 'n_taken', cancelled: 'n_cancelled' }[n.type] || 'n_match';
   return t(key, vars);
 }
 async function screenInbox() {

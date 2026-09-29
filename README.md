@@ -54,6 +54,8 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
    `0011_guards.sql` (only a carrier names a price on cargo; the same offer sent again does not notify twice;
    several matching saved searches notify once; no posting from a town to the same town, with zero sizes or
    a past date; nobody but the database asks who has a subscription).
+   `0012_zone.sql` (the carrier's zone: base town + radius, 50 km by default; a new cargo that starts or ends in the
+   zone and fits one of his vehicles notifies him; an offer carries the day the carrier can do it — `place_offer`).
 2. Authentication → Providers → Email: for a test project turn **off** "Confirm email";
    set Site URL to the page URL (for password-reset links).
 3. Put the project URL and the anon key into `config.js`:
@@ -76,7 +78,7 @@ browser's localStorage, two demo accounts (carrier / customer), every flow click
   via `node scripts/gen-seed.mjs`), `js/i18n.js` lv/ru/en.
 - `supabase/migrations/0001_init.sql` — the whole model: tables, RLS, bids/deals functions,
   contact unlocks, saved-search notifications, subscription switch.
-- `_audit/` — checks: `db-test.mjs` (113 policy tests in PGlite), `robust.mjs` (the audit of 23.09 and the client's
+- `_audit/` — checks: `db-test.mjs` (125 policy tests in PGlite), `robust.mjs` (the audit of 23.09 and the client's
   edits of that evening: back closes a sheet, the wizard survives a refresh, blocked storage, double taps, numbers), `leak-rest.mjs` (contact leak
   through the real REST API), `timing.mjs` (20-second posting), `lang-fonts.mjs` (?lang and
   Latvian diacritics by pixel comparison), `screens.mjs` (every screen at 360/390/1280/1920),

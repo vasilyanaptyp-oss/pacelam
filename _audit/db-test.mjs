@@ -563,5 +563,63 @@ await as(E.eva, async () => {
   check('0007: a wait shorter than 5 minutes is raised to 5 (A-033)', r[0].s >= 295 && r[0].s <= 301, JSON.stringify(r));
 });
 
+// --- 0012 (29.09.2026): the carrier's zone — base town + radius, either end; the day in an offer -----------
+await db.exec(read('supabase/migrations/0012_zone.sql'));
+const Z = { harijs: '77777777-7777-4777-8777-777777777777', ieva: '88888888-8888-4888-8888-888888888888' };
+await db.exec(`insert into auth.users (id, email) values ('${Z.harijs}', 'harijs@example.com'), ('${Z.ieva}', 'ieva@example.com')`);
+await as(Z.harijs, async () => {
+  await db.query(`insert into profiles (id, role, display_name, city_name, city_lat, city_lng) values ($1, 'carrier', 'Harijs', 'Daugavpils', 55.87, 26.52)`, [Z.harijs]);
+  await db.query(`insert into profile_contacts (profile_id, phone) values ($1, '+371 20000007')`, [Z.harijs]);
+  await db.query(`insert into vehicles (owner_id, type_code, tonnage_t, is_default) values ($1, 'VT08', 3.5, true)`, [Z.harijs]);
+});
+await as(Z.ieva, async () => {
+  await db.query(`insert into profiles (id, role, display_name, city_name, city_lat, city_lng) values ($1, 'customer', 'Ieva', 'Daugavpils', 55.87, 26.52)`, [Z.ieva]);
+});
+{
+  const zone = (await rows(`select zone_km from profiles where id = $1`, [Z.harijs]))[0];
+  check('0012: a carrier\'s zone is 50 km unless he sets another', zone.zone_km === 50, JSON.stringify(zone));
+}
+const post = async (from, fl, to, tl, vt) => (await as(E.eva, async () => (await rows(`insert into postings (kind, mode, owner_id, from_name, from_lat, from_lng, to_name, to_lat, to_lng, date_from, date_to, vehicle_type_code)
+  values ('cargo', 'planned', $1, $2, $3, $4, $5, $6, $7, current_date + 1, current_date + 2, $8) returning id`, [E.eva, from, fl[0], fl[1], to, tl[0], tl[1], vt]))[0].id));
+const told = async (user, id) => (await rows(`select payload from notifications where user_id = $1 and posting_id = $2`, [user, id]));
+const into = await post('Rīga', [56.95, 24.11], 'Daugavpils', [55.87, 26.52], null);
+const outof = await post('Daugavpils', [55.87, 26.52], 'Rīga', [56.95, 24.11], 'VT08');
+const otherVehicle = await post('Daugavpils', [55.87, 26.52], 'Rīga', [56.95, 24.11], 'VT16');
+const far = await post('Liepāja', [56.51, 21.01], 'Ventspils', [57.39, 21.56], null);
+{
+  const a = await told(Z.harijs, into), b = await told(Z.harijs, outof), c = await told(Z.harijs, otherVehicle), d = await told(Z.harijs, far);
+  check('0012: cargo INTO the zone reaches the carrier (Rīga → Daugavpils, 50 km around Daugavpils)', a.length === 1 && a[0].payload.zone === true, JSON.stringify(a));
+  check('0012: cargo OUT OF the zone reaches him too, when his tow truck fits', b.length === 1, JSON.stringify(b));
+  check('0012: a cargo that needs a vehicle he does not have does not', c.length === 0, JSON.stringify(c));
+  check('0012: a cargo far from the zone does not', d.length === 0, JSON.stringify(d));
+  const cust = await told(Z.ieva, into);
+  check('0012: a customer in the same town gets nothing', cust.length === 0, JSON.stringify(cust));
+}
+await as(Z.harijs, async () => { await db.query(`update profiles set zone_km = 0 where id = $1`, [Z.harijs]); });
+{
+  const off = await post('Rīga', [56.95, 24.11], 'Daugavpils', [55.87, 26.52], null);
+  check('0012: a zone of 0 km switches the notices off', (await told(Z.harijs, off)).length === 0);
+}
+await as(Z.harijs, async () => {
+  await db.query(`update profiles set zone_km = 50 where id = $1`, [Z.harijs]);
+  const bid = (await rows(`select place_offer($1, 140, 'rīt no rīta', current_date + 1) as id`, [into]))[0].id;
+  const b = (await rows(`select amount::float as a, can_date = current_date + 1 as tomorrow from bids where id = $1`, [bid]))[0];
+  check('0012: an offer keeps the day the carrier can do the job', b && b.a === 140 && b.tomorrow === true, JSON.stringify(b));
+  const past = await fails(`select place_offer($1, 150, null, current_date - 5)`, [outof]);
+  check('0012: a day already over is refused', /date out of range/.test(past || ''), past);
+});
+{
+  const n = await rows(`select payload->>'can_date' as d from notifications where user_id = $1 and posting_id = $2 and type = 'bid'`, [E.eva, into]);
+  check('0012: the customer\'s notice carries that day', n.length === 1 && !!n[0].d, JSON.stringify(n));
+}
+await as(Z.ieva, async () => {
+  const err = await fails(`select place_offer($1, 100, null, current_date + 1)`, [into]);
+  check('0012: a customer still cannot name a price on cargo (0011 applies to place_offer)', /only carriers offer a price on cargo/.test(err || ''), err);
+});
+await asAnon(async () => {
+  const err = await fails(`select place_offer($1, 100, null, null)`, [into]);
+  check('0012: a visitor cannot make an offer', !!err, err);
+});
+
 console.log(`\n${results.length} checks, ${failures} failed`);
 process.exit(failures ? 1 : 0);

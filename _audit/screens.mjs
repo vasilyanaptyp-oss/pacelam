@@ -126,6 +126,9 @@ for (const vp of [{ w: 360, h: 800 }, { w: 390, h: 844 }, { w: 1280, h: 800 }, {
   await page.goto(APP + '?lang=lv#/'); await page.waitForSelector(rowSel);
   await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('pacelam.route')).forEach((k) => localStorage.removeItem(k)));
   await page.reload({ waitUntil: 'load' }); await page.waitForSelector(rowSel);
+  // since 29.09 a carrier's board shows his zone first (Daugavpils, 50 km); Rēzekne → Rīga is behind "show all"
+  const showAll = page.locator('.board__main .btn--ghost.btn--wide', { hasText: 'Rādīt visus' });
+  if (await showAll.count()) { await audit(page, `${V} board (carrier, his zone)`); await showAll.click(); await page.waitForTimeout(300); }
   await page.locator(mobile ? '.pcard' : '.tbl__row', { hasText: 'Rēzekne' }).first().locator(mobile ? 'a.pcard__link' : 'td').first().click();
   await page.waitForSelector('.detail');
   await audit(page, `${V} detail (planned)`);
