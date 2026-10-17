@@ -14,7 +14,7 @@
       demo_p: 'Попробуй за 20 секунд — без регистрации, на примерных данных:', demo_carrier: 'Попробовать как перевозчик', demo_customer: 'Попробовать как заказчик',
       m_cargo: 'Груз', m_cargo2: 'Груз', m_urgent: 'Срочно', m_urgent2: 'Срочно', m_planned: 'Планово', m_planned2: 'Планово', m_age1: '3 мин назад', m_age2: '1 ч назад',
       m_metric1: 'по пути<small>41 км пути</small>', m_meta1: 'Автомобиль · Эвакуатор < 5 т · сегодня', m_take: 'Предложить цену',
-      m_metric2: '+38 км крюка<small>202 км пути</small>', m_meta2: 'предложений: 2 · лучшее 170 €',
+      m_metric2: '+38 км крюка<small>202 км пути</small>', m_meta2: 'предложений: 2 · цены видит заказчик',
       how_k: 'Как это работает', how_h: 'Пять шагов от звонка до груза в кузове.',
       s1_h: 'Заявка', s1_p: 'Перевозчик предлагает транспорт или заказчик выкладывает груз: откуда, куда, когда.',
       s2_h: 'Совпадения', s2_p: 'Биржа находит тех, кому это по пути, и шлёт уведомление.',
@@ -58,7 +58,7 @@
       demo_p: 'Try it in 20 seconds — no sign-up, sample data:', demo_carrier: 'Try as a carrier', demo_customer: 'Try as a customer',
       m_cargo: 'Cargo', m_cargo2: 'Cargo', m_urgent: 'Urgent', m_urgent2: 'Urgent', m_planned: 'Planned', m_planned2: 'Planned', m_age1: '3 min ago', m_age2: '1 h ago',
       m_metric1: 'on the way<small>41 km trip</small>', m_meta1: 'Vehicle · Tow truck < 5 t · today', m_take: 'Offer a price',
-      m_metric2: '+38 km detour<small>202 km trip</small>', m_meta2: 'offers: 2 · best 170 €',
+      m_metric2: '+38 km detour<small>202 km trip</small>', m_meta2: 'offers: 2 · prices: customer only',
       how_k: 'How it works', how_h: 'Five steps from a phone call to cargo on board.',
       s1_h: 'Posting', s1_p: 'A carrier offers transport or a customer posts cargo: from, to, when.',
       s2_h: 'Matches', s2_p: 'The exchange finds carriers who have it on their way and notifies them.',
@@ -125,7 +125,7 @@
   if (!weak) {
     // capable desktop: load GSAP (self-hosted) and the scene script, in order
     const load = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.append(el); });
-    load('vendor/gsap.min.js').then(() => Promise.all([load('vendor/MotionPathPlugin.min.js'), load('vendor/DrawSVGPlugin.min.js')])).then(() => load('js/scene.js?v=a668cfa2')).catch(() => {});
+    load('vendor/gsap.min.js').then(() => Promise.all([load('vendor/MotionPathPlugin.min.js'), load('vendor/DrawSVGPlugin.min.js')])).then(() => load('js/scene.js?v=acda6798')).catch(() => {});
   }
   document.querySelectorAll('[data-lang]').forEach((a) => { const on = a.dataset.lang === lang; a.classList.toggle('is-on', on); if (on) a.setAttribute('aria-current', 'true'); });
   // carry the language into the app links

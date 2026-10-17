@@ -621,5 +621,26 @@ await asAnon(async () => {
   check('0012: a visitor cannot make an offer', !!err, err);
 });
 
+// --- 0013 (17.10.2026): blind offers — no carrier sees another carrier's price -----------------------------
+await db.exec(read('supabase/migrations/0013_blind_offers.sql'));
+await as(Z.harijs, async () => { await rows(`select place_offer($1, 160, null, current_date + 1)`, [g11]); });
+await as(Z.harijs, async () => {
+  const p = (await rows(`select best_bid, bid_count from postings where id = $1`, [g11]))[0];
+  check('0013: a carrier reading someone\'s cargo sees how many offers, but no price', p && p.best_bid === null && p.bid_count >= 2, JSON.stringify(p));
+  const other = await rows(`select amount from bids where posting_id = $1 and bidder_id <> $2`, [g11, Z.harijs]);
+  check('0013: nor can he read the other offers', other.length === 0, JSON.stringify(other));
+  const sum = await rows(`select * from offer_summary($1)`, [[g11]]);
+  check('0013: the owner\'s summary of someone else\'s posting is empty', sum.length === 0, JSON.stringify(sum));
+});
+await as(E.eva, async () => {
+  const sum = (await rows(`select bid_count, best_bid::float as best from offer_summary($1)`, [[g11]]))[0];
+  check('0013: the owner gets the count and the best price of her own posting (160 of 175 and 160)', sum && sum.bid_count === 2 && sum.best === 160, JSON.stringify(sum));
+});
+await asAnon(async () => {
+  const p = (await rows(`select best_bid from postings where id = $1`, [g11]))[0];
+  const err = await fails(`select * from offer_summary($1)`, [[g11]]);
+  check('0013: a visitor sees no price and cannot ask for the summary', p && p.best_bid === null && !!err, JSON.stringify(p) + ' ' + err);
+});
+
 console.log(`\n${results.length} checks, ${failures} failed`);
 process.exit(failures ? 1 : 0);

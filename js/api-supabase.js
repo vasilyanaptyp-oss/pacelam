@@ -87,6 +87,16 @@ export function createSupabaseApi(cfg) {
   const q = (v) => encodeURIComponent(String(v));
   const one = (rows) => (Array.isArray(rows) ? rows[0] || null : rows);
   const uid = () => session?.user?.id || null;
+  // 0013: a posting carries no price; the owner's own postings get their best offer from offer_summary
+  async function withSummary(list) {
+    const me = uid();
+    if (!me || !Array.isArray(list)) return list;
+    const own = list.filter((p) => p.owner_id === me && p.bid_count > 0).map((p) => p.id);
+    if (!own.length) return list;
+    const sum = await rpc('offer_summary', { p_postings: own }).catch(() => []);
+    const by = new Map((sum || []).map((r) => [r.posting_id, r]));
+    return list.map((p) => (by.has(p.id) ? { ...p, best_bid: by.get(p.id).best_bid } : p));
+  }
   const today = () => new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
   return {
@@ -140,7 +150,7 @@ export function createSupabaseApi(cfg) {
     getContacts: (ownerId) => (isId(ownerId) ? rest(`profile_contacts?profile_id=eq.${q(ownerId)}&select=*`).then(one) : Promise.resolve(null)),
 
     // ---- postings ----
-    listPostings: () => rest(`postings?select=*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name)&status=in.(open,pending)&date_to=gte.${today()}&order=created_at.desc&limit=150`),
+    listPostings: () => rest(`postings?select=*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name)&status=in.(open,pending)&date_to=gte.${today()}&order=created_at.desc&limit=150`).then(withSummary),
     getPosting: async (id) => {
       if (!isId(id)) return null;
       const posting = await rest(`postings?id=eq.${q(id)}&select=*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name)`).then(one);
@@ -154,7 +164,7 @@ export function createSupabaseApi(cfg) {
     },
     createPosting: (p) => rest('postings', { method: 'POST', body: { ...p, owner_id: uid() }, prefer: 'return=representation' }).then(one),
     updatePosting: (id, p) => rest(`postings?id=eq.${q(id)}`, { method: 'PATCH', body: p, prefer: 'return=representation' }).then(one),
-    myPostings: () => rest(`postings?owner_id=eq.${uid()}&select=*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name)&order=created_at.desc`),
+    myPostings: () => rest(`postings?owner_id=eq.${uid()}&select=*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name)&order=created_at.desc`).then(withSummary),
     myBids: () => rest(`bids?bidder_id=eq.${uid()}&select=*,posting:postings!bids_posting_id_fkey(*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name))&order=created_at.desc`),
     myDeals: () => rest(`deals?or=(customer_id.eq.${uid()},carrier_id.eq.${uid()})&select=*,posting:postings!deals_posting_id_fkey(*,owner:profiles!postings_owner_id_fkey(id,display_name,city_name))&order=created_at.desc`),
     closePosting: (id) => rpc('close_posting', { p_posting: id }),

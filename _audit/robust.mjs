@@ -209,6 +209,29 @@ const texts = (page, sel) => page.evaluate((s) => [...document.querySelectorAll(
   await ctx.close();
 }
 
+// --- 17.10: blind offers — a carrier never sees another carrier's price -----------------------------------
+{
+  const ctx = await browser.newContext(phone);
+  const page = await ctx.newPage();
+  await page.goto(APP + '?demo=carrier&lang=ru', { waitUntil: 'load' }); await clean(page);
+  await page.goto(APP + '?demo=carrier&lang=ru', { waitUntil: 'load' }); await page.waitForSelector('.pcard');
+  const all = page.locator('.board__main .btn--ghost.btn--wide', { hasText: 'Показать все' });
+  if (await all.count()) { await all.click(); await page.waitForTimeout(300); }
+  const card = page.locator('.pcard--cargo', { hasText: 'Rēzekne' }).first();
+  const txt = await card.innerText();
+  check('blind: a carrier sees "предложений: 2" but no price of the others', /предложений: 2/.test(txt) && !/лучшее|170/.test(txt), txt.replace(/\s+/g, ' ').slice(0, 200));
+  const stored = await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('pacelam.demo')); return s ? 'ok' : 'none'; });
+  await card.locator('.pcard__actions .btn').last().click(); await page.waitForSelector('.sheet form');
+  const ph = await page.locator('.sheet input.input--num').getAttribute('placeholder');
+  const hint = (await texts(page, '.sheet .lead')).join(' ');
+  check('blind: the price field gives no hint of other prices, and says so', !ph && /не видят/.test(hint), `${ph} | ${hint} | ${stored}`);
+  await page.keyboard.press('Escape');
+  await page.goto(APP + '?demo=customer&lang=ru#/my', { waitUntil: 'load' }); await page.waitForSelector('.pcard');
+  const own = await page.locator('.pcard', { hasText: 'Rēzekne' }).first().innerText();
+  check('blind: the owner still sees the best price on her own posting', /лучшее 170/.test(own), own.replace(/\s+/g, ' ').slice(0, 160));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASSED');
 process.exit(failures ? 1 : 0);

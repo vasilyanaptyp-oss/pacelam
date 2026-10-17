@@ -1,8 +1,8 @@
 // Demo backend: the same API surface as api-supabase.js, kept in this browser only.
 // Lets the client click through every flow before the database is connected. The rules
 // mirror supabase/migrations/0001_init.sql; the database version is the source of truth.
-import { VEHICLE_GROUPS, VEHICLE_TYPES, CARGO_TYPES } from './data.js?v=a668cfa2';
-import { blobToDataUrl } from './photos.js?v=a668cfa2';
+import { VEHICLE_GROUPS, VEHICLE_TYPES, CARGO_TYPES } from './data.js?v=acda6798';
+import { blobToDataUrl } from './photos.js?v=acda6798';
 
 const KEY = 'pacelam.demo';
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); }));
@@ -115,7 +115,8 @@ export function createDemoApi() {
   const need = () => { if (!uid()) throw new Error('not authenticated'); return uid(); };
   const clone = (x) => JSON.parse(JSON.stringify(x));
   const owner = (id) => { const p = db.profiles[id]; return p ? { id: p.id, display_name: p.display_name, city_name: p.city_name } : null; };
-  const withOwner = (p) => ({ ...clone(p), owner: owner(p.owner_id) });
+  // 0013: blind offers — the best price leaves the demo only for the posting's owner
+  const withOwner = (p) => ({ ...clone(p), owner: owner(p.owner_id), ...(p.owner_id === uid() ? {} : { best_bid: null }) });
   const canSee = (me, ownerId) => me && (me === ownerId || db.unlocks.some((u) => u.viewer_id === me && u.owner_id === ownerId));
   const notify = (user_id, type, posting, extra = {}) => {
     db.notifications.unshift({ id: uuid(), user_id, type, posting_id: posting?.id || null, bid_id: extra.bid_id || null, deal_id: extra.deal_id || null,

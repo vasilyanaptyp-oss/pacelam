@@ -1,11 +1,11 @@
 // Paceļam — application shell and screens. Hash routing, no framework.
 // One adaptive layout: cards below 1024 px, a sortable table with a filter sidebar from 1024 px,
 // plus an inline details panel from 1440 px. Data and logic are shared; only rendering switches.
-import { api } from './api.js?v=a668cfa2';
-import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=a668cfa2';
-import { h, $, $$, clear, append, icon, toast, sheet, confirmSheet, field, input, chips, spinner, emptyState, fmtMoney, fmtInt, fmtNum, fmtDate, fmtDateRange, relTime, isoDate, addDays, navigate } from './ui.js?v=a668cfa2';
-import { CITIES, searchCities, findCity, nearestCity, haversineKm, detourKm } from './geo.js?v=a668cfa2';
-import { compressPhoto } from './photos.js?v=a668cfa2';
+import { api } from './api.js?v=acda6798';
+import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=acda6798';
+import { h, $, $$, clear, append, icon, toast, sheet, confirmSheet, field, input, chips, spinner, emptyState, fmtMoney, fmtInt, fmtNum, fmtDate, fmtDateRange, relTime, isoDate, addDays, navigate } from './ui.js?v=acda6798';
+import { CITIES, searchCities, findCity, nearestCity, haversineKm, detourKm } from './geo.js?v=acda6798';
+import { compressPhoto } from './photos.js?v=acda6798';
 
 const store = {
   get(k, d = null) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
@@ -375,8 +375,11 @@ function metricBlock(p, m, cls) {
   return box;
 }
 // On his own cargo the customer needs the offers, not kilometres from himself (audit 13.09, 4.3).
-const offersSummary = (p) => (p.bid_count ? `${t('bids_n', { n: p.bid_count })}${p.best_bid != null ? ' · ' + t('best_bid', { p: fmtInt(p.best_bid) }) : ''}` : t('no_bids'));
+const offersSummary = (p) => (p.bid_count ? `${t('bids_n', { n: p.bid_count })}${bestFor(p) != null ? ' · ' + t('best_bid', { p: fmtInt(bestFor(p)) }) : ''}` : t('no_bids'));
 const ownCargo = (p) => p.kind === 'cargo' && !!myId() && p.owner_id === myId();
+// Offers are blind (client's answer before 17.10.2026): only the posting's owner sees prices; a carrier sees
+// how many offers there are, never the best one. The database gives the price to the owner only (0013).
+const bestFor = (p) => (myId() && p.owner_id === myId() ? p.best_bid : null);
 // A tiny route glyph: dotted straight line = my way, amber bump = the detour the cargo adds.
 function detourGlyph(m) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -413,7 +416,7 @@ function priceLine(p) {
   if (ownCargo(p)) return el.childNodes.length ? el : null;   // the owner already sees the offers in the metric line
   {
     el.append(h('span', null, p.bid_count ? t('bids_n', { n: p.bid_count }) : t('no_bids')));
-    if (p.best_bid != null) el.append(h('span', null, t('best_bid', { p: fmtInt(p.best_bid) })));
+    if (bestFor(p) != null) el.append(h('span', null, t('best_bid', { p: fmtInt(bestFor(p)) })));
   }
   return el.childNodes.length ? el : null;
 }
@@ -422,7 +425,7 @@ function priceCell(p) {
   if (p.price != null) bits.push(fmtMoney(p.price));
   else if (p.kind === 'truck') bits.push(t('negotiable'));
   if (p.kind === 'truck' && !p.bid_count) return bits.join(' · ');
-  if (p.mode === 'planned' || p.kind === 'truck') bits.push(p.bid_count ? `${t('bids_n', { n: p.bid_count })}${p.best_bid != null ? ' · ' + fmtMoney(p.best_bid) : ''}` : t('no_bids'));
+  if (p.mode === 'planned' || p.kind === 'truck') bits.push(p.bid_count ? `${t('bids_n', { n: p.bid_count })}${bestFor(p) != null ? ' · ' + fmtMoney(bestFor(p)) : ''}` : t('no_bids'));
   return bits.join(' · ');
 }
 function actionButtons(p, opts = {}) {
@@ -503,7 +506,7 @@ function offerCargoFor(p) {
 }
 function bidSheet(p, existing) {
   if (!requireAuth()) return;
-  const amount = input({ inputmode: 'decimal', autocomplete: 'off', value: existing ? String(existing.amount) : '', class: 'input--num', placeholder: p.best_bid != null ? String(p.best_bid) : (p.price != null ? String(p.price) : '') });
+  const amount = input({ inputmode: 'decimal', autocomplete: 'off', value: existing ? String(existing.amount) : '', class: 'input--num', placeholder: p.price != null ? String(p.price) : '' });
   const note = input({ value: existing?.note || '', maxlength: 300 });
   // when the carrier can do it (client's edit, 29.09.2026: the customer sees who, for how much and when)
   const today = isoDate();
@@ -711,7 +714,7 @@ function sortValue(x, key) {
     case 'vehicle': return p.vehicle_type_code || 'zzz';
     case 'cargo': return p.cargo_type_id ? nameOf(ctype(p.cargo_type_id)) : 'zzz';
     case 'weight': return p.weight_kg ?? -1;
-    case 'price': return p.price ?? p.best_bid ?? Number.MAX_SAFE_INTEGER;
+    case 'price': return p.price ?? bestFor(p) ?? Number.MAX_SAFE_INTEGER;
     case 'age': return p.created_at;
     default: return 0;
   }
@@ -858,6 +861,11 @@ async function buildDetail(id, { inline = false } = {}) {
   const { posting: p, bids, deal } = data;
   const me = myId();
   const isOwner = me && p.owner_id === me;
+  if (isOwner) {   // the owner reads every offer: the count and the best price come from them (the posting has no price since 0013)
+    const act = bids.filter((b) => b.status === 'active');
+    p.bid_count = act.length;
+    p.best_bid = act.length ? (p.kind === 'truck' ? Math.max(...act.map((b) => b.amount)) : Math.min(...act.map((b) => b.amount))) : null;
+  }
   const board = isOwner && p.status === 'open' ? ((await api.listPostings().catch(() => [])) || []) : [];
   const m = metricFor(p);
   const el = h('div.detail.stack', { class: inline ? 'detail--inline' : '' });
