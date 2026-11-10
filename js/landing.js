@@ -125,7 +125,7 @@
   if (!weak) {
     // capable desktop: load GSAP (self-hosted) and the scene script, in order
     const load = (src) => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.append(el); });
-    load('vendor/gsap.min.js').then(() => Promise.all([load('vendor/MotionPathPlugin.min.js'), load('vendor/DrawSVGPlugin.min.js')])).then(() => load('js/scene.js?v=6d72789e')).catch(() => {});
+    load('vendor/gsap.min.js').then(() => Promise.all([load('vendor/MotionPathPlugin.min.js'), load('vendor/DrawSVGPlugin.min.js')])).then(() => load('js/scene.js?v=262bf9e8')).catch(() => {});
   }
   document.querySelectorAll('[data-lang]').forEach((a) => { const on = a.dataset.lang === lang; a.classList.toggle('is-on', on); if (on) a.setAttribute('aria-current', 'true'); });
   // carry the language into the app links

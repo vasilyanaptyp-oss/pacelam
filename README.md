@@ -13,7 +13,7 @@ The client asked for a simpler app, with the insurers' tow app as the model:
 a list of plain cards, then a card with a map on top and a round button next to the fact it acts on.
 
 - `app/index.html` loads the minimal version: `js/min.js` (screens), `js/i18n-min.js` (short texts lv/ru/en),
-  `css/min.css` (light, system font, one colour of action). The data layer, the database and every rule are the
+  `css/min.css` (the app's own design: dark first, amber for action, blue for cargo, the same fonts and motion). The data layer, the database and every rule are the
   same: `js/api-demo.js`, `js/api-supabase.js`, `supabase/migrations/` are not touched.
 - The previous app is kept as `app/classic.html` (operator desk `classic.html#/operator`, desktop table, saved
   searches). `app/?demo=operator` goes there.

@@ -106,7 +106,7 @@ export async function tour(base, { width = 390, height = 844, lang = 'ru', out =
     await shot('11-where', 'где ищу');
     await page.locator('.sheet .icon-btn').click(); await page.waitForTimeout(300);
     taps = 0;
-    await tap(cardWith('Rīga → Daugavpils')); await page.waitForSelector('.facts');
+    await tap(cardWith(/Rīga\s*Daugavpils/)); await page.waitForSelector('.facts');
     await shot('12-job', 'заявка глазами перевозчика');
     await tap(main()); await page.waitForSelector('.sheet.is-open');
     await page.fill('.sheet .input--big', '150');
@@ -124,7 +124,7 @@ export async function tour(base, { width = 390, height = 844, lang = 'ru', out =
     await page.waitForSelector('.cards');
     await shot('20-my-requests-price', 'заказчик: пришла цена');
     taps = 0;
-    await tap(cardWith('Rīga → Daugavpils')); await page.waitForSelector('.offer');
+    await tap(cardWith(/Rīga\s*Daugavpils/)); await page.waitForSelector('.offer');
     await shot('21-request-one-price', 'заявка с ценой');
     await tap(page.locator('.offer .btn--fill')); await page.waitForSelector('.sheet.is-open');
     await shot('22-pick-confirm', 'выбрать?');

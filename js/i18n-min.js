@@ -1,6 +1,6 @@
 // Short texts of the minimal version (10.11.2026). Three languages, the same length in each.
 // The active language lives in i18n.js; reference names (vehicle types, cargo categories) still come from there.
-import { getLang } from './i18n.js?v=6d72789e';
+import { getLang } from './i18n.js?v=262bf9e8';
 
 const D = {
   ru: {
@@ -22,7 +22,7 @@ const D = {
     when_q: 'Когда?', other_day: 'Другой день', can_wait: 'Жду', sent_ok: 'Заявка отправлена', prices_come: 'Цену назовут перевозчики.',
     where_title: 'Где ищу', radius: 'Радиус', empty_trip: 'Еду пустым', set_trip: 'Указать рейс', remove: 'Убрать', done: 'Готово', trip_ok: 'Рейс добавлен', when_go: 'Когда едете?',
     profile: 'Профиль', name: 'Имя', phone: 'Телефон', save: 'Сохранить', saved: 'Сохранено', my_trucks: 'Мои машины', add_truck: 'Добавить машину', truck_type: 'Какая машина', tonnage: 'Грузоподъёмность, т', need_truck: 'Сначала добавьте машину',
-    switch_role: 'Груз / Транспорт', sign_out: 'Выйти', demo_reset: 'Начать демо заново',
+    switch_role: 'Груз / Транспорт', theme_light: 'Светлая тема', theme_dark: 'Тёмная тема', sign_out: 'Выйти', demo_reset: 'Начать демо заново',
     email: 'Почта', password: 'Пароль', sign_in: 'Войти', sign_up: 'Создать аккаунт', no_account: 'Нет аккаунта', have_account: 'Уже есть аккаунт', forgot: 'Забыли пароль', reset_sent: 'Письмо отправлено', check_email: 'Откройте ссылку из письма',
     auth_title: 'Вход', hello_title: 'О вас', hello_hint: 'Чтобы вам могли позвонить.', need_name_phone: 'Укажите имя и телефон',
     err_generic: 'Не получилось. Попробуйте ещё раз.', err_closed: 'Заявка уже закрыта', err_auth: 'Неверная почта или пароль', err_net: 'Нет связи', err_storage: 'Память телефона заполнена', err_login: 'Войдите заново', err_only_carrier: 'Цену называет перевозчик',
@@ -48,7 +48,7 @@ const D = {
     when_q: 'Kad?', other_day: 'Cita diena', can_wait: 'Gaidu', sent_ok: 'Pieteikums nosūtīts', prices_come: 'Cenu nosauks pārvadātāji.',
     where_title: 'Kur meklēju', radius: 'Rādiuss', empty_trip: 'Braucu tukšs', set_trip: 'Norādīt reisu', remove: 'Noņemt', done: 'Gatavs', trip_ok: 'Reiss pievienots', when_go: 'Kad braucat?',
     profile: 'Profils', name: 'Vārds', phone: 'Tālrunis', save: 'Saglabāt', saved: 'Saglabāts', my_trucks: 'Mans transports', add_truck: 'Pievienot transportu', truck_type: 'Kāds transports', tonnage: 'Kravnesība, t', need_truck: 'Vispirms pievienojiet transportu',
-    switch_role: 'Krava / Transports', sign_out: 'Iziet', demo_reset: 'Sākt demo no jauna',
+    switch_role: 'Krava / Transports', theme_light: 'Gaišā tēma', theme_dark: 'Tumšā tēma', sign_out: 'Iziet', demo_reset: 'Sākt demo no jauna',
     email: 'E-pasts', password: 'Parole', sign_in: 'Ieiet', sign_up: 'Izveidot kontu', no_account: 'Nav konta', have_account: 'Jau ir konts', forgot: 'Aizmirsu paroli', reset_sent: 'Vēstule nosūtīta', check_email: 'Atveriet saiti no vēstules',
     auth_title: 'Ieeja', hello_title: 'Par jums', hello_hint: 'Lai jums varētu piezvanīt.', need_name_phone: 'Norādiet vārdu un tālruni',
     err_generic: 'Neizdevās. Mēģiniet vēlreiz.', err_closed: 'Pieteikums jau slēgts', err_auth: 'Nepareizs e-pasts vai parole', err_net: 'Nav savienojuma', err_storage: 'Tālruņa atmiņa ir pilna', err_login: 'Ieejiet vēlreiz', err_only_carrier: 'Cenu nosauc pārvadātājs',
@@ -74,7 +74,7 @@ const D = {
     when_q: 'When?', other_day: 'Another day', can_wait: 'I can wait', sent_ok: 'Request sent', prices_come: 'Carriers will name the price.',
     where_title: 'Where I look', radius: 'Radius', empty_trip: 'Driving empty', set_trip: 'Add a trip', remove: 'Remove', done: 'Done', trip_ok: 'Trip added', when_go: 'When do you go?',
     profile: 'Profile', name: 'Name', phone: 'Phone', save: 'Save', saved: 'Saved', my_trucks: 'My vehicles', add_truck: 'Add a vehicle', truck_type: 'Vehicle type', tonnage: 'Payload, t', need_truck: 'Add a vehicle first',
-    switch_role: 'Cargo / Truck', sign_out: 'Sign out', demo_reset: 'Restart the demo',
+    switch_role: 'Cargo / Truck', theme_light: 'Light theme', theme_dark: 'Dark theme', sign_out: 'Sign out', demo_reset: 'Restart the demo',
     email: 'E-mail', password: 'Password', sign_in: 'Sign in', sign_up: 'Create account', no_account: 'No account', have_account: 'I have an account', forgot: 'Forgot password', reset_sent: 'E-mail sent', check_email: 'Open the link from the e-mail',
     auth_title: 'Sign in', hello_title: 'About you', hello_hint: 'So that people can call you.', need_name_phone: 'Enter your name and phone',
     err_generic: 'That did not work. Try again.', err_closed: 'The request is already closed', err_auth: 'Wrong e-mail or password', err_net: 'No connection', err_storage: 'Phone storage is full', err_login: 'Sign in again', err_only_carrier: 'Only a carrier names a price',
