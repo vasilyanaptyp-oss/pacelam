@@ -1,11 +1,11 @@
 // Paceļam — application shell and screens. Hash routing, no framework.
 // One adaptive layout: cards below 1024 px, a sortable table with a filter sidebar from 1024 px,
 // plus an inline details panel from 1440 px. Data and logic are shared; only rendering switches.
-import { api } from './api.js?v=acda6798';
-import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=acda6798';
-import { h, $, $$, clear, append, icon, toast, sheet, confirmSheet, field, input, chips, spinner, emptyState, fmtMoney, fmtInt, fmtNum, fmtDate, fmtDateRange, relTime, isoDate, addDays, navigate } from './ui.js?v=acda6798';
-import { CITIES, searchCities, findCity, nearestCity, haversineKm, detourKm } from './geo.js?v=acda6798';
-import { compressPhoto } from './photos.js?v=acda6798';
+import { api } from './api.js?v=6d72789e';
+import { t, setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=6d72789e';
+import { h, $, $$, clear, append, icon, toast, sheet, confirmSheet, field, input, chips, spinner, emptyState, fmtMoney, fmtInt, fmtNum, fmtDate, fmtDateRange, relTime, isoDate, addDays, navigate } from './ui.js?v=6d72789e';
+import { CITIES, searchCities, findCity, nearestCity, haversineKm, detourKm } from './geo.js?v=6d72789e';
+import { compressPhoto } from './photos.js?v=6d72789e';
 
 const store = {
   get(k, d = null) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },

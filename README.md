@@ -7,6 +7,26 @@ Vehicle types: `docs/vehicle-types.json`. Product decisions are kept outside thi
 (codes as on the exchange carriers already use). Scheme agreed with the client:
 `docs/pacelam-scheme.png`.
 
+## Minimal version (branch `minimal-1011`, 10.11.2026)
+
+The client asked for a simpler app, with the insurers' tow app as the model:
+a list of plain cards, then a card with a map on top and a round button next to the fact it acts on.
+
+- `app/index.html` loads the minimal version: `js/min.js` (screens), `js/i18n-min.js` (short texts lv/ru/en),
+  `css/min.css` (light, system font, one colour of action). The data layer, the database and every rule are the
+  same: `js/api-demo.js`, `js/api-supabase.js`, `supabase/migrations/` are not touched.
+- The previous app is kept as `app/classic.html` (operator desk `classic.html#/operator`, desktop table, saved
+  searches). `app/?demo=operator` goes there.
+- Screens: start (I have cargo / I have a truck) → the customer's requests or the carrier's jobs → a request
+  (map, facts, prices or "Offer a price") → new request in three steps (what + photo, from → to, when);
+  "where I look" for a carrier (town, radius, an empty trip); profile. Sign-in is asked once, before the first
+  request or price, and only with a real database.
+- Checks: `node _audit/minimal/check.mjs` walks both roles at 360 / 390 / 412 (ru) and at 360 in lv and en:
+  no console errors, no sideways scroll, text from 16 px, contrast AA and up, tappable things 48 px with 8 px
+  between them, blind prices, no phone before a deal, no price from the customer. `before.mjs` / `after.mjs` /
+  `compare.mjs` make the screenshots and the before/after sheet (outside the repository).
+- Links from the public page keep working: `app/?post=cargo|truck`, `app/?demo=carrier|customer`, `app/?role=…`.
+
 ## Pages
 
 - `index.html` — public page for people coming from search (lv baked in, ru/en swapped by `js/landing.js`).

@@ -25,7 +25,7 @@ const v = hash.digest('hex').slice(0, 8);
 const jsImport = /((?:\bfrom|\bimport)\s*\(?\s*['"])(\.\.?\/[\w./-]+\.js)(?:\?v=[0-9a-f]{8})?(['"])/g;
 const htmlRef = /((?:src|href)=")((?:\.\.\/)?(?:js\/[\w.-]+\.js|css\/[\w.-]+\.css|config\.js))(?:\?v=[0-9a-f]{8})?(")/g;
 const sceneRef = /(load\(')(js\/scene\.js)(?:\?v=[0-9a-f]{8})?(')/g;
-const targets = [...code.filter((f) => f.startsWith('js/')), 'index.html', 'app/index.html'];
+const targets = [...code.filter((f) => f.startsWith('js/')), 'index.html', 'app/index.html', 'app/classic.html'];
 const check = process.argv.includes('--check');
 let touched = 0;
 for (const f of targets) {

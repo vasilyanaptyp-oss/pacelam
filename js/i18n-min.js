@@ -1,0 +1,92 @@
+// Short texts of the minimal version (10.11.2026). Three languages, the same length in each.
+// The active language lives in i18n.js; reference names (vehicle types, cargo categories) still come from there.
+import { getLang } from './i18n.js?v=6d72789e';
+
+const D = {
+  ru: {
+    have_cargo: 'Есть груз', have_truck: 'Есть транспорт', demo: 'Демо', cargo: 'Груз', loading: 'Загрузка', lang: 'Язык', skip: 'К содержимому',
+    my_requests: 'Мои заявки', new_request: 'Новая заявка', no_requests: 'Заявок пока нет.',
+    jobs: 'Заявки', no_jobs_near: 'Рядом заявок нет.', no_jobs: 'Заявок пока нет.', show_all: 'Показать все · ещё {n}', only_near: 'Только рядом', my_city: 'Мой город',
+    today: 'Сегодня', tomorrow: 'Завтра', urgent: 'Срочно', waits: 'Ждёт {t}', wait_over: 'Время вышло', min: 'мин', h: 'ч',
+    st_wait_price: 'Ждёт цены', st_prices: 'Цены: {n}', from_price: 'от {p} €', st_deal: 'Договорились', st_closed: 'Закрыта', st_my_price: 'Моя цена {p} €',
+    km: 'км', kg: 'кг', m: 'м', t_unit: 'т',
+    near: 'Рядом', from_you: '{km} км от вас', with_cargo: '{km} км с грузом', detour: '+{km} км к рейсу', on_way: 'по пути',
+    when: 'Когда', route_btn: 'Маршрут', call: 'Позвонить', map: 'Карта',
+    offer_price: 'Предложить цену', change_price: 'Изменить цену', my_price: 'Моя цена', phone_later: 'Телефон откроется, когда вас выберут.',
+    price_title: 'Ваша цена', price_eur: 'Цена, €', can_when: 'Когда сможете', comment: 'Комментарий', send: 'Отправить', remove_price: 'Убрать цену', price_sent: 'Цена отправлена', price_removed: 'Цена убрана', bad_price: 'Введите цену',
+    prices: 'Цены', wait_prices: 'Ждём цены. Перевозчики рядом уже видят заявку.', pick: 'Выбрать', pick_q: 'Выбрать {name} за {p} €?', pick_hint: 'Вы получите телефоны друг друга.', cancel: 'Отмена',
+    close_request: 'Закрыть заявку', close_q: 'Закрыть заявку?', close_hint: 'Цены по ней пропадут.', closed_ok: 'Заявка закрыта', operator: 'Оператор', not_found: 'Заявка не найдена',
+    step: '{n} из {total}', what: 'Что везём?', weight: 'Вес, кг', dims: 'Размеры, м', dim_l: 'длина', dim_w: 'ширина', dim_h: 'высота', photo: 'Фото', photo_remove: 'Убрать фото', note_ph: 'Что важно знать',
+    next: 'Дальше', back: 'Назад', pick_what: 'Выберите, что везём', bad_numbers: 'Проверьте числа',
+    where: 'Откуда → куда', from: 'Откуда', to: 'Куда', city: 'Город', city_search: 'Введите город', my_place: 'Моё место', no_city: 'Не нашли', need_route: 'Укажите откуда и куда', same_city: 'Откуда и куда: разные города', map_off: 'Карта не загрузилась. Введите город.',
+    when_q: 'Когда?', other_day: 'Другой день', can_wait: 'Жду', sent_ok: 'Заявка отправлена', prices_come: 'Цену назовут перевозчики.',
+    where_title: 'Где ищу', radius: 'Радиус', empty_trip: 'Еду пустым', set_trip: 'Указать рейс', remove: 'Убрать', done: 'Готово', trip_ok: 'Рейс добавлен', when_go: 'Когда едете?',
+    profile: 'Профиль', name: 'Имя', phone: 'Телефон', save: 'Сохранить', saved: 'Сохранено', my_trucks: 'Мои машины', add_truck: 'Добавить машину', truck_type: 'Какая машина', tonnage: 'Грузоподъёмность, т', need_truck: 'Сначала добавьте машину',
+    switch_role: 'Груз / Транспорт', sign_out: 'Выйти', demo_reset: 'Начать демо заново',
+    email: 'Почта', password: 'Пароль', sign_in: 'Войти', sign_up: 'Создать аккаунт', no_account: 'Нет аккаунта', have_account: 'Уже есть аккаунт', forgot: 'Забыли пароль', reset_sent: 'Письмо отправлено', check_email: 'Откройте ссылку из письма',
+    auth_title: 'Вход', hello_title: 'О вас', hello_hint: 'Чтобы вам могли позвонить.', need_name_phone: 'Укажите имя и телефон',
+    err_generic: 'Не получилось. Попробуйте ещё раз.', err_closed: 'Заявка уже закрыта', err_auth: 'Неверная почта или пароль', err_net: 'Нет связи', err_storage: 'Память телефона заполнена', err_login: 'Войдите заново', err_only_carrier: 'Цену называет перевозчик',
+    n_bid: 'Новая цена: {p} €', n_deal: 'Договорились: {from} → {to}', n_job: 'Новая заявка: {from} → {to}',
+    yes: 'Да', no: 'Нет',
+  },
+  lv: {
+    have_cargo: 'Ir krava', have_truck: 'Ir transports', demo: 'Demo', cargo: 'Krava', loading: 'Ielāde', lang: 'Valoda', skip: 'Uz saturu',
+    my_requests: 'Mani pieteikumi', new_request: 'Jauns pieteikums', no_requests: 'Pieteikumu vēl nav.',
+    jobs: 'Pieteikumi', no_jobs_near: 'Tuvumā pieteikumu nav.', no_jobs: 'Pieteikumu vēl nav.', show_all: 'Rādīt visus · vēl {n}', only_near: 'Tikai tuvumā', my_city: 'Mana pilsēta',
+    today: 'Šodien', tomorrow: 'Rīt', urgent: 'Steidzami', waits: 'Gaida {t}', wait_over: 'Laiks beidzies', min: 'min', h: 'h',
+    st_wait_price: 'Gaida cenu', st_prices: 'Cenas: {n}', from_price: 'no {p} €', st_deal: 'Vienojāmies', st_closed: 'Slēgts', st_my_price: 'Mana cena {p} €',
+    km: 'km', kg: 'kg', m: 'm', t_unit: 't',
+    near: 'Tuvumā', from_you: '{km} km no jums', with_cargo: '{km} km ar kravu', detour: '+{km} km pie reisa', on_way: 'pa ceļam',
+    when: 'Kad', route_btn: 'Maršruts', call: 'Zvanīt', map: 'Karte',
+    offer_price: 'Piedāvāt cenu', change_price: 'Mainīt cenu', my_price: 'Mana cena', phone_later: 'Tālrunis atvērsies, kad jūs izvēlēsies.',
+    price_title: 'Jūsu cena', price_eur: 'Cena, €', can_when: 'Kad varat', comment: 'Komentārs', send: 'Nosūtīt', remove_price: 'Noņemt cenu', price_sent: 'Cena nosūtīta', price_removed: 'Cena noņemta', bad_price: 'Ievadiet cenu',
+    prices: 'Cenas', wait_prices: 'Gaidām cenas. Pārvadātāji tuvumā jau redz pieteikumu.', pick: 'Izvēlēties', pick_q: 'Izvēlēties {name} par {p} €?', pick_hint: 'Jūs saņemsiet viens otra tālruni.', cancel: 'Atcelt',
+    close_request: 'Slēgt pieteikumu', close_q: 'Slēgt pieteikumu?', close_hint: 'Tā cenas pazudīs.', closed_ok: 'Pieteikums slēgts', operator: 'Operators', not_found: 'Pieteikums nav atrasts',
+    step: '{n} no {total}', what: 'Ko vedam?', weight: 'Svars, kg', dims: 'Izmēri, m', dim_l: 'garums', dim_w: 'platums', dim_h: 'augstums', photo: 'Foto', photo_remove: 'Noņemt foto', note_ph: 'Kas jāzina',
+    next: 'Tālāk', back: 'Atpakaļ', pick_what: 'Izvēlieties, ko vedam', bad_numbers: 'Pārbaudiet skaitļus',
+    where: 'No kurienes → uz kurieni', from: 'No', to: 'Uz', city: 'Pilsēta', city_search: 'Ierakstiet pilsētu', my_place: 'Mana vieta', no_city: 'Nav atrasts', need_route: 'Norādiet no kurienes un uz kurieni', same_city: 'No un uz: dažādas pilsētas', map_off: 'Karte neielādējās. Ierakstiet pilsētu.',
+    when_q: 'Kad?', other_day: 'Cita diena', can_wait: 'Gaidu', sent_ok: 'Pieteikums nosūtīts', prices_come: 'Cenu nosauks pārvadātāji.',
+    where_title: 'Kur meklēju', radius: 'Rādiuss', empty_trip: 'Braucu tukšs', set_trip: 'Norādīt reisu', remove: 'Noņemt', done: 'Gatavs', trip_ok: 'Reiss pievienots', when_go: 'Kad braucat?',
+    profile: 'Profils', name: 'Vārds', phone: 'Tālrunis', save: 'Saglabāt', saved: 'Saglabāts', my_trucks: 'Mans transports', add_truck: 'Pievienot transportu', truck_type: 'Kāds transports', tonnage: 'Kravnesība, t', need_truck: 'Vispirms pievienojiet transportu',
+    switch_role: 'Krava / Transports', sign_out: 'Iziet', demo_reset: 'Sākt demo no jauna',
+    email: 'E-pasts', password: 'Parole', sign_in: 'Ieiet', sign_up: 'Izveidot kontu', no_account: 'Nav konta', have_account: 'Jau ir konts', forgot: 'Aizmirsu paroli', reset_sent: 'Vēstule nosūtīta', check_email: 'Atveriet saiti no vēstules',
+    auth_title: 'Ieeja', hello_title: 'Par jums', hello_hint: 'Lai jums varētu piezvanīt.', need_name_phone: 'Norādiet vārdu un tālruni',
+    err_generic: 'Neizdevās. Mēģiniet vēlreiz.', err_closed: 'Pieteikums jau slēgts', err_auth: 'Nepareizs e-pasts vai parole', err_net: 'Nav savienojuma', err_storage: 'Tālruņa atmiņa ir pilna', err_login: 'Ieejiet vēlreiz', err_only_carrier: 'Cenu nosauc pārvadātājs',
+    n_bid: 'Jauna cena: {p} €', n_deal: 'Vienojāmies: {from} → {to}', n_job: 'Jauns pieteikums: {from} → {to}',
+    yes: 'Jā', no: 'Nē',
+  },
+  en: {
+    have_cargo: 'I have cargo', have_truck: 'I have a truck', demo: 'Demo', cargo: 'Cargo', loading: 'Loading', lang: 'Language', skip: 'Skip to content',
+    my_requests: 'My requests', new_request: 'New request', no_requests: 'No requests yet.',
+    jobs: 'Jobs', no_jobs_near: 'No jobs nearby.', no_jobs: 'No jobs yet.', show_all: 'Show all · {n} more', only_near: 'Nearby only', my_city: 'My town',
+    today: 'Today', tomorrow: 'Tomorrow', urgent: 'Urgent', waits: 'Waits {t}', wait_over: 'Time is up', min: 'min', h: 'h',
+    st_wait_price: 'Waiting for prices', st_prices: 'Prices: {n}', from_price: 'from {p} €', st_deal: 'Agreed', st_closed: 'Closed', st_my_price: 'My price {p} €',
+    km: 'km', kg: 'kg', m: 'm', t_unit: 't',
+    near: 'Nearby', from_you: '{km} km from you', with_cargo: '{km} km loaded', detour: '+{km} km detour', on_way: 'on the way',
+    when: 'When', route_btn: 'Route', call: 'Call', map: 'Map',
+    offer_price: 'Offer a price', change_price: 'Change price', my_price: 'My price', phone_later: 'The phone opens when you are picked.',
+    price_title: 'Your price', price_eur: 'Price, €', can_when: 'When you can', comment: 'Comment', send: 'Send', remove_price: 'Withdraw price', price_sent: 'Price sent', price_removed: 'Price withdrawn', bad_price: 'Enter a price',
+    prices: 'Prices', wait_prices: 'Waiting for prices. Carriers nearby already see it.', pick: 'Pick', pick_q: 'Pick {name} for {p} €?', pick_hint: 'You will get each other\'s phone.', cancel: 'Cancel',
+    close_request: 'Close request', close_q: 'Close the request?', close_hint: 'Its prices will be dropped.', closed_ok: 'Request closed', operator: 'Operator', not_found: 'Request not found',
+    step: '{n} of {total}', what: 'What is it?', weight: 'Weight, kg', dims: 'Size, m', dim_l: 'length', dim_w: 'width', dim_h: 'height', photo: 'Photo', photo_remove: 'Remove photo', note_ph: 'Good to know',
+    next: 'Next', back: 'Back', pick_what: 'Choose what it is', bad_numbers: 'Check the numbers',
+    where: 'From → to', from: 'From', to: 'To', city: 'Town', city_search: 'Type a town', my_place: 'My location', no_city: 'Not found', need_route: 'Set from and to', same_city: 'From and to must differ', map_off: 'The map did not load. Type a town.',
+    when_q: 'When?', other_day: 'Another day', can_wait: 'I can wait', sent_ok: 'Request sent', prices_come: 'Carriers will name the price.',
+    where_title: 'Where I look', radius: 'Radius', empty_trip: 'Driving empty', set_trip: 'Add a trip', remove: 'Remove', done: 'Done', trip_ok: 'Trip added', when_go: 'When do you go?',
+    profile: 'Profile', name: 'Name', phone: 'Phone', save: 'Save', saved: 'Saved', my_trucks: 'My vehicles', add_truck: 'Add a vehicle', truck_type: 'Vehicle type', tonnage: 'Payload, t', need_truck: 'Add a vehicle first',
+    switch_role: 'Cargo / Truck', sign_out: 'Sign out', demo_reset: 'Restart the demo',
+    email: 'E-mail', password: 'Password', sign_in: 'Sign in', sign_up: 'Create account', no_account: 'No account', have_account: 'I have an account', forgot: 'Forgot password', reset_sent: 'E-mail sent', check_email: 'Open the link from the e-mail',
+    auth_title: 'Sign in', hello_title: 'About you', hello_hint: 'So that people can call you.', need_name_phone: 'Enter your name and phone',
+    err_generic: 'That did not work. Try again.', err_closed: 'The request is already closed', err_auth: 'Wrong e-mail or password', err_net: 'No connection', err_storage: 'Phone storage is full', err_login: 'Sign in again', err_only_carrier: 'Only a carrier names a price',
+    n_bid: 'New price: {p} €', n_deal: 'Agreed: {from} → {to}', n_job: 'New job: {from} → {to}',
+    yes: 'Yes', no: 'No',
+  },
+};
+
+export function t(key, vars) {
+  let s = (D[getLang()] || D.lv)[key] ?? D.en[key] ?? key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+  return s;
+}
+// for the checks: keys missing in a language
+export const missing = (lang) => Object.keys(D.ru).filter((k) => !(k in D[lang]));
