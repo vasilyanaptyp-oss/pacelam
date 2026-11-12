@@ -25,6 +25,9 @@ a list of plain cards, then a card with a map on top and a round button next to 
   no console errors, no sideways scroll, text from 16 px, contrast AA and up, tappable things 48 px with 8 px
   between them, blind prices, no phone before a deal, no price from the customer. `before.mjs` / `after.mjs` /
   `compare.mjs` make the screenshots and the before/after sheet (outside the repository).
+  `redteam.mjs` attacks the app on purpose (32 cases: broken phone storage, garbage addresses, markup in texts, bad
+  numbers and dates, double taps, a refresh mid-request, the back button, a foreign role by a link, narrow and
+  sideways screens, axe, keyboard only, no map, 200 postings); `light.mjs` checks the light theme.
 - Links from the public page keep working: `app/?post=cargo|truck`, `app/?demo=carrier|customer`, `app/?role=…`.
 
 ## Pages

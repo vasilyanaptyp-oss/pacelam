@@ -1,6 +1,6 @@
 // Short texts of the minimal version (10.11.2026). Three languages, the same length in each.
 // The active language lives in i18n.js; reference names (vehicle types, cargo categories) still come from there.
-import { getLang } from './i18n.js?v=262bf9e8';
+import { getLang } from './i18n.js?v=8a726e6e';
 
 const D = {
   ru: {
@@ -20,7 +20,7 @@ const D = {
     next: 'Дальше', back: 'Назад', pick_what: 'Выберите, что везём', bad_numbers: 'Проверьте числа',
     where: 'Откуда → куда', from: 'Откуда', to: 'Куда', city: 'Город', city_search: 'Введите город', my_place: 'Моё место', no_city: 'Не нашли', need_route: 'Укажите откуда и куда', same_city: 'Откуда и куда: разные города', map_off: 'Карта не загрузилась. Введите город.',
     when_q: 'Когда?', other_day: 'Другой день', can_wait: 'Жду', sent_ok: 'Заявка отправлена', prices_come: 'Цену назовут перевозчики.',
-    where_title: 'Где ищу', radius: 'Радиус', empty_trip: 'Еду пустым', set_trip: 'Указать рейс', remove: 'Убрать', done: 'Готово', trip_ok: 'Рейс добавлен', when_go: 'Когда едете?',
+    where_title: 'Где ищу', radius: 'Радиус', empty_trip: 'Еду пустым', set_trip: 'Указать рейс', remove: 'Убрать', trip_remove_q: 'Убрать рейс?', truck_remove_q: 'Убрать машину?', demo_reset_q: 'Начать демо заново?', demo_reset_hint: 'Ваши пробные заявки и цены пропадут.', bad_day: 'Выберите другой день', photos_again: 'Фото не сохранились. Добавьте их ещё раз.', done: 'Готово', trip_ok: 'Рейс добавлен', when_go: 'Когда едете?',
     profile: 'Профиль', name: 'Имя', phone: 'Телефон', save: 'Сохранить', saved: 'Сохранено', my_trucks: 'Мои машины', add_truck: 'Добавить машину', truck_type: 'Какая машина', tonnage: 'Грузоподъёмность, т', need_truck: 'Сначала добавьте машину',
     switch_role: 'Груз / Транспорт', theme_light: 'Светлая тема', theme_dark: 'Тёмная тема', sign_out: 'Выйти', demo_reset: 'Начать демо заново',
     email: 'Почта', password: 'Пароль', sign_in: 'Войти', sign_up: 'Создать аккаунт', no_account: 'Нет аккаунта', have_account: 'Уже есть аккаунт', forgot: 'Забыли пароль', reset_sent: 'Письмо отправлено', check_email: 'Откройте ссылку из письма',
@@ -46,7 +46,7 @@ const D = {
     next: 'Tālāk', back: 'Atpakaļ', pick_what: 'Izvēlieties, ko vedam', bad_numbers: 'Pārbaudiet skaitļus',
     where: 'No kurienes → uz kurieni', from: 'No', to: 'Uz', city: 'Pilsēta', city_search: 'Ierakstiet pilsētu', my_place: 'Mana vieta', no_city: 'Nav atrasts', need_route: 'Norādiet no kurienes un uz kurieni', same_city: 'No un uz: dažādas pilsētas', map_off: 'Karte neielādējās. Ierakstiet pilsētu.',
     when_q: 'Kad?', other_day: 'Cita diena', can_wait: 'Gaidu', sent_ok: 'Pieteikums nosūtīts', prices_come: 'Cenu nosauks pārvadātāji.',
-    where_title: 'Kur meklēju', radius: 'Rādiuss', empty_trip: 'Braucu tukšs', set_trip: 'Norādīt reisu', remove: 'Noņemt', done: 'Gatavs', trip_ok: 'Reiss pievienots', when_go: 'Kad braucat?',
+    where_title: 'Kur meklēju', radius: 'Rādiuss', empty_trip: 'Braucu tukšs', set_trip: 'Norādīt reisu', remove: 'Noņemt', trip_remove_q: 'Noņemt reisu?', truck_remove_q: 'Noņemt transportu?', demo_reset_q: 'Sākt demo no jauna?', demo_reset_hint: 'Jūsu izmēģinājuma pieteikumi un cenas pazudīs.', bad_day: 'Izvēlieties citu dienu', photos_again: 'Foto nesaglabājās. Pievienojiet vēlreiz.', done: 'Gatavs', trip_ok: 'Reiss pievienots', when_go: 'Kad braucat?',
     profile: 'Profils', name: 'Vārds', phone: 'Tālrunis', save: 'Saglabāt', saved: 'Saglabāts', my_trucks: 'Mans transports', add_truck: 'Pievienot transportu', truck_type: 'Kāds transports', tonnage: 'Kravnesība, t', need_truck: 'Vispirms pievienojiet transportu',
     switch_role: 'Krava / Transports', theme_light: 'Gaišā tēma', theme_dark: 'Tumšā tēma', sign_out: 'Iziet', demo_reset: 'Sākt demo no jauna',
     email: 'E-pasts', password: 'Parole', sign_in: 'Ieiet', sign_up: 'Izveidot kontu', no_account: 'Nav konta', have_account: 'Jau ir konts', forgot: 'Aizmirsu paroli', reset_sent: 'Vēstule nosūtīta', check_email: 'Atveriet saiti no vēstules',
@@ -72,7 +72,7 @@ const D = {
     next: 'Next', back: 'Back', pick_what: 'Choose what it is', bad_numbers: 'Check the numbers',
     where: 'From → to', from: 'From', to: 'To', city: 'Town', city_search: 'Type a town', my_place: 'My location', no_city: 'Not found', need_route: 'Set from and to', same_city: 'From and to must differ', map_off: 'The map did not load. Type a town.',
     when_q: 'When?', other_day: 'Another day', can_wait: 'I can wait', sent_ok: 'Request sent', prices_come: 'Carriers will name the price.',
-    where_title: 'Where I look', radius: 'Radius', empty_trip: 'Driving empty', set_trip: 'Add a trip', remove: 'Remove', done: 'Done', trip_ok: 'Trip added', when_go: 'When do you go?',
+    where_title: 'Where I look', radius: 'Radius', empty_trip: 'Driving empty', set_trip: 'Add a trip', remove: 'Remove', trip_remove_q: 'Remove the trip?', truck_remove_q: 'Remove the vehicle?', demo_reset_q: 'Restart the demo?', demo_reset_hint: 'Your test requests and prices will be gone.', bad_day: 'Pick another day', photos_again: 'Photos were not kept. Add them again.', done: 'Done', trip_ok: 'Trip added', when_go: 'When do you go?',
     profile: 'Profile', name: 'Name', phone: 'Phone', save: 'Save', saved: 'Saved', my_trucks: 'My vehicles', add_truck: 'Add a vehicle', truck_type: 'Vehicle type', tonnage: 'Payload, t', need_truck: 'Add a vehicle first',
     switch_role: 'Cargo / Truck', theme_light: 'Light theme', theme_dark: 'Dark theme', sign_out: 'Sign out', demo_reset: 'Restart the demo',
     email: 'E-mail', password: 'Password', sign_in: 'Sign in', sign_up: 'Create account', no_account: 'No account', have_account: 'I have an account', forgot: 'Forgot password', reset_sent: 'E-mail sent', check_email: 'Open the link from the e-mail',

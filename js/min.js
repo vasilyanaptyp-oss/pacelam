@@ -3,12 +3,12 @@
 // The look is the app's own (dark, amber, blue for cargo, sheets that slide): the client's partner asked to keep it.
 // Only screens live here. The data layer (api-demo.js / api-supabase.js) and every rule in the database are untouched:
 // only the carrier names a price, offers are blind, phones open after a deal.
-import { api } from './api.js?v=262bf9e8';
-import { setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=262bf9e8';
-import { t } from './i18n-min.js?v=262bf9e8';
-import { h, $, clear, icon, icons, toast, sheet, fmtInt, fmtNum, fmtMoney, fmtDate, isoDate, addDays, navigate } from './ui.js?v=262bf9e8';
-import { searchCities, nearestCity, haversineKm, detourKm } from './geo.js?v=262bf9e8';
-import { compressPhoto } from './photos.js?v=262bf9e8';
+import { api } from './api.js?v=8a726e6e';
+import { setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=8a726e6e';
+import { t } from './i18n-min.js?v=8a726e6e';
+import { h, $, clear, icon, icons, toast, sheet, fmtInt, fmtNum, fmtDate, isoDate, addDays, navigate } from './ui.js?v=8a726e6e';
+import { searchCities, nearestCity, haversineKm, detourKm } from './geo.js?v=8a726e6e';
+import { compressPhoto } from './photos.js?v=8a726e6e';
 
 icons.nav = '<path d="M12 2.5 21.5 12 12 21.5 2.5 12z"/><path d="M9 14.5v-3h5.5M12.5 9l2.5 2.5-2.5 2.5"/>';
 icons.chev = '<path d="M9 6l6 6-6 6"/>';
@@ -30,7 +30,7 @@ const state = {
   session: api.getSession(),
   me: null,
   ref: { vehicleTypes: [], groups: [], cargoTypes: [] },
-  role: store.get('pacelam.min.role'),   // 'customer' | 'carrier' | null
+  role: ['customer', 'carrier'].includes(store.get('pacelam.min.role')) ? store.get('pacelam.min.role') : null,
   showAll: false,
   after: null,
 };
@@ -45,8 +45,11 @@ const profile = () => state.me?.profile || null;
 const ctype = (id) => state.ref.cargoTypes.find((c) => c.id === id) || null;
 const vtype = (code) => state.ref.vehicleTypes.find((v) => v.code === code) || null;
 const vtName = (code) => { const v = vtype(code); return v ? nameOf(v) : ''; };
-const here = () => (profile()?.city_lat != null ? { name: profile().city_name, lat: profile().city_lat, lng: profile().city_lng } : store.get('pacelam.here'));
-const zoneKm = () => profile()?.zone_km ?? store.get('pacelam.min.zone', 50);
+// what is kept on the phone may be broken or foreign (red team, 12.11.2026): a place is a name and two numbers, or nothing
+const isPlace = (x) => !!x && typeof x === 'object' && typeof x.name === 'string' && x.name.length > 0 && Number.isFinite(x.lat) && Number.isFinite(x.lng);
+const place = (x) => (isPlace(x) ? { name: x.name, lat: x.lat, lng: x.lng } : null);
+const here = () => (profile()?.city_lat != null ? place({ name: profile().city_name, lat: profile().city_lat, lng: profile().city_lng }) : place(store.get('pacelam.here')));
+const zoneKm = () => { const z = Number(profile()?.zone_km ?? store.get('pacelam.min.zone', 50)); return Number.isFinite(z) && z > 0 && z <= 1000 ? z : 50; };
 const maxDetour = () => profile()?.max_detour_km ?? 60;
 const profileFields = () => { const p = profile() || {}; return { role: p.role || state.role || 'customer', display_name: p.display_name || '', city_name: p.city_name ?? null, city_lat: p.city_lat ?? null, city_lng: p.city_lng ?? null, max_detour_km: p.max_detour_km ?? 60, zone_km: p.zone_km ?? 50, lang: p.lang || getLang() }; };
 const photoThumb = (p) => (api.mode === 'demo' ? p : api.photoUrl(p.replace(/\.jpg$/, '_t.jpg')));
@@ -76,6 +79,9 @@ const whenText = (p) => (!p.date_to || p.date_to === p.date_from ? dayText(p.dat
 const weightText = (p) => (p.weight_kg != null ? `${fmtInt(p.weight_kg)} ${t('kg')}` : '');
 const dimsText = (p) => (p.length_m != null || p.width_m != null || p.height_m != null ? [p.length_m, p.width_m, p.height_m].map((x) => (x == null ? '?' : fmtNum(x, 2))).join(' × ') + ' ' + t('m') : '');
 const km = (n) => `${fmtInt(n)} ${t('km')}`;
+// a price is shown as it was named: 150,5 stays 150,5 (red team: it was shown as 151 and agreed as 150,5)
+const amt = (n) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 2 }).format(Number(n));
+const money = (n) => `${amt(n)} €`;
 const distText = (d) => (d < 3 ? t('near') : km(d));
 function typeTitle(p) {
   if (p.kind === 'truck') return vtName(p.vehicle_type_code) || t('have_truck');
@@ -93,21 +99,21 @@ function statusTag(p, { bid = null, deal = null, own = false } = {}) {
   if (deal || p.status === 'deal') return tag(t('st_deal'), 'act');
   if (p.status === 'closed') return tag(t('st_closed'));
   if (own) return p.bid_count ? tag(t('st_prices', { n: p.bid_count }), 'act') : tag(t('st_wait_price'), 'wait');
-  if (bid) return tag(t('st_my_price', { p: fmtInt(bid.amount) }), 'mine');
+  if (bid) return tag(t('st_my_price', { p: amt(bid.amount) }), 'mine');
   if (p.mode === 'urgent') return p.wait_until ? tag(waitText(p.wait_until), new Date(p.wait_until) > new Date() ? 'urgent' : '', p.wait_until) : tag(t('urgent'), 'urgent');
   return null;
 }
 setInterval(() => {
   for (const el of document.querySelectorAll('[data-until]')) {
     el.textContent = waitText(el.dataset.until);
-    if (new Date(el.dataset.until) <= new Date()) el.classList.remove('tag--urgent');
+    if (new Date(el.dataset.until) <= new Date()) { el.classList.remove('tag--urgent'); el.closest('.card')?.classList.remove('is-urgent'); }
   }
 }, 20000);
 
 const routeLine = (p) => h('div.route', null, h('span', null, p.from_name), icon('arrow'), h('span', null, p.to_name));
 const urgentNow = (p) => p.kind === 'cargo' && p.mode === 'urgent' && p.status === 'open' && (!p.wait_until || new Date(p.wait_until) > new Date());
 function card(p, { status, right, good = false, deal = false }) {
-  return h('a.card', { href: `#/p/${p.id}`, 'aria-label': `${typeTitle(p)}, ${p.from_name} → ${p.to_name}`, class: [urgentNow(p) && !deal ? 'is-urgent' : '', deal ? 'is-deal' : ''].join(' ').trim() },
+  return h('a.card', { href: `#/p/${p.id}`, class: [urgentNow(p) && !deal ? 'is-urgent' : '', deal ? 'is-deal' : ''].join(' ').trim() },
     h('div.card__top', null, h('span.card__type', null, typeTitle(p)), status),
     routeLine(p),
     h('div.card__bot', null, h('span', null, [whenText(p), weightText(p)].filter(Boolean).join(' · ')), right ? h('b.num', { class: good ? 'is-good' : '' }, right) : null));
@@ -116,10 +122,18 @@ function card(p, { status, right, good = false, deal = false }) {
 // ---------------------------------------------------------------------------------------
 // Sheets: a question, a town, a price
 // ---------------------------------------------------------------------------------------
+// a double tap opens one sheet of a kind, never two on top of each other (red team)
+const openKinds = new Set();
+function oneSheet(kind, opts) {
+  openKinds.add(kind);
+  const onClose = opts.onClose;
+  return sheet({ ...opts, onClose: (r) => { openKinds.delete(kind); onClose?.(r); } });
+}
 function ask(title, text, okLabel, danger = false) {
   return new Promise((resolve) => {
+    if (openKinds.has('ask')) { resolve(false); return; }
     let ok = false;
-    const s = sheet({
+    const s = oneSheet('ask', {
       title,
       body: h('div.stack', null, text ? h('p', null, text) : null,
         h('button.btn.btn--main', { type: 'button', class: danger ? 'btn--danger' : '', onclick: () => { ok = true; s.close(); } }, okLabel),
@@ -136,6 +150,7 @@ function locate(onCity) {
 const DEFAULT_TOWNS = ['Rīga', 'Daugavpils', 'Rēzekne', 'Jelgava', 'Liepāja', 'Ventspils', 'Valmiera'];
 function pickCity(title) {
   return new Promise((resolve) => {
+    if (openKinds.has('city')) { resolve(null); return; }
     let chosen = null;
     const q = h('input.input', { type: 'text', placeholder: t('city_search'), autocomplete: 'off', enterkeyhint: 'search', 'aria-label': t('city_search') });
     const list = h('div.rows');
@@ -144,19 +159,19 @@ function pickCity(title) {
     const initial = () => show(DEFAULT_TOWNS.map((n) => searchCities(n, 1)[0]).filter(Boolean));
     q.addEventListener('input', () => { const v = q.value.trim(); if (v) show(searchCities(v, 8)); else initial(); });
     q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); const c = searchCities(q.value.trim(), 1)[0]; if (c) finish(c); } });
-    const s = sheet({ title, body: h('div.stack', null, q, h('button.btn.btn--wide', { type: 'button', onclick: () => locate(finish) }, icon('target'), t('my_place')), list), onClose: () => resolve(chosen) });
+    const s = oneSheet('city', { title, body: h('div.stack', null, q, h('button.btn.btn--wide', { type: 'button', onclick: () => locate(finish) }, icon('target'), t('my_place')), list), onClose: () => resolve(chosen) });
     initial();
   });
 }
 
 function priceSheet(p, mine) {
-  if (!requireAuth()) return;
+  if (openKinds.has('price') || !requireAuth()) return;
   const today = isoDate();
   const first = p.mode === 'urgent' || !p.date_from || p.date_from <= today ? today : p.date_from;
   const days = [...new Set([today, addDays(1), first])].sort();
   let day = mine?.can_date && mine.can_date >= today ? mine.can_date : first;
   if (!days.includes(day)) days.push(day);
-  const amount = h('input.input.input--big', { type: 'text', inputmode: 'decimal', autocomplete: 'off', value: mine ? String(mine.amount) : '', 'aria-label': t('price_eur') });
+  const amount = h('input.input.input--big', { type: 'text', inputmode: 'decimal', enterkeyhint: 'send', autocomplete: 'off', value: mine ? amt(mine.amount).replace(/[\s\u00A0\u202F]/g, '') : '', 'aria-label': t('price_eur') });
   const note = h('input.input', { type: 'text', maxlength: 300, value: mine?.note || '', placeholder: t('comment'), 'aria-label': t('comment') });
   const dayRow = h('div.chips', { role: 'group', 'aria-label': t('can_when') });
   const paintDays = () => { clear(dayRow); for (const d of days) dayRow.append(h('button.chip', { type: 'button', class: d === day ? 'is-on' : '', 'aria-pressed': d === day ? 'true' : 'false', onclick: () => { day = d; paintDays(); } }, dayText(d))); };
@@ -174,10 +189,11 @@ function priceSheet(p, mine) {
   h('div.field', null, h('span.field__l', null, t('can_when')), dayRow),
   note, send,
   mine ? h('button.btn.btn--quiet', { type: 'button', onclick: async () => { try { await api.withdrawBid(mine.id); s.close(); toast(t('price_removed')); render(); } catch (err) { fail(err); } } }, t('remove_price')) : null);
-  const s = sheet({ title: t('price_title'), body: form });
+  const s = oneSheet('price', { title: t('price_title'), body: form });
 }
 
-function vehicleSheet(onSaved) {
+function vehicleSheet(onSaved, onClosed = null) {
+  if (openKinds.has('vehicle')) return;
   const sel = h('select.input', { 'aria-label': t('truck_type') });
   for (const g of state.ref.groups) {
     const types = state.ref.vehicleTypes.filter((v) => v.group_id === g.id);
@@ -186,9 +202,9 @@ function vehicleSheet(onSaved) {
     for (const v of types) og.append(h('option', { value: v.code }, nameOf(v)));
     sel.append(og);
   }
-  const ton = h('input.input', { type: 'text', inputmode: 'decimal', autocomplete: 'off' });
+  const ton = h('input.input', { type: 'text', inputmode: 'decimal', enterkeyhint: 'done', autocomplete: 'off' });
   const save = h('button.btn.btn--main', { type: 'submit' }, t('save'));
-  const s = sheet({ title: t('add_truck'), body: h('form.stack', { novalidate: true, onsubmit: async (e) => {
+  const s = oneSheet('vehicle', { title: t('add_truck'), onClose: () => onClosed?.(), body: h('form.stack', { novalidate: true, onsubmit: async (e) => {
     e.preventDefault();
     if (save.disabled) return;
     if (badNumber({ tonnage_t: ton.value }, ['tonnage_t'])) { toast(t('bad_numbers'), 'error'); ton.focus(); return; }
@@ -202,6 +218,7 @@ function vehicleSheet(onSaved) {
 
 // Where a carrier looks for jobs: his town and a radius (client's model of 29.09.2026), plus the trip when he drives empty.
 function whereSheet(trips) {
+  if (openKinds.has('where')) return;
   const draft = { city: here(), km: zoneKm() };
   const cityBtn = h('button.row', { type: 'button', onclick: async () => { const c = await pickCity(t('city')); if (c) { draft.city = c; paintCity(); } } });
   const paintCity = () => { clear(cityBtn); cityBtn.append(h('span.muted', null, t('city')), h('b', null, draft.city?.name || t('my_city')), icon('chev')); };
@@ -212,7 +229,10 @@ function whereSheet(trips) {
   const tripBox = h('div.stack');
   for (const tr of trips) {
     tripBox.append(h('div.row.row--static', null, h('b', null, `${tr.from_name} → ${tr.to_name} · ${whenText(tr)}`),
-      h('button.btn', { type: 'button', onclick: async () => { try { await api.closePosting(tr.id); s.close(); render(); } catch (e) { fail(e); } } }, t('remove'))));
+      h('button.btn', { type: 'button', onclick: once(async () => {
+        if (!(await ask(t('trip_remove_q'), `${tr.from_name} → ${tr.to_name} · ${whenText(tr)}`, t('remove'), true))) return;
+        try { await api.closePosting(tr.id); s.close(); render(); } catch (e) { fail(e); }
+      }) }, t('remove'))));
   }
   tripBox.append(h('button.btn.btn--wide', { type: 'button', onclick: () => { s.close(); go('#/trip'); } }, t('set_trip')));
   const save = h('button.btn.btn--main', { type: 'button', onclick: async () => {
@@ -223,7 +243,7 @@ function whereSheet(trips) {
       state.showAll = false; s.close(); render();
     } catch (e) { fail(e); save.disabled = false; }
   } }, t('done'));
-  const s = sheet({ title: t('where_title'), body: h('div.stack', null, cityBtn, h('div.field', null, h('span.field__l', null, t('radius')), radius), h('div.field', null, h('span.field__l', null, t('empty_trip')), tripBox), save) });
+  const s = oneSheet('where', { title: t('where_title'), body: h('div.stack', null, cityBtn, h('div.field', null, h('span.field__l', null, t('radius')), radius), h('div.field', null, h('span.field__l', null, t('empty_trip')), tripBox), save) });
 }
 
 // ---------------------------------------------------------------------------------------
@@ -246,8 +266,8 @@ function loadLeaflet() {
 }
 const BALTICS = [[55.6, 20.9], [58.1, 28.3]];
 function routeMap(getPoints, { onTap = null } = {}) {
-  const canvas = h('div.map__canvas');
-  const box = h('div.map', { role: 'img', 'aria-label': t('map') }, canvas,
+  const canvas = h('div.map__canvas', { 'aria-hidden': 'true' });
+  const box = h('div.map', null, canvas,
     h('a.map__attr', { href: 'https://www.openstreetmap.org/copyright', target: '_blank', rel: 'noopener' }, '© OpenStreetMap'));
   let map = null; let layer = null; let L = null;
   const draw = () => {
@@ -310,17 +330,19 @@ function screenStart() {
 // 2. Lists
 // ---------------------------------------------------------------------------------------
 async function screenList() {
-  if (!state.role) { go('#/start'); return h('div'); }
+  if (!state.role) { leave('#/start'); return h('div'); }
   return state.role === 'customer' ? listCustomer() : listCarrier();
 }
 async function listCustomer() {
   const all = state.session ? (((await api.myPostings()) || []).filter((p) => p.kind === 'cargo')) : [];
   const byNew = (a, b) => (a.created_at < b.created_at ? 1 : -1);
-  const shown = [...all.filter((p) => p.status !== 'closed').sort(byNew), ...all.filter((p) => p.status === 'closed').sort(byNew).slice(0, 3)];
+  // what is going on stays; what is over (closed, or agreed and already driven) keeps its last three
+  const going = (p) => ['open', 'pending'].includes(p.status) || (p.status === 'deal' && p.date_to >= addDays(-2));
+  const shown = [...all.filter(going).sort(byNew), ...all.filter((p) => !going(p)).sort(byNew).slice(0, 3)];
   const el = h('section.screen', null, h('h1', null, t('my_requests')));
   if (!shown.length) el.append(h('p.muted', null, t('no_requests')));
   const list = h('div.cards');
-  for (const p of shown) list.append(card(p, { status: statusTag(p, { own: true }), right: p.status === 'open' && p.bid_count && p.best_bid != null ? t('from_price', { p: fmtInt(p.best_bid) }) : null, deal: p.status === 'deal' }));
+  for (const p of shown) list.append(card(p, { status: statusTag(p, { own: true }), right: p.status === 'open' && p.bid_count && p.best_bid != null ? t('from_price', { p: amt(p.best_bid) }) : null, deal: p.status === 'deal' }));
   el.append(list);
   el.foot = h('a.btn.btn--main', { href: '#/new' }, icon('plus'), t('new_request'));
   return el;
@@ -352,7 +374,7 @@ async function listCarrier() {
     h('div.head', null, h('h1', null, t('jobs')),
       h('button.pill', { type: 'button', onclick: () => whereSheet(trips) }, icon('pin'), h('span', null, c ? `${c.name} · ${km(zone)}` : t('my_city')))));
   const list = h('div.cards');
-  for (const d of mineDeals) list.append(card(d.posting, { status: statusTag(d.posting, { deal: d }), right: d.amount != null ? fmtMoney(d.amount) : null, deal: true }));
+  for (const d of mineDeals) list.append(card(d.posting, { status: statusTag(d.posting, { deal: d }), right: d.amount != null ? money(d.amount) : null, deal: true }));
   for (const r of shown) list.append(card(r.p, { status: statusTag(r.p, { bid: r.bid }), right: r.onWay && (r.dist == null || r.det < r.dist) ? (r.det <= 5 ? t('on_way') : `+${km(r.det)}`) : (r.dist != null ? distText(r.dist) : null), good: r.onWay && (r.dist == null || r.det < r.dist) ? r.det <= 5 : r.dist != null && r.dist < 3 }));
   if (!mineDeals.length && !shown.length) el.append(h('p.muted', null, hidden.length ? t('no_jobs_near') : t('no_jobs')));
   el.append(list);
@@ -386,26 +408,26 @@ async function screenPosting(id) {
   el.append(map);
 
   const facts = h('div.facts');
-  facts.append(h('div.fact', null, h('h1', null, typeTitle(p)), statusTag(p, { bid: myBid, deal: done, own })));
+  facts.append(h('div.fact.fact--title', null, h('h1', null, typeTitle(p)), statusTag(p, { deal: done, own })));   // my own price has its own line below, not a second tag
   const dist = !own && c ? haversineKm(c.lat, c.lng, from.lat, from.lng) : null;
   facts.append(h('div.fact', null,
     h('div', null, routeLine(p),
       h('div.muted', null, dist != null ? `${dist < 3 ? t('near') : t('from_you', { km: fmtInt(dist) })} · ${t('with_cargo', { km: fmtInt(trip) })}` : km(trip))),
     own ? null : h('a.round', { href: `https://www.google.com/maps/dir/?api=1&destination=${to.lat},${to.lng}&waypoints=${from.lat},${from.lng}&travelmode=driving`, target: '_blank', rel: 'noopener', 'aria-label': t('route_btn') }, icon('nav'))));
   facts.append(h('div.fact', null, h('div', null, h('div.muted', null, t('when')), h('div.strong', null, whenText(p)))));
-  if (myBid) facts.append(h('div.fact', null, h('div', null, h('div.muted', null, t('my_price')), h('div.num', null, `${fmtMoney(myBid.amount)}${myBid.can_date ? ' · ' + dayText(myBid.can_date) : ''}`), h('div.muted', null, t('phone_later')))));
+  if (myBid) facts.append(h('div.fact', null, h('div', null, h('div.muted', null, t('my_price')), h('div.num', null, `${money(myBid.amount)}${myBid.can_date ? ' · ' + dayText(myBid.can_date) : ''}`), h('div.muted', null, t('phone_later')))));
   if (done) {
     const otherId = done.customer_id === me ? done.carrier_id : done.customer_id;
     const contact = await api.getContacts(otherId).catch(() => null);
     const who = own ? (bids || []).find((b) => b.id === done.bid_id)?.bidder?.display_name : p.owner?.display_name;
     const digits = String(contact?.phone || '').replace(/[^\d+]/g, '');
     el.append(facts, h('div.deal', null,
-      h('div', null, h('div.muted', null, [who, done.amount != null ? fmtMoney(done.amount) : null].filter(Boolean).join(' · ')), h('div.num', null, contact?.phone || '')),
+      h('div', null, h('div.muted', null, [who, done.amount != null ? money(done.amount) : null].filter(Boolean).join(' · ')), h('div.num', null, contact?.phone || '')),
       digits ? h('a.round.round--fill', { href: `tel:${digits}`, 'aria-label': t('call') }, icon('phone')) : null));
   } else el.append(facts);
 
   const more = h('div.more');
-  if (p.photos?.length) more.append(h('div.photos', null, p.photos.map((ph, i) => h('button', { type: 'button', 'aria-label': `${t('photo')} ${i + 1}`, onclick: () => sheet({ title: t('photo'), body: h('img.photo-full', { src: api.photoUrl(ph), alt: '' }) }) }, h('img', { src: photoThumb(ph), alt: '', loading: 'lazy' })))));
+  if (p.photos?.length) more.append(h('div.photos', null, p.photos.map((ph, i) => h('button', { type: 'button', 'aria-label': `${t('photo')} ${i + 1}`, onclick: () => { if (!openKinds.has('photo')) oneSheet('photo', { title: t('photo'), body: h('img.photo-full', { src: api.photoUrl(ph), alt: '' }) }); } }, h('img', { src: photoThumb(ph), alt: '', loading: 'lazy' })))));
   const size = [weightText(p), dimsText(p)].filter(Boolean).join(' · ');
   if (size) more.append(h('p.strong', null, size));
   for (const f of (ctype(p.cargo_type_id)?.fields || [])) {
@@ -418,7 +440,13 @@ async function screenPosting(id) {
   if (p.is_operator_posting) more.append(h('p', null, tag(t('operator'))));
   if (more.childNodes.length) el.append(more);
 
-  if (own && p.status === 'open') {
+  if (own && p.kind === 'truck' && p.status === 'open') {
+    el.append(h('button.btn.btn--quiet.btn--danger-text', { type: 'button', onclick: once(async () => {
+      if (!(await ask(t('trip_remove_q'), `${p.from_name} → ${p.to_name} · ${whenText(p)}`, t('remove'), true))) return;
+      try { await api.closePosting(p.id); go('#/list'); } catch (e) { fail(e); }
+    }) }, t('remove')));
+  }
+  if (own && p.kind === 'cargo' && p.status === 'open') {
     const box = h('div.block', null, h('h2', null, active.length ? `${t('prices')} · ${active.length}` : t('prices')));
     if (!active.length) box.append(h('p.muted', null, t('wait_prices')));
     // who is behind a price: his vehicle and payload, nothing else; cheapest first
@@ -429,10 +457,10 @@ async function screenPosting(id) {
       const truck = f?.vehicle_type_code ? [vtName(f.vehicle_type_code), f.tonnage_t != null ? `${fmtNum(f.tonnage_t, 1)} ${t('t_unit')}` : null].filter(Boolean).join(' · ') : '';
       const name = b.bidder?.display_name || '';
       box.append(h('div.offer', { class: b === sorted[0] && sorted.length > 1 ? 'is-best' : '' },
-        h('div.offer__top', null, h('b', null, name), h('b.num', null, fmtMoney(b.amount))),
+        h('div.offer__top', null, h('b', null, name), h('b.num', null, money(b.amount))),
         h('span.muted', null, [b.can_date ? dayText(b.can_date) : null, truck, b.note].filter(Boolean).join(' · ')),
         h('button.btn.btn--fill.btn--wide', { type: 'button', onclick: once(async () => {
-          if (!(await ask(t('pick_q', { name, p: fmtInt(b.amount) }), t('pick_hint'), t('pick')))) return;
+          if (!(await ask(t('pick_q', { name, p: amt(b.amount) }), t('pick_hint'), t('pick')))) return;
           try { await api.acceptBid(b.id); toast(t('st_deal')); render(); } catch (e) { fail(e); }
         }) }, icon('check'), t('pick'))));
     }
@@ -456,19 +484,25 @@ async function screenPosting(id) {
 const wizPhotos = [];   // photos stay in memory
 const wizKey = (kind) => `pacelam.min.wiz.${kind}.${myId() || 'guest'}`;
 const STEPS = { cargo: ['what', 'where', 'when'], truck: ['where', 'when'] };
+const isDay = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= isoDate() && d <= addDays(366);
 function loadDraft(kind) {
-  const saved = store.get(wizKey(kind));
-  if (saved?.draft && Date.now() - (saved.at || 0) < 86400000) {
-    const d = saved.draft;
-    if (!d.day || d.day < isoDate()) d.day = kind === 'truck' ? addDays(1) : isoDate();
-    d.resume = Date.now() - saved.at < 30 * 60000 ? saved.step || 1 : 1;   // left a moment ago: back on the same step
-    return d;
-  }
+  const firstDay = kind === 'truck' ? addDays(1) : isoDate();
   const last = store.get(`pacelam.lastRoute.${myId() || 'guest'}`);
-  const c = here();
-  return { cargo_type_id: null, fields: {}, weight_kg: '', length_m: '', width_m: '', height_m: '', note: '',
-    from: last?.from || (c ? { ...c } : null), to: last?.to || null,
-    day: kind === 'truck' ? addDays(1) : isoDate(), urgent: false, wait: 60 };
+  const blank = { cargo_type_id: null, fields: {}, weight_kg: '', length_m: '', width_m: '', height_m: '', note: '',
+    from: place(last?.from) || here(), to: place(last?.to), day: firstDay, urgent: false, wait: 60 };
+  const saved = store.get(wizKey(kind));
+  const d = saved && typeof saved === 'object' ? saved.draft : null;
+  if (!d || typeof d !== 'object' || !Number.isFinite(saved.at) || Date.now() - saved.at > 86400000) return blank;
+  // rebuilt field by field: a broken or foreign record cannot bring the request down (red team)
+  const text = (v, max = 40) => (typeof v === 'string' || typeof v === 'number' ? String(v).slice(0, max) : '');
+  const fields = {};
+  if (d.fields && typeof d.fields === 'object' && !Array.isArray(d.fields)) for (const [k, v] of Object.entries(d.fields)) if (['string', 'number', 'boolean'].includes(typeof v)) fields[k] = typeof v === 'string' ? v.slice(0, 80) : v;
+  const out = { cargo_type_id: ctype(d.cargo_type_id) ? d.cargo_type_id : null, fields: ctype(d.cargo_type_id) ? fields : {},
+    weight_kg: text(d.weight_kg), length_m: text(d.length_m), width_m: text(d.width_m), height_m: text(d.height_m), note: text(d.note, 600),
+    from: place(d.from) || blank.from, to: place(d.to), day: isDay(d.day) ? d.day : firstDay, urgent: d.urgent === true, wait: WAITS.includes(d.wait) ? d.wait : 60 };
+  out.resume = Date.now() - saved.at < 30 * 60000 && Number.isInteger(saved.step) ? saved.step : 1;   // left a moment ago: back on the same step
+  out.lostPhotos = kind === 'cargo' && saved.photos > 0 && !wizPhotos.length;   // photos live in memory only: a reload drops them
+  return out;
 }
 function wizard(kind, param) {
   const steps = STEPS[kind];
@@ -476,13 +510,18 @@ function wizard(kind, param) {
   const draft = loadDraft(kind);
   const n = Math.min(Math.max(1, parseInt(param, 10) || draft.resume || 1), steps.length);
   delete draft.resume;
+  const lostPhotos = draft.lostPhotos; delete draft.lostPhotos;
   const name = steps[n - 1];
-  const keep = () => store.set(wizKey(kind), { at: Date.now(), step: n, draft });
+  const keep = () => store.set(wizKey(kind), { at: Date.now(), step: n, photos: kind === 'cargo' ? wizPhotos.length : 0, draft });
+  // the photos did not survive a reload: say so once instead of sending the request without them (red team)
+  if (lostPhotos) { keep(); setTimeout(() => toast(t('photos_again')), 400); }
   const el = h('section.screen');
   // the whole wizard is one entry in the phone's history: steps replace each other, so a sent request leaves none behind
   el.back = n > 1 ? () => leave(`${base}/${n - 1}`) : (state.role ? '#/list' : '#/start');
   el.addEventListener('input', keep);
-  const validWhat = () => (!draft.cargo_type_id ? t('pick_what') : badNumber(draft, ['weight_kg', 'length_m', 'width_m', 'height_m']) ? t('bad_numbers') : null);
+  // a number of the category (pallets and the like) keeps to its own limits and is whole (red team: -3 pallets went through)
+  const badField = () => (ctype(draft.cargo_type_id)?.fields || []).some((f) => { if (f.type !== 'number') return false; const raw = draft.fields[f.key]; if (raw == null || String(raw).trim() === '') return false; const v = num(raw); return v == null || !Number.isInteger(v) || v < (f.min ?? 1) || v > (f.max ?? 100000); });
+  const validWhat = () => (!draft.cargo_type_id ? t('pick_what') : badNumber(draft, ['weight_kg', 'length_m', 'width_m', 'height_m']) || badField() ? t('bad_numbers') : null);
   const validWhere = () => (!draft.from || !draft.to ? t('need_route') : draft.from.name === draft.to.name ? t('same_city') : null);
   // a later step opened by its address without the earlier ones: back to the first gap
   const gap = steps.findIndex((s, i) => i < n - 1 && ((s === 'what' && validWhat()) || (s === 'where' && validWhere())));
@@ -508,7 +547,7 @@ function wizard(kind, param) {
       for (const f of (ctype(draft.cargo_type_id)?.fields || [])) {
         if (f.type === 'bool') dyn.append(h('div.field.field--line', null, h('span.field__l', null, labelOf(f)), chipRow([{ value: true, label: t('yes') }, { value: false, label: t('no') }], draft.fields[f.key], (v) => { draft.fields[f.key] = v; }, labelOf(f))));
         else if (f.type === 'choice') dyn.append(h('div.field', null, h('span.field__l', null, labelOf(f)), chipRow((f.options || []).map((o) => ({ value: o.value, label: labelOf(o) })), draft.fields[f.key], (v) => { draft.fields[f.key] = v; }, labelOf(f))));
-        else dyn.append(h('label.field', null, h('span.field__l', null, labelOf(f)), h('input.input', { type: 'text', inputmode: f.type === 'number' ? 'numeric' : 'text', maxlength: f.maxlength || 80, value: draft.fields[f.key] ?? '', oninput: (e) => { draft.fields[f.key] = f.type === 'number' ? num(e.target.value) : e.target.value; } })));
+        else dyn.append(h('label.field', null, h('span.field__l', null, labelOf(f)), h('input.input', { type: 'text', inputmode: f.type === 'number' ? 'numeric' : 'text', maxlength: f.maxlength || 80, value: draft.fields[f.key] ?? '', oninput: (e) => { draft.fields[f.key] = e.target.value; } })));
       }
     };
     paintDyn();
@@ -517,12 +556,12 @@ function wizard(kind, param) {
     const file = h('input', { type: 'file', accept: 'image/*', multiple: true, hidden: true, tabindex: -1 });
     const paintPhotos = () => {
       clear(thumbs);
-      wizPhotos.forEach((ph, i) => thumbs.append(h('button', { type: 'button', 'aria-label': t('photo_remove'), onclick: () => { wizPhotos.splice(i, 1); paintPhotos(); } }, h('img', { src: ph.thumbUrl, alt: '' }), icon('x'))));
+      wizPhotos.forEach((ph, i) => thumbs.append(h('button', { type: 'button', 'aria-label': t('photo_remove'), onclick: () => { wizPhotos.splice(i, 1); paintPhotos(); keep(); } }, h('img', { src: ph.thumbUrl, alt: '' }), icon('x'))));
       if (wizPhotos.length < 4) thumbs.append(h('button.photo-add', { type: 'button', onclick: () => file.click() }, icon('photo'), h('span', null, t('photo'))));
     };
     file.addEventListener('change', async () => {
       for (const f of [...file.files].slice(0, 4 - wizPhotos.length)) { try { const c = await compressPhoto(f); wizPhotos.push({ full: c.full, thumb: c.thumb, thumbUrl: URL.createObjectURL(c.thumb) }); } catch (e) { fail(e); } }
-      file.value = ''; paintPhotos();
+      file.value = ''; paintPhotos(); keep();
     });
     paintPhotos();
     // first only the question itself: seven answers. The rest appears once it is clear what is carried,
@@ -581,6 +620,7 @@ function wizard(kind, param) {
   }
 
   if (name === 'when') {
+    valid = () => (draft.urgent || isDay(draft.day) ? null : t('bad_day'));
     const days = [isoDate(), addDays(1), addDays(2), addDays(3)];
     const box = h('div.stack.stack--tight');
     const wd = (d) => new Intl.DateTimeFormat(locale(), { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(d + 'T00:00:00'));
@@ -598,7 +638,7 @@ function wizard(kind, param) {
       days.forEach((d, i) => box.append(opt(!draft.urgent && draft.day === d, i === 0 ? t('today') : i === 1 ? t('tomorrow') : wd(d), i < 2 ? wd(d) : '', () => { draft.urgent = false; draft.day = d; })));
       // any other day: the phone's own calendar
       const other = !draft.urgent && !days.includes(draft.day);
-      const date = h('input.opt__date', { type: 'date', min: isoDate(), value: other ? draft.day : '', 'aria-label': t('other_day'), onchange: () => { if (date.value) { draft.urgent = false; draft.day = date.value; keep(); paint(); } } });
+      const date = h('input.opt__date', { type: 'date', min: isoDate(), value: other ? draft.day : '', 'aria-label': t('other_day'), max: addDays(366), onchange: () => { if (!date.value) return; if (!isDay(date.value)) { toast(t('bad_day'), 'error'); date.value = ''; return; } draft.urgent = false; draft.day = date.value; keep(); paint(); } });
       box.append(h('label.opt', { class: other ? 'is-on' : '', onclick: (e) => { if (e.target !== date) { try { date.showPicker(); } catch { /* the field itself opens it */ } } } }, h('b', null, t('other_day')), date, other ? icon('check') : null));
     };
     paint();
@@ -628,7 +668,7 @@ function wizard(kind, param) {
         const day = draft.urgent ? isoDate() : draft.day;
         const w = num(draft.weight_kg);
         await api.createPosting({ id, kind: 'cargo', mode: draft.urgent ? 'urgent' : 'planned', ...place, date_from: day, date_to: day, vehicle_type_code: null, cargo_type_id: draft.cargo_type_id,
-          cargo_fields: Object.fromEntries(Object.entries(draft.fields).filter(([, v]) => v !== undefined && v !== null && v !== '')), weight_kg: w != null ? Math.round(w) : null, volume_m3: null, length_m: num(draft.length_m), width_m: num(draft.width_m), height_m: num(draft.height_m),
+          cargo_fields: Object.fromEntries((ctype(draft.cargo_type_id)?.fields || []).map((f) => [f.key, f.type === 'number' ? num(draft.fields[f.key]) : (typeof draft.fields[f.key] === 'string' ? draft.fields[f.key].trim() : draft.fields[f.key])]).filter(([, v]) => v !== undefined && v !== null && v !== '')), weight_kg: w != null ? Math.round(w) : null, volume_m3: null, length_m: num(draft.length_m), width_m: num(draft.width_m), height_m: num(draft.height_m),
           photos, price: null, note: String(draft.note || '').trim() || null, is_operator_posting: false, ...(draft.urgent ? { wait_until: new Date(Date.now() + draft.wait * 60000).toISOString() } : {}) });
       } else {
         const v = state.me.vehicles.find((x) => x.is_default) || state.me.vehicles[0];
@@ -644,7 +684,16 @@ function wizard(kind, param) {
   return el;
 }
 // leaving the wizard: its steps do not stay behind in the phone's "back"
-function leave(hash) { trail[trail.length - 1] = hash; location.replace(hash); }
+// A sheet that is just closing still owns a step of the phone's history; replacing the address before that step is
+// taken sends the person back into the wizard (red team: a trip added right after its vehicle). So wait for the step.
+function leave(hash) {
+  trail[trail.length - 1] = hash;
+  if (!(history.state && history.state.pacelamSheet)) { location.replace(hash); return; }
+  let done = false;
+  const goNow = () => { if (done) return; done = true; window.removeEventListener('popstate', goNow); location.replace(hash); };
+  window.addEventListener('popstate', goNow);
+  setTimeout(goNow, 700);
+}
 
 // ---------------------------------------------------------------------------------------
 // 5. Profile
@@ -667,7 +716,10 @@ async function screenMe() {
       const box = h('div.stack.stack--tight', null, h('h2', null, t('my_trucks')));
       for (const v of (state.me?.vehicles || [])) {
         box.append(h('div.row.row--static', null, h('b', null, [vtName(v.type_code), v.tonnage_t != null ? `${fmtNum(v.tonnage_t, 1)} ${t('t_unit')}` : null].filter(Boolean).join(' · ')),
-          h('button.btn', { type: 'button', onclick: async () => { try { await api.deleteVehicle(v.id); await loadMe(); render(); } catch (e) { fail(e); } } }, t('remove'))));
+          h('button.btn', { type: 'button', onclick: once(async () => {
+            if (!(await ask(t('truck_remove_q'), [vtName(v.type_code), v.tonnage_t != null ? `${fmtNum(v.tonnage_t, 1)} ${t('t_unit')}` : null].filter(Boolean).join(' · '), t('remove'), true))) return;
+            try { await api.deleteVehicle(v.id); await loadMe(); render(); } catch (e) { fail(e); }
+          }) }, t('remove'))));
       }
       box.append(h('button.btn.btn--wide', { type: 'button', onclick: () => vehicleSheet(() => render()) }, icon('plus'), t('add_truck')));
       el.append(box);
@@ -677,7 +729,7 @@ async function screenMe() {
     h('a.btn.btn--wide', { href: '#/start' }, t('switch_role')),
     state.session && api.mode !== 'demo' ? h('button.btn.btn--wide', { type: 'button', onclick: async () => { await api.signOut(); state.role = null; store.set('pacelam.min.role', null); await loadMe(); leave('#/start'); } }, t('sign_out')) : null,
     h('button.btn.btn--wide', { type: 'button', onclick: () => { applyTheme(store.get('pacelam.theme', 'dark') === 'light' ? 'dark' : 'light'); render(); } }, store.get('pacelam.theme', 'dark') === 'light' ? t('theme_dark') : t('theme_light')),
-    api.mode === 'demo' ? h('button.btn.btn--wide', { type: 'button', onclick: async () => { api.resetDemo(); if (state.role) await demoUserFor(state.role); await loadMe(); leave('#/list'); } }, t('demo_reset')) : null));
+    api.mode === 'demo' ? h('button.btn.btn--wide', { type: 'button', onclick: once(async () => { if (!(await ask(t('demo_reset_q'), t('demo_reset_hint'), t('demo_reset'), true))) return; api.resetDemo(); if (state.role) await demoUserFor(state.role); await loadMe(); leave('#/list'); }) }, t('demo_reset')) : null));
   return el;
 }
 
@@ -737,7 +789,7 @@ async function screenHello() {
       await api.saveProfile({ role: state.role || 'customer', display_name: name.value.trim(), city_name: draft.city?.name || null, city_lat: draft.city?.lat ?? null, city_lng: draft.city?.lng ?? null, zone_km: store.get('pacelam.min.zone', 50), lang: getLang() });
       await api.saveContacts({ phone: phone.value.trim(), email: state.session.user?.email || null, company: null });
       await loadMe();
-      if (carrier && !(state.me?.vehicles || []).length) vehicleSheet(afterAuth); else afterAuth();
+      if (carrier && !(state.me?.vehicles || []).length) vehicleSheet(null, afterAuth); else afterAuth();
     } catch (err) { fail(err); submit.disabled = false; }
   } }, h('label.field', null, h('span.field__l', null, t('name')), name), h('label.field', null, h('span.field__l', null, t('phone')), phone), cityBtn, submit));
   return el;
@@ -771,10 +823,14 @@ function paintBar(r, el) {
 }
 let renderId = 0;
 let current = null;
+let shownKey = null;   // the screen on show: only a new one moves in, scrolls to the top and is announced
+const announcer = h('div.sr-only', { 'aria-live': 'polite', role: 'status' });
 async function render() {
   const id = ++renderId;
   const r = route();
-  const fn = SCREENS[r.name] || (state.role ? screenList : screenStart);
+  // an address the app does not know (an old link, a typo) leads to the list or the doors, never to a dead end
+  if (!SCREENS[r.name]) { leave(state.role ? '#/list' : '#/start'); return; }
+  const fn = SCREENS[r.name];
   current?.cleanup?.(); current = null;
   paintBar(r, null);
   const slow = setTimeout(() => { if (id === renderId) { clear(view); clear(foot); view.append(h('div.spinner', { role: 'status', 'aria-label': t('loading') })); } }, 500);
@@ -788,12 +844,23 @@ async function render() {
   paintBar(r, el);
   if (el.foot) foot.append(el.foot);
   document.body.classList.toggle('has-foot', !!el.foot);
+  const heading = view.querySelector('h1')?.textContent || 'Paceļam';
   document.title = [view.querySelector('h1')?.textContent, 'Paceļam'].filter(Boolean).join(' · ');
-  window.scrollTo(0, 0);
+  const key = `${r.name}/${r.param}`;
+  if (key !== shownKey) {
+    // a refresh of the same screen (news, a language) neither jumps to the top nor replays the entrance
+    shownKey = key;
+    el.classList.add('is-fresh');
+    window.scrollTo(0, 0);
+    if (!announcer.isConnected) document.body.append(announcer);
+    announcer.textContent = heading;   // a screen reader hears where it is now (red team: it heard nothing)
+    if (!document.querySelector('.sheet.is-open')) view.focus({ preventScroll: true });
+  }
 }
 
 // News only inside the app (client's answer, October 2026): a line on the screen, and the list is fresh.
-const seen = new Set(store.get('pacelam.min.seen', []));
+const seenKept = store.get('pacelam.min.seen', []);
+const seen = new Set(Array.isArray(seenKept) ? seenKept.filter((x) => typeof x === 'string') : []);
 let firstPoll = true;
 async function poll() {
   if (!state.session || document.visibilityState !== 'visible') return;
@@ -806,7 +873,7 @@ async function poll() {
     // what waited while the app was closed is already in the list; a line is for what arrives while it is open
     if (fresh.length && !firstPoll) {
       const n = fresh[0]; const p = n.payload || {};
-      toast(n.type === 'bid' ? t('n_bid', { p: p.amount != null ? fmtInt(p.amount) : '' }) : (n.type === 'deal' || n.type === 'accepted' || n.type === 'taken') ? t('n_deal', { from: p.from || '', to: p.to || '' }) : t('n_job', { from: p.from || '', to: p.to || '' }));
+      toast(n.type === 'bid' ? t('n_bid', { p: p.amount != null ? amt(p.amount) : '' }) : (n.type === 'deal' || n.type === 'accepted' || n.type === 'taken') ? t('n_deal', { from: p.from || '', to: p.to || '' }) : t('n_job', { from: p.from || '', to: p.to || '' }));
       if (route().name === 'list' && !document.querySelector('.sheet.is-open')) render();
     }
     firstPoll = false;
@@ -816,6 +883,14 @@ async function poll() {
 async function loadMe() {
   state.session = api.getSession();
   state.me = state.session ? await api.getMe().catch(() => null) : null;
+  // what a guest filled in before signing in stays his after it: the request he was about to send, his last route
+  const id = myId();
+  if (id) for (const key of ['pacelam.min.wiz.cargo', 'pacelam.min.wiz.truck', 'pacelam.lastRoute']) {
+    const guest = store.get(`${key}.guest`);
+    if (guest == null) continue;
+    if (store.get(`${key}.${id}`) == null) store.set(`${key}.${id}`, guest);
+    store.set(`${key}.guest`, null);
+  }
   return state.me;
 }
 // dark first; the light theme is one tap away in the profile and is remembered (the same key as the full version)
@@ -837,7 +912,7 @@ async function boot() {
   if (demo === 'operator') { location.replace(`classic.html${location.search}#/operator`); return; }   // the dispatcher's desk stays in the full version
   let target = null;
   const want = post === 'cargo' || demo === 'customer' || roleParam === 'customer' ? 'customer' : post === 'truck' || demo === 'carrier' || roleParam === 'carrier' ? 'carrier' : null;
-  if (want) { state.role = want; store.set('pacelam.min.role', want); target = post === 'cargo' ? '#/new' : post === 'truck' ? '#/trip' : '#/list'; }
+  if (want) { state.role = want; store.set('pacelam.min.role', want); target = post === 'cargo' ? '#/new' : post === 'truck' ? '#/trip' : (location.hash.length > 2 ? location.hash : '#/list'); }
   if (demo || post || roleParam || params.get('visit')) {
     const url = new URL(location.href);
     for (const k of ['demo', 'post', 'role', 'visit']) url.searchParams.delete(k);
