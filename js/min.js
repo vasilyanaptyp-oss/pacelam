@@ -3,12 +3,12 @@
 // The look is the app's own (dark, amber, blue for cargo, sheets that slide): the client's partner asked to keep it.
 // Only screens live here. The data layer (api-demo.js / api-supabase.js) and every rule in the database are untouched:
 // only the carrier names a price, offers are blind, phones open after a deal.
-import { api } from './api.js?v=8a726e6e';
-import { setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=8a726e6e';
-import { t } from './i18n-min.js?v=8a726e6e';
-import { h, $, clear, icon, icons, toast, sheet, fmtInt, fmtNum, fmtDate, isoDate, addDays, navigate } from './ui.js?v=8a726e6e';
-import { searchCities, nearestCity, haversineKm, detourKm } from './geo.js?v=8a726e6e';
-import { compressPhoto } from './photos.js?v=8a726e6e';
+import { api } from './api.js?v=16d5107b';
+import { setLang, getLang, detectLang, LANGS, nameOf, labelOf, locale } from './i18n.js?v=16d5107b';
+import { t } from './i18n-min.js?v=16d5107b';
+import { h, $, clear, icon, icons, toast, sheet, fmtInt, fmtNum, fmtDate, isoDate, addDays, navigate } from './ui.js?v=16d5107b';
+import { searchCities, nearestCity, haversineKm, detourKm } from './geo.js?v=16d5107b';
+import { compressPhoto } from './photos.js?v=16d5107b';
 
 icons.nav = '<path d="M12 2.5 21.5 12 12 21.5 2.5 12z"/><path d="M9 14.5v-3h5.5M12.5 9l2.5 2.5-2.5 2.5"/>';
 icons.chev = '<path d="M9 6l6 6-6 6"/>';

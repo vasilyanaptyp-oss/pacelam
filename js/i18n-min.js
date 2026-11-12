@@ -1,6 +1,6 @@
 // Short texts of the minimal version (10.11.2026). Three languages, the same length in each.
 // The active language lives in i18n.js; reference names (vehicle types, cargo categories) still come from there.
-import { getLang } from './i18n.js?v=8a726e6e';
+import { getLang } from './i18n.js?v=16d5107b';
 
 const D = {
   ru: {

@@ -1,8 +1,8 @@
 // Demo backend: the same API surface as api-supabase.js, kept in this browser only.
 // Lets the client click through every flow before the database is connected. The rules
 // mirror supabase/migrations/0001_init.sql; the database version is the source of truth.
-import { VEHICLE_GROUPS, VEHICLE_TYPES, CARGO_TYPES } from './data.js?v=8a726e6e';
-import { blobToDataUrl } from './photos.js?v=8a726e6e';
+import { VEHICLE_GROUPS, VEHICLE_TYPES, CARGO_TYPES } from './data.js?v=16d5107b';
+import { blobToDataUrl } from './photos.js?v=16d5107b';
 
 const KEY = 'pacelam.demo';
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); }));

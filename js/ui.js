@@ -1,5 +1,5 @@
 // Small DOM helpers: no framework, the board must open instantly on a cheap phone.
-import { t, locale } from './i18n.js?v=8a726e6e';
+import { t, locale } from './i18n.js?v=16d5107b';
 
 export function h(tag, props, ...children) {
   const [name, ...classes] = tag.split('.');
